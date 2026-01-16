@@ -2,16 +2,18 @@ import pygame
 import sys
 
 from game.game_state import GameState
-from game.misc import Piece, Player, PieceType
+from game.misc import Player, PieceType
+from game.misc import Piece as PieceClass
 from ui.misc import PIECE_IMAGE_PATHS
 
 class GUI:
     def __init__(self, game_state: GameState) -> None:
-        self.screen = pygame.display.set_mode((900, 900))
+        # Explicitly disallow window resizing by passing flags=0 (no RESIZABLE flag)
+        self.screen = pygame.display.set_mode((900, 900), flags=0)
         pygame.display.set_caption("Haruka Shogi")
         self.clock = pygame.time.Clock()
 
-        self.piece_images = dict[Piece, pygame.Surface]()
+        self.piece_images = dict[PieceClass, pygame.Surface]()
         for piece, path in PIECE_IMAGE_PATHS.items():
             self.piece_images[piece] = pygame.image.load(path).convert_alpha()
             self.piece_images[piece] = pygame.transform.scale(self.piece_images[piece], (100, 100))
@@ -41,19 +43,14 @@ class GUIElement:
         pass
 
 
-class PieceGUIElement(GUIElement):
+class Piece(GUIElement):
     def __init__(
         self,
         image: pygame.Surface,
-        cell: tuple[int, int],
-        board_start_pos: tuple[int, int] = (0, 0),
-        cell_size: int = 100
+        pos: tuple[int, int]
     ) -> None:
         self.image = image
-        self.cell_col, self.cell_row = cell
-        self.size = cell_size
-        self.x = (8.5 - self.cell_col) * cell_size + board_start_pos[0]
-        self.y = (0.5 + self.cell_row) * cell_size + board_start_pos[1]
+        self.x, self.y = pos
         self.rect = image.get_rect(center=(self.x, self.y))
 
     def draw(self, screen):
@@ -64,7 +61,7 @@ class Board(GUIElement):
     def __init__(
         self,
         game_state: GameState,
-        piece_images: dict[Piece, pygame.Surface],
+        piece_images: dict[PieceClass, pygame.Surface],
         board_tile_image: pygame.Surface,
         board_start_pos: tuple[int, int] = (0, 0),
         board_size: int = 900,
@@ -76,21 +73,44 @@ class Board(GUIElement):
         self.cell_size = board_size / 9
         self.pieces = self.initialize_pieces(self.piece_list)
 
-    def initialize_pieces(self, piece_list: dict[Piece, set[tuple[int, int]]]):
+    def initialize_pieces(self, piece_list: dict[PieceClass, set[tuple[int, int]]]):
         pieces = []
-        for piece, cells in piece_list.items():
-            for cell in cells:
-                pieces.append(PieceGUIElement(
-                    image=self.piece_images[piece],
-                    cell=cell,
-                    board_start_pos=self.board_start_pos,
-                    cell_size=self.cell_size,
-                ))
+        for player in Player:
+            for tuple, cells in self.piece_list[player].items():
+                piece_type, promoted = tuple
+                for col, row in cells:
+                    x = (8.5 - col) * self.cell_size + self.board_start_pos[0]
+                    y = (0.5 + row) * self.cell_size + self.board_start_pos[1]
+                    pieces.append(Piece(
+                        image=self.piece_images[PieceClass(player, piece_type, promoted)],
+                        pos=(x, y)
+                    ))
         return pieces
 
     def draw(self, screen):
         for i in range(9):
             for j in range(9):
-                screen.blit(self.board_tile_image, (i*self.cell_size, j*self.cell_size))
+                rect = self.board_tile_image.get_rect(center=((i + 0.5)*self.cell_size, (j + 0.5)*self.cell_size))
+                screen.blit(self.board_tile_image, rect)
         for piece in self.pieces:
             piece.draw(screen)
+
+
+class Hand(GUIElement):
+    def __init__(
+        self,
+        player: Player,
+        game_state: GameState,
+        piece_images: dict[PieceClass, pygame.Surface],
+        start_pos: tuple[int, int],
+        size: int = 400,
+    ) -> None:
+        self.player = player
+        self.hand = game_state.hand[player]
+        self.piece_images = piece_images
+        self.start_pos = start_pos
+        self.size = size
+        self.pieces = self.initialize_pieces(self.hand)
+
+    def initialize_pieces(self, hand: dict[PieceType, int]):
+        pass
