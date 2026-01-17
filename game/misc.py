@@ -35,7 +35,8 @@ PROMOTABLE = {
 class Change:
     player: Player
     piece_type: PieceType
-    promote: bool
+    from_promoted: bool
+    to_promoted: bool
     from_pos: tuple[int, int]
     to_pos: tuple[int, int]
 

@@ -1,19 +1,27 @@
-from numpy.char import center
 import pygame
 import sys
+from queue import Queue, Empty
+from typing import List
 
 from game.game_state import GameState
-from game.misc import Player, PieceType
+from game.misc import Player, PieceType, Change
 from game.misc import Piece as PieceClass
 from ui.misc import PIECE_IMAGE_PATHS
 
 class GUI:
-    def __init__(self, game_state: GameState) -> None:
+    def __init__(
+        self,
+        update_queue: Queue[(List[Change], GameState)],
+        move_request_queue: Queue[List[Change]],
+        move_response_queue: Queue[List[Change]]
+    ) -> None:
+        pygame.init()
         # Explicitly disallow window resizing by passing flags=0 (no RESIZABLE flag)
         self.screen = pygame.display.set_mode((900 + 800 + 100, 900), flags=0)
         pygame.display.set_caption("Haruka Shogi")
         self.clock = pygame.time.Clock()
 
+        # loadimages
         self.piece_images = dict[PieceClass, pygame.Surface]()
         for piece, path in PIECE_IMAGE_PATHS.items():
             self.piece_images[piece] = pygame.image.load(path).convert_alpha()
@@ -24,12 +32,23 @@ class GUI:
         self.board_tile_image = pygame.transform.scale(self.board_tile_image, (98, 98))
         self.hand_image = pygame.image.load("assets/board/tile_wood1.png")
         self.hand_image = pygame.transform.scale(self.hand_image, (400, 400))
+
+        # queues to communicate with controller
+        self.update_queue = update_queue
+        self.move_request_queue = move_request_queue
+        self.move_response_queue = move_response_queue
         
-        self.board = Board(game_state, self.piece_images, self.board_tile_image, (450, 0))
+        # initialize elements
+        self.board = Board(self.piece_images, self.board_tile_image, (450, 0))
         self.hands = {
-            Player.WHITE: Hand(Player.WHITE, game_state, self.piece_images, self.hand_image, (0, 0), 400),
-            Player.BLACK: Hand(Player.BLACK, game_state, self.piece_images, self.hand_image, (1400, 500), 400),
+            Player.WHITE: Hand(Player.WHITE, self.piece_images, self.hand_image, (0, 0), 400),
+            Player.BLACK: Hand(Player.BLACK, self.piece_images, self.hand_image, (1400, 500), 400),
         }
+    
+    def update(self, move: List[Change], state: GameState):
+        self.board.update(move, state)
+        for player in Player:
+            self.hands[player].update(move, state)
 
     def run(self):
         running = True
@@ -37,6 +56,15 @@ class GUI:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+            try:
+                move, state = self.update_queue.get_nowait()
+                self.update(move, state)
+            except Empty:
+                pass
+            try:
+                available_moves = self.move_response_queue.get_nowait()
+            except Empty:
+                pass
             self.screen.fill((0, 0, 0))
             self.board.draw(self.screen)
             for player in Player:
@@ -69,7 +97,6 @@ class Piece(GUIElement):
 class Board(GUIElement):
     def __init__(
         self,
-        game_state: GameState,
         piece_images: dict[PieceClass, pygame.Surface],
         board_tile_image: pygame.Surface,
         board_start_pos: tuple[int, int] = (0, 0),
@@ -77,24 +104,29 @@ class Board(GUIElement):
     ) -> None:
         self.board_tile_image = board_tile_image
         self.piece_images = piece_images
-        self.piece_list = game_state.piece_list
         self.board_start_pos = board_start_pos
         self.cell_size = board_size / 9
-        self.pieces = self.initialize_pieces(self.piece_list)
+        empty_piece_list = {
+            Player.WHITE: {},
+            Player.BLACK: {},
+        }
+        self.initialize_pieces(empty_piece_list)
 
     def initialize_pieces(self, piece_list: dict[PieceClass, set[tuple[int, int]]]):
-        pieces = []
+        self.pieces = []
         for player in Player:
-            for tuple, cells in self.piece_list[player].items():
+            for tuple, cells in piece_list[player].items():
                 piece_type, promoted = tuple
                 for col, row in cells:
                     x = (8.5 - col) * self.cell_size + self.board_start_pos[0]
                     y = (0.5 + row) * self.cell_size + self.board_start_pos[1]
-                    pieces.append(Piece(
+                    self.pieces.append(Piece(
                         image=self.piece_images[PieceClass(player, piece_type, promoted)],
                         pos=(x, y)
                     ))
-        return pieces
+    
+    def update(self, move: List[Change], state: GameState):
+        self.initialize_pieces(state.piece_list)
 
     def draw(self, screen):
         for i in range(9):
@@ -109,14 +141,12 @@ class Hand(GUIElement):
     def __init__(
         self,
         player: Player,
-        game_state: GameState,
         piece_images: dict[PieceClass, pygame.Surface],
         hand_image: pygame.Surface,
         start_pos: tuple[int, int],
         size: int = 400,
     ) -> None:
         self.player = player
-        self.hand = game_state.hand[player]
         self.piece_images = piece_images
         self.hand_image = hand_image
         self.start_pos = start_pos
@@ -125,10 +155,11 @@ class Hand(GUIElement):
         self.n_row = 4
         self.col_size = self.size / self.n_col
         self.row_size = self.size / self.n_row
-        self.pieces = self.initialize_pieces(self.hand)
+        empty_hand = {}
+        self.initialize_pieces(empty_hand)
 
     def initialize_pieces(self, hand: dict[PieceType, int]):
-        pieces = []
+        self.pieces = []
         n_pieces = 0
         for piece_type, count in hand.items():
             for i in range(count):
@@ -141,13 +172,15 @@ class Hand(GUIElement):
                     row = self.n_row - row - 1
                 x = (col + 0.5) * self.col_size + self.start_pos[0]
                 y = (row + 0.5) * self.row_size + self.start_pos[1]
-                pieces.append(Piece(
+                self.pieces.append(Piece(
                     image=self.piece_images[PieceClass(self.player, piece_type, False)],
                     pos=(x, y)
                 ))
                 n_pieces += 1
-        return pieces
     
+    def update(self, move: List[Change], state: GameState):
+        self.initialize_pieces(state.hand[self.player])
+
     def draw(self, screen):
         # rect = self.hand_image.get_rect(topleft=self.start_pos)
         # screen.blit(self.hand_image, rect)
