@@ -20,6 +20,15 @@ def check_board(game_state: GameState):
 
 def start_controller(update_queue: Queue):
     game_state = GameState()
+    game_state.move([
+        Change(Player.BLACK, PieceType.SILVER, False, False, (2, 8), None),
+        Change(Player.BLACK, PieceType.KNIGHT, False, False, (1, 8), None),
+        Change(Player.BLACK, PieceType.LANCE, False, False, (0, 8), None),
+        Change(Player.BLACK, PieceType.PAWN, False, False, (6, 6), None),
+        Change(Player.WHITE, PieceType.PAWN, False, False, (0, 2), None),
+        Change(Player.WHITE, PieceType.PAWN, False, False, (4, 2), None),
+        Change(Player.BLACK, PieceType.BISHOP, False, False, (7, 7), (4, 2)),
+    ])
     update_queue.put(([], game_state))
     
     while True:

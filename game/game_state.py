@@ -58,7 +58,7 @@ class GameState:
                                 )
                             # check if the piece can be promoted
                             if piece_type in PROMOTABLE and not promoted:
-                                if (self.current_player == Player.BLACK and to_row < 3) or (self.current_player == Player.WHITE and to_row >= 6):
+                                if (self.current_player == Player.BLACK and (to_row < 3 or from_row < 3)) or (self.current_player == Player.WHITE and (to_row >= 6 or from_row >= 6)):
                                     moves.append(
                                         [
                                             Change(self.current_player, piece_type, promoted, True, (from_col, from_row), (to_col, to_row))
@@ -75,7 +75,7 @@ class GameState:
                                     ]
                                 )
                             if piece_type in PROMOTABLE and not promoted:
-                                if (self.current_player == Player.BLACK and to_row < 3) or (self.current_player == Player.WHITE and to_row >= 6):
+                                if (self.current_player == Player.BLACK and (to_row < 3 or from_row < 3)) or (self.current_player == Player.WHITE and (to_row >= 6 or from_row >= 6)):
                                     moves.append(
                                         [
                                             Change(captured_piece.player, captured_piece.type, captured_piece.promoted, False, (to_col, to_row), None),
@@ -104,7 +104,7 @@ class GameState:
                                     )
                                 # check if the piece can be promoted
                                 if not promoted:
-                                    if (self.current_player == Player.BLACK and to_row < 3) or (self.current_player == Player.WHITE and to_row >= 6):
+                                    if (self.current_player == Player.BLACK and (to_row < 3 or from_row < 3)) or (self.current_player == Player.WHITE and (to_row >= 6 or from_row >= 6)):
                                         moves.append(
                                             [
                                                 Change(self.current_player, piece_type, promoted, True, (from_col, from_row), (to_col, to_row))
@@ -122,7 +122,7 @@ class GameState:
                                     )
                                 # check if the piece can be promoted
                                 if not promoted:
-                                    if (self.current_player == Player.BLACK and to_row < 3) or (self.current_player == Player.WHITE and to_row >= 6):
+                                    if (self.current_player == Player.BLACK and (to_row < 3 or from_row < 3)) or (self.current_player == Player.WHITE and (to_row >= 6 or from_row >= 6)):
                                         moves.append(
                                             [
                                                 Change(captured_piece.player, captured_piece.type, captured_piece.promoted, False, (to_col, to_row), None),
@@ -135,8 +135,37 @@ class GameState:
                                 break
 
         # generate drop moves
-        # TODO: implement
-        
+        for piece_type, count in self.hand[self.current_player].items():
+            if count > 0:
+                min_row = 0
+                max_row = 8
+                # can't drop pawns, lances or knights on the last rank/ranks
+                if piece_type in {PieceType.PAWN, PieceType.LANCE}:
+                    if self.current_player == Player.BLACK:
+                        min_row = 1
+                    else:
+                        max_row = 7
+                elif piece_type == PieceType.KNIGHT:
+                    if self.current_player == Player.BLACK:
+                        min_row = 2
+                    else:
+                        max_row = 6
+                # can't drop pawns on cols with other pawns
+                cols = set(range(9))
+                if piece_type == PieceType.PAWN:
+                    for col, _ in self.piece_list[self.current_player][(PieceType.PAWN, False)]:
+                        if col in cols:
+                            cols.remove(col)
+                # loop through the remaining rows and cols
+                for row in range(min_row, max_row + 1):
+                    for col in cols:
+                        if self.board[col*9 + row] is None:
+                            move =[Change(self.current_player, piece_type, False, False, None, (col, row))]
+                            if piece_type == PieceType.PAWN:
+                                # TODO: check if pawn checkmate
+                                moves.append(move)
+                            else:
+                                moves.append(move)
         return moves
 
 
