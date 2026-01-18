@@ -44,6 +44,12 @@ class SimpleEvaluator(Evaluator):
         for piece_type, count in game_state.hand[1 - game_state.current_player].items():
             score -= (self.piece_values[(piece_type, False)] + 2) * count
 
+        # bonus for check
+        if game_state.is_check(game_state.current_player):
+            score += 10
+        if game_state.is_check(1 - game_state.current_player):
+            score -= 10
+
         return score
 
     
