@@ -20,15 +20,21 @@ class GameState:
         self.current_player = Player.BLACK
         self.game_over = None
         self.winner = None
+        # cached information to avoid recomputing
+        # temporary flag to indicate that we made a temporary move
+        self.temporary_move = False
         self.legal_moves = None
-        self.initialize_board()
         self.check_cache = {
             Player.BLACK: None,
             Player.WHITE: None,
         }
 
+        self.initialize_board()
+
+
     def copy(self) -> 'GameState':
         return copy.deepcopy(self)
+
 
     def is_game_over(self) -> bool:
         # TODO: stalemate is not detected
@@ -49,8 +55,9 @@ class GameState:
         if self.game_over is not None:
             return self.winner
         # generating moves will set the winner flag and save the legal moves
-        self.generate_moves()
+        self.is_game_over()
         return self.winner
+
 
     def initialize_board(self):
         for piece, cells in STARTING_PIECE_LIST.items():
@@ -62,7 +69,7 @@ class GameState:
 
     def generate_moves(self):
         # if the legal moves have already been generated, return them
-        if self.legal_moves is not None:
+        if not self.temporary_move and self.legal_moves is not None:
             return self.legal_moves
         # generate pseudo legal moves
         player = self.current_player
@@ -92,19 +99,19 @@ class GameState:
             
             # if the king is in check or the move is a king move, we need to fully verify for check
             if king_in_check or king_move:
-                self.move(move)
+                self.move_temporary(move)
                 if not self.is_check(1-player):
                     legal_moves.append(move)
-                self.unmove(move)
+                self.unmove_temporary(move)
             
             # if the move is not a drop, we need to check for discovered checks
             # only applies if there is a possible discovered check
             elif not drop and possible_discovered_check:
-                self.move(move)
+                self.move_temporary(move)
                 king_square = next(iter(self.piece_list[player][(PieceType.KING, False)]))
                 if not self.is_square_attacked_by_sliding(1-player, king_square):
                     legal_moves.append(move)
-                self.unmove(move)
+                self.unmove_temporary(move)
             
             # if the move is a drop, it can't be a check
             else:
@@ -120,7 +127,8 @@ class GameState:
                 # stalemate
                 self.winner = None
         
-        self.legal_moves = legal_moves
+        if not self.temporary_move:
+            self.legal_moves = legal_moves
         return legal_moves
     
 
@@ -304,11 +312,15 @@ class GameState:
     
 
     def is_check(self, player: Player) -> bool:
-        if self.check_cache[player] is not None:
+        # return cached result if present and it's not a temporary move
+        if not self.temporary_move and self.check_cache[player] is not None:
             return self.check_cache[player]
         king_square = next(iter(self.piece_list[1-player][(PieceType.KING, False)]))
-        self.check_cache[player] = self.is_square_attacked(player, king_square)
-        return self.check_cache[player]
+        result = self.is_square_attacked(player, king_square)
+        # cache the result if not a temporary move
+        if not self.temporary_move:
+            self.check_cache[player] = result
+        return result
     
 
     def is_square_attacked_by_sliding(self, player: Player, square: tuple[int, int], x_ray: bool = False) -> bool:
@@ -332,6 +344,22 @@ class GameState:
 
 
     def move(self, move: List[Change]):
+        self.move_temporary(move)
+        self.temporary_move = False
+        self.game_over = None
+        self.winner = None
+        self.legal_moves = None
+        self.check_cache = {
+            Player.BLACK: None,
+            Player.WHITE: None,
+        }
+
+
+    def move_temporary(self, move: List[Change]):
+        """
+        Makes a move without updating the cached information.
+        This is only used to make a move that will be undone soon.
+        """
         for change in move:
             # remove piece from the old position
             if change.from_pos == None:
@@ -350,14 +378,28 @@ class GameState:
                 self.piece_list[change.player][(change.piece_type, change.to_promoted)].add(change.to_pos)
         # switch player
         self.current_player = 1 - self.current_player
+        
+        # set temporary move flag
+        # reset when unmoving
+        self.temporary_move = True
+    
+    
+    def unmove(self, move: List[Change]):
+        self.unmove_temporary(move)
         self.game_over = None
+        self.winner = None
         self.legal_moves = None
         self.check_cache = {
             Player.BLACK: None,
             Player.WHITE: None,
         }
-    
-    def unmove(self, move: List[Change]):
+
+
+    def unmove_temporary(self, move: List[Change]):
+        """
+        Undoes a move without updating the cached information.
+        This is only used to undo a move that was made temporarily.
+        """
         for change in reversed(move):
             # remove piece from the new position
             if change.to_pos == None:
@@ -376,10 +418,6 @@ class GameState:
                 self.piece_list[change.player][(change.piece_type, change.from_promoted)].add(change.from_pos)
         # switch player
         self.current_player = 1 - self.current_player
-        self.game_over = None
-        self.winner = None
-        self.legal_moves = None
-        self.check_cache = {
-            Player.BLACK: None,
-            Player.WHITE: None,
-        }
+
+        # reset temporary move flag
+        self.temporary_move = False
