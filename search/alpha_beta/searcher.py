@@ -1,8 +1,9 @@
 from game.game_state import GameState
-from game.misc import Player
+from game.misc import Player, Change
 from search.evaluation.evaluator import Evaluator
 from search.evaluation.move_ordering import MoveOrderer
 
+from typing import List
 import time
 
 
@@ -10,23 +11,38 @@ class MinMaxSearcher:
     def __init__(self, game_state: GameState, evaluator: Evaluator):
         self.game_state = game_state
         self.evaluator = evaluator
-        self.best_move = None
         self.node_count = 0
+
+        # principal variation table to easily get the best move for a given depth
+        # and keep track af the principal variation with iterative deepening
+        self.pv_table: List[List[List[Change]]] = [[None] * 10 for _ in range(10)]
+        self.pv_length = [0] * 11   # needs to be one longer than the depth to avoid index out of bounds
+        self.following_pv = False
 
 
     def search(self, depth: int) -> int:
         self.node_count = 0
         t0 = time.time()
-        self.min_max(depth, 0, -float('inf'), float('inf'))
+
+        # reset the pv table (only need to reset the length, the moves are overwritten)
+        self.pv_length = [0] * 11
+
+        # iterative deepening, using the pv table to store the best moves
+        for d in range(1, depth + 1):
+            self.following_pv = True
+            self.min_max(d, 0, -float('inf'), float('inf'))
+            # print(f"Depth {d} finished. \t Node count: {self.node_count}")
+
         d_time = time.time() - t0
-        print(f"Search finished. Node count: {self.node_count}. Time taken: {d_time} seconds. Nodes per second: {self.node_count / d_time}")
-        return self.best_move
+        print(f"Search finished. \t Node count: {self.node_count}. \t Time taken: {d_time} seconds. \t Nodes per second: {self.node_count / d_time}")
+        return self.pv_table[0][0]
+
     
     def min_max(self, depth: int, ply: int, alpha: int, beta: int) -> int:
         self.node_count += 1
-        current_player = self.game_state.current_player
         # if a leaf node is reached return the evaluation
         if depth == 0 or self.game_state.is_game_over():
+            self.pv_length[ply] = 0
             return self.evaluator.evaluate(self.game_state)
 
         # order moves to put more promising moves first
@@ -38,6 +54,15 @@ class MinMaxSearcher:
             return 0
         move_scores = self.evaluator.evaluate_moves(moves, self.game_state)
         moves = [move for _, move in sorted(zip(move_scores, moves), key=lambda x: x[0], reverse=True)]
+
+        # if we are following the pv moves, put the move in the pv_table first
+        if self.following_pv:
+            if self.pv_length[0] > ply:
+                pv_move = self.pv_table[0][ply]
+                moves.remove(pv_move)
+                moves.insert(0, pv_move)
+            else:
+                self.following_pv = False
 
 
         # explore the next moves and return the best evaluation
@@ -57,13 +82,19 @@ class MinMaxSearcher:
                 best_evaluation = evaluation
                 best_move = move
                 alpha = max(alpha, best_evaluation)
+
+                # update the pv table with the new best variation for this ply
+                # the first element of the pv table is the best move for this ply
+                # the rest are the principal variation for the next ply
+                self.pv_table[ply][0] = move
+                for i in range(self.pv_length[ply + 1]):
+                    self.pv_table[ply][i + 1] = self.pv_table[ply + 1][i]
+                self.pv_length[ply] = self.pv_length[ply + 1] + 1
+
             # if alpha is greater than beta, prune the search
             # the opponent will not choose this path either way
             if alpha >= beta:
                 return best_evaluation
-        
-        if ply == 0:
-            self.best_move = best_move
         
         return best_evaluation
 

@@ -12,7 +12,7 @@ random.seed(42)
 
 players = [
     RandomPlayer(),
-    MinMaxPlayer(SimpleEvaluator(), depth=3),
+    MinMaxPlayer(SimpleEvaluator(), depth=4),
 ]
 
 controller = Controller(players)

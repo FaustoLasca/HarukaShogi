@@ -9,4 +9,4 @@ evaluator = SimpleEvaluator()
 move_orderer = SimpleMoveOrderer()
 searcher = MinMaxSearcher(GameState(), evaluator)
 
-searcher.search(4)
+searcher.search(3)

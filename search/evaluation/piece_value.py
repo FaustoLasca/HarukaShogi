@@ -25,7 +25,9 @@ class SimpleEvaluator(Evaluator):
     
     def evaluate(self, game_state: GameState) -> int:
         if game_state.is_game_over():
-            return 10000 if game_state.winner == game_state.current_player else -10000 if game_state.winner == 1 - game_state.current_player else 0
+            evaluation = 10000 if game_state.winner == game_state.current_player else -10000 if game_state.winner == 1 - game_state.current_player else 0
+            length_penalty = -1 * game_state.move_count if game_state.winner == game_state.current_player else game_state.move_count if game_state.winner == 1 - game_state.current_player else 0
+            return evaluation + length_penalty
         
         score = 0
 

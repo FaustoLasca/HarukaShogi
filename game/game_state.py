@@ -20,6 +20,7 @@ class GameState:
         self.current_player = Player.BLACK
         self.game_over = None
         self.winner = None
+        self.move_count = 0
         # cached information to avoid recomputing
         # temporary flag to indicate that we made a temporary move
         self.temporary_move = False
@@ -353,6 +354,7 @@ class GameState:
             Player.BLACK: None,
             Player.WHITE: None,
         }
+        self.move_count += 1
 
 
     def move_temporary(self, move: List[Change]):
@@ -393,6 +395,7 @@ class GameState:
             Player.BLACK: None,
             Player.WHITE: None,
         }
+        self.move_count -= 1
 
 
     def unmove_temporary(self, move: List[Change]):
