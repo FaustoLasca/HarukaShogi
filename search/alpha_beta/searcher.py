@@ -7,10 +7,9 @@ import time
 
 
 class MinMaxSearcher:
-    def __init__(self, game_state: GameState, evaluator: Evaluator, move_orderer: MoveOrderer):
+    def __init__(self, game_state: GameState, evaluator: Evaluator):
         self.game_state = game_state
         self.evaluator = evaluator
-        self.move_orderer = move_orderer
         self.best_move = None
         self.node_count = 0
 
@@ -33,7 +32,8 @@ class MinMaxSearcher:
         # order moves to put more promising moves first
         # this maximizes pruning
         moves = self.game_state.generate_moves()
-        moves = self.move_orderer.order(moves, self.game_state)
+        move_scores = self.evaluator.evaluate_moves(moves, self.game_state)
+        moves = [move for _, move in sorted(zip(move_scores, moves), key=lambda x: x[0], reverse=True)]
 
 
         # explore the next moves and return the best evaluation

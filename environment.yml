@@ -137,6 +137,7 @@ dependencies:
   - pybind11-abi=11
   - pybind11-global=3.0.1
   - pygame=2.6.1
+  - pyinstrument=5.1.2
   - python=3.13.11
   - python_abi=3.13
   - pytorch=2.9.1
@@ -150,10 +151,12 @@ dependencies:
   - sdl3=3.2.30
   - setuptools=80.9.0
   - sleef=3.9.0
+  - snakeviz=2.2.2
   - svt-av1=3.1.2
   - sympy=1.14.0
   - tbb=2022.3.0
   - tk=8.6.13
+  - tornado=6.5.4
   - triton=3.5.1
   - typing-extensions=4.15.0
   - typing_extensions=4.15.0

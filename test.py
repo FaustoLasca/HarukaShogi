@@ -1,11 +1,12 @@
 from search.alpha_beta.searcher import MinMaxSearcher
-from search.evaluation.piece_value import PieceValueEvaluator
+from search.evaluation.piece_value import SimpleEvaluator
 from search.evaluation.move_ordering import SimpleMoveOrderer
 from game.game_state import GameState
+import random
 
 
-evaluator = PieceValueEvaluator()
+evaluator = SimpleEvaluator()
 move_orderer = SimpleMoveOrderer()
-searcher = MinMaxSearcher(GameState(), evaluator, move_orderer)
+searcher = MinMaxSearcher(GameState(), evaluator)
 
-print(searcher.search(4))
+searcher.search(4)

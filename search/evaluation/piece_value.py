@@ -1,10 +1,11 @@
 from search.evaluation.evaluator import Evaluator
 
 from game.game_state import GameState
-from game.misc import PieceType, Player
+from game.misc import PieceType, Player, Change
+from typing import List
 
 
-class PieceValueEvaluator(Evaluator):
+class SimpleEvaluator(Evaluator):
     def __init__(self):
         self.piece_values = {
             (PieceType.GOLD, False): 6,
@@ -44,3 +45,15 @@ class PieceValueEvaluator(Evaluator):
             score -= (self.piece_values[(piece_type, False)] + 2) * count
 
         return score
+
+    
+    def evaluate_moves(self, moves: List[List[Change]], game_state: GameState) -> int:
+        scores = []
+        for move in moves:
+            score = 0
+            # captures gain score
+            if len(move) > 1:
+                score += 10
+
+            scores.append(score)
+        return scores

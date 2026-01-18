@@ -22,6 +22,10 @@ class GameState:
         self.winner = None
         self.legal_moves = None
         self.initialize_board()
+        self.check_cache = {
+            Player.BLACK: None,
+            Player.WHITE: None,
+        }
 
     def copy(self) -> 'GameState':
         return copy.deepcopy(self)
@@ -31,9 +35,8 @@ class GameState:
         if self.game_over is not None:
             return self.game_over
         # if the king is in check, verify for checkmate
-        king_square = next(iter(self.piece_list[self.current_player][(PieceType.KING, False)]))
 
-        if self.is_square_attacked(1-self.current_player, king_square):
+        if self.is_check(1-self.current_player):
             self.generate_moves()
             return self.game_over
             
@@ -66,8 +69,11 @@ class GameState:
         pseudo_legal_moves = self.generate_pseudo_legal_moves()
         # filter illegal moves (player's king is in check)
         king_square = next(iter(self.piece_list[player][(PieceType.KING, False)]))
-        king_in_check = self.is_square_attacked(1-player, king_square)
-        possible_discovered_check = self.is_square_attacked_by_sliding(1-player, king_square, x_ray=True)
+        king_in_check = self.is_square_attacked_by_sliding(1-player, king_square)
+        if not king_in_check:
+            king_in_check = self.is_check(1-player)
+        if not king_in_check:
+            possible_discovered_check = self.is_square_attacked_by_sliding(1-player, king_square, x_ray=True)
         legal_moves = []
         for move in pseudo_legal_moves:
             # the move needs to fully control for check only if:
@@ -87,8 +93,7 @@ class GameState:
             # if the king is in check or the move is a king move, we need to fully verify for check
             if king_in_check or king_move:
                 self.move(move)
-                king_square = next(iter(self.piece_list[player][(PieceType.KING, False)]))
-                if not self.is_square_attacked(1-player, king_square):
+                if not self.is_check(1-player):
                     legal_moves.append(move)
                 self.unmove(move)
             
@@ -108,8 +113,7 @@ class GameState:
         # if there are no legal moves, the game is over
         if len(legal_moves) == 0:
             self.game_over = True
-            king_square = next(iter(self.piece_list[player][(PieceType.KING, False)]))
-            if self.is_square_attacked(1-player, king_square):
+            if self.is_check(1-player):
                 # checkmate
                 self.winner = 1 - player
             else:
@@ -300,8 +304,11 @@ class GameState:
     
 
     def is_check(self, player: Player) -> bool:
+        if self.check_cache[player] is not None:
+            return self.check_cache[player]
         king_square = next(iter(self.piece_list[1-player][(PieceType.KING, False)]))
-        return self.is_square_attacked(player, king_square)
+        self.check_cache[player] = self.is_square_attacked(player, king_square)
+        return self.check_cache[player]
     
 
     def is_square_attacked_by_sliding(self, player: Player, square: tuple[int, int], x_ray: bool = False) -> bool:
@@ -345,6 +352,10 @@ class GameState:
         self.current_player = 1 - self.current_player
         self.game_over = None
         self.legal_moves = None
+        self.check_cache = {
+            Player.BLACK: None,
+            Player.WHITE: None,
+        }
     
     def unmove(self, move: List[Change]):
         for change in reversed(move):
@@ -368,3 +379,7 @@ class GameState:
         self.game_over = None
         self.winner = None
         self.legal_moves = None
+        self.check_cache = {
+            Player.BLACK: None,
+            Player.WHITE: None,
+        }

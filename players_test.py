@@ -1,5 +1,5 @@
 from controller.player import RandomPlayer, MiopicPlayer, MinMaxPlayer
-from search.evaluation.piece_value import PieceValueEvaluator
+from search.evaluation.piece_value import SimpleEvaluator
 from search.evaluation.move_ordering import SimpleMoveOrderer
 from controller.controller import Controller
 from ui.gui import Gui
@@ -8,8 +8,8 @@ from time import time
 
 players = [
     # RandomPlayer(),
-    MiopicPlayer(PieceValueEvaluator()),
-    MinMaxPlayer(PieceValueEvaluator(), SimpleMoveOrderer(), depth=3),
+    MiopicPlayer(SimpleEvaluator()),
+    MinMaxPlayer(SimpleEvaluator(), depth=3),
 ]
 
 wins = [0, 0]
