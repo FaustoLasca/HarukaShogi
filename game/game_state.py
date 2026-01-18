@@ -3,10 +3,10 @@ import copy
 from typing import List
 
 from game.move_rules import FIXED_MOVES_DICT, SLIDING_MOVES_DICT
-from game.misc import Player, PieceType, Piece, PROMOTABLE, Change, STARTING_PIECE_LIST
+from game.misc import Player, PieceType, Piece, PROMOTABLE, Change
 
 class GameState:
-    def __init__(self):
+    def __init__(self, sfen: str = None):
         self.board : List[Piece | None] = [None] * 81
         self.hand = {
             Player.BLACK: defaultdict[PieceType, int](int),
@@ -30,7 +30,7 @@ class GameState:
             Player.WHITE: None,
         }
 
-        self.initialize_board()
+        self.set_state(sfen)
 
 
     def copy(self) -> 'GameState':
@@ -60,12 +60,98 @@ class GameState:
         return self.winner
 
 
-    def initialize_board(self):
-        for piece, cells in STARTING_PIECE_LIST.items():
-            self.piece_list[piece.player][(piece.type, piece.promoted)] = cells.copy()
-            for cell in cells:
-                col, row = cell
-                self.board[col*9 + row] = piece
+    def set_state(self, sfen: str = None):
+        """
+        Initializes the game starting from a given SFEN string.
+        If no SFEN string is provided, the starting position is used.
+        """
+        # initialize an empty board and hands
+        self.board = [None] * 81
+        self.hand = {
+            Player.BLACK: defaultdict[PieceType, int](int),
+            Player.WHITE: defaultdict[PieceType, int](int),
+        }
+        self.piece_list = {
+            Player.BLACK: defaultdict[tuple[PieceType, bool], set[tuple[int, int]]](set),
+            Player.WHITE: defaultdict[tuple[PieceType, bool], set[tuple[int, int]]](set),
+        }
+
+        if sfen is None:
+            sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
+        
+        # parse the SFEN string into parts
+        # the parts are:
+        # 1. the board position
+        # 2. the side to move
+        # 3. the pieces in the hands
+        # 4. the move count
+        sfen_parts = sfen.strip().split(' ')
+        piece_map = {
+                    'k': PieceType.KING,
+                    'g': PieceType.GOLD,
+                    's': PieceType.SILVER,
+                    'n': PieceType.KNIGHT,
+                    'l': PieceType.LANCE,
+                    'b': PieceType.BISHOP,
+                    'r': PieceType.ROOK,
+                    'p': PieceType.PAWN,
+                }
+
+        # parse the SFEN string and add the pieces as i do it
+        # the SFEN string starts from the top left corner and goes to the bottom right corner
+        col = 8
+        row = 0
+        promoted = False
+        for char in sfen_parts[0]:
+            # if the character is a digit, it means that we need to skip that many squares
+            if char.isdigit():
+                col -= int(char)
+            
+            # if the character is /, we need to go to the next row
+            elif char == '/':
+                row += 1
+                col = 8
+
+            # if the character is +, the next piece is promoted
+            elif char=='+':
+                promoted = True
+            
+            # if the character is a letter, it means that we need to add a piece to the board and update the piece list
+            elif char.isalpha():
+                if char.isupper():
+                    player = Player.BLACK
+                else:
+                    player = Player.WHITE
+
+                piece_type = piece_map[char.lower()]
+
+                self.board[col*9 + row] = Piece(player, piece_type, promoted)
+                self.piece_list[player][(piece_type, promoted)].add((col, row))
+                col -= 1
+                promoted = False
+            
+            else:
+                raise ValueError(f"Invalid character \'{char}\' in SFEN string")
+            
+        # parse the side to move
+        self.current_player = Player.BLACK if sfen_parts[1] == 'b' else Player.WHITE
+
+        # parse the pieces in the hands
+        for char in sfen_parts[2]:
+            # no pieces in the hands
+            if char == '-':
+                break
+            
+            player = Player.BLACK if char.isupper() else Player.WHITE
+            piece_type = piece_map[char.lower()]
+            self.hand[player][piece_type] += 1
+
+        # parse the move count
+        self.move_count = int(sfen_parts[3]) - 1
+
+        # check if the game is over
+        # this will set the game_over and winner flags
+        self.is_game_over()
     
 
     def generate_moves(self):

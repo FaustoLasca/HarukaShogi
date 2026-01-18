@@ -30,11 +30,12 @@ class MinMaxSearcher:
         # iterative deepening, using the pv table to store the best moves
         for d in range(1, depth + 1):
             self.following_pv = True
-            self.min_max(d, 0, -float('inf'), float('inf'))
-            # print(f"Depth {d} finished. \t Node count: {self.node_count}")
+            evaluation = self.min_max(d, 0, -float('inf'), float('inf'))
+            if evaluation >= float('inf'):
+                break
 
         d_time = time.time() - t0
-        print(f"Search finished. \t Node count: {self.node_count}. \t Time taken: {d_time} seconds. \t Nodes per second: {self.node_count / d_time}")
+        print(f"Search finished. \t Evaluation: {evaluation}. \t Node count: {self.node_count}. \t Time taken: {d_time} seconds. \t Nodes per second: {self.node_count / d_time}")
         return self.pv_table[0][0]
 
     

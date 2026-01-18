@@ -7,14 +7,15 @@ from controller.player import Player
 
 
 class Controller:
-    def __init__(self, players: List[Player], update_ui_queue: Optional[Queue] = None):
-        self.state = GameState()
+    def __init__(self, players: List[Player], update_ui_queue: Optional[Queue] = None, sfen: str = None):
+        self.state = GameState(sfen)
         self.update_ui_queue = update_ui_queue
         self.players = players
 
     def run(self):
         for player in self.players:
             player.update_state(None, self.state.copy())
+        self.update_ui_queue.put((None, self.state.copy()))
 
         n_moves = 0
         while not self.state.is_game_over():
