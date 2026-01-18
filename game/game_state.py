@@ -1,4 +1,5 @@
 from collections import defaultdict
+import copy
 from typing import List
 
 from game.move_rules import FIXED_MOVES_DICT, SLIDING_MOVES_DICT
@@ -17,17 +18,107 @@ class GameState:
             Player.WHITE: defaultdict[tuple[PieceType, bool], set[tuple[int, int]]](set),
         }
         self.current_player = Player.BLACK
+        self.game_over = None
+        self.winner = None
+        self.legal_moves = None
         self.initialize_board()
+
+    def copy(self) -> 'GameState':
+        return copy.deepcopy(self)
+
+    def is_game_over(self) -> bool:
+        # TODO: stalemate is not detected
+        if self.game_over is not None:
+            return self.game_over
+        # if the king is in check, verify for checkmate
+        king_square = next(iter(self.piece_list[self.current_player][(PieceType.KING, False)]))
+
+        if self.is_square_attacked(1-self.current_player, king_square):
+            self.generate_moves()
+            return self.game_over
+            
+        else:
+            self.game_over = False
+            return self.game_over
+
+
+    def get_winner(self) -> Player | None:
+        if self.game_over is not None:
+            return self.winner
+        # generating moves will set the winner flag and save the legal moves
+        self.generate_moves()
+        return self.winner
 
     def initialize_board(self):
         for piece, cells in STARTING_PIECE_LIST.items():
-            self.piece_list[piece.player][(piece.type, piece.promoted)] = cells
+            self.piece_list[piece.player][(piece.type, piece.promoted)] = cells.copy()
             for cell in cells:
                 col, row = cell
                 self.board[col*9 + row] = piece
+    
 
     def generate_moves(self):
-        pass
+        # if the legal moves have already been generated, return them
+        if self.legal_moves is not None:
+            return self.legal_moves
+        # generate pseudo legal moves
+        player = self.current_player
+        pseudo_legal_moves = self.generate_pseudo_legal_moves()
+        # filter illegal moves (player's king is in check)
+        king_square = next(iter(self.piece_list[player][(PieceType.KING, False)]))
+        king_in_check = self.is_square_attacked(1-player, king_square)
+        possible_discovered_check = self.is_square_attacked_by_sliding(1-player, king_square, x_ray=True)
+        legal_moves = []
+        for move in pseudo_legal_moves:
+            # the move needs to fully control for check only if:
+            # - the king is in check
+            # - the king moved
+            # in other situations we only need to verify for discovered checks
+
+            # check if the move is a king move
+            king_move = False
+            for change in move:
+                if change.piece_type == PieceType.KING:
+                    king_move = True
+                    break
+            # check if the move is a drop
+            drop = move[0].from_pos is None
+            
+            # if the king is in check or the move is a king move, we need to fully verify for check
+            if king_in_check or king_move:
+                self.move(move)
+                king_square = next(iter(self.piece_list[player][(PieceType.KING, False)]))
+                if not self.is_square_attacked(1-player, king_square):
+                    legal_moves.append(move)
+                self.unmove(move)
+            
+            # if the move is not a drop, we need to check for discovered checks
+            # only applies if there is a possible discovered check
+            elif not drop and possible_discovered_check:
+                self.move(move)
+                king_square = next(iter(self.piece_list[player][(PieceType.KING, False)]))
+                if not self.is_square_attacked_by_sliding(1-player, king_square):
+                    legal_moves.append(move)
+                self.unmove(move)
+            
+            # if the move is a drop, it can't be a check
+            else:
+                legal_moves.append(move)
+
+        # if there are no legal moves, the game is over
+        if len(legal_moves) == 0:
+            self.game_over = True
+            king_square = next(iter(self.piece_list[player][(PieceType.KING, False)]))
+            if self.is_square_attacked(1-player, king_square):
+                # checkmate
+                self.winner = 1 - player
+            else:
+                # stalemate
+                self.winner = None
+        
+        self.legal_moves = legal_moves
+        return legal_moves
+    
 
     def generate_pseudo_legal_moves(self) -> List[List[Change]]:
         moves = []
@@ -161,16 +252,77 @@ class GameState:
                     for col in cols:
                         if self.board[col*9 + row] is None:
                             move =[Change(self.current_player, piece_type, False, False, None, (col, row))]
+                            check_pawn_checkmate = False
+                            # check if the pawn could checkmate the king
+                            # this is only when the pawn is directly in front of the king, while protected
                             if piece_type == PieceType.PAWN:
-                                # TODO: check if pawn checkmate
-                                moves.append(move)
+                                _, delta_row = FIXED_MOVES_DICT[Piece(self.current_player, PieceType.PAWN, False)][0]
+                                if self.board[col*9 + row + delta_row]==Piece(1-self.current_player, PieceType.KING, False):
+                                    # check if the pawn is protected
+                                    check_pawn_checkmate = self.is_square_attacked(self.current_player, (col, row))
+                            # if the pawn could checkmate the king, make the move and explicitly check for checkmate
+                            if check_pawn_checkmate:
+                                game_state_copy = self.copy()
+                                game_state_copy.move(move)
+                                if not game_state_copy.is_game_over():
+                                    moves.append(move)
                             else:
                                 moves.append(move)
         return moves
 
 
     def is_square_attacked(self, player: Player, square: tuple[int, int]) -> bool:
-        pass
+        # generate inverse moves starting from the given square
+        # and check if the piece is there
+        col, row = square
+        for piece_type, promoted in self.piece_list[player]:
+            piece = Piece(player, piece_type, promoted)
+            # check fixed moves first
+            for delta_col, delta_row in FIXED_MOVES_DICT[piece]:
+                from_col = col - delta_col
+                from_row = row - delta_row
+                if 0 <= from_col < 9 and 0 <= from_row < 9:
+                    if self.board[from_col*9 + from_row] == piece:
+                        return True
+            # check sliding moves
+            if piece in SLIDING_MOVES_DICT:
+                for delta_col, delta_row in SLIDING_MOVES_DICT[piece]:
+                    from_col = col - delta_col
+                    from_row = row - delta_row
+                    while 0 <= from_col < 9 and 0 <= from_row < 9:
+                        if self.board[from_col*9 + from_row] == piece:
+                            return True
+                        elif self.board[from_col*9 + from_row] is not None:
+                            break
+                        from_col -= delta_col
+                        from_row -= delta_row
+        return False
+    
+
+    def is_check(self, player: Player) -> bool:
+        king_square = next(iter(self.piece_list[1-player][(PieceType.KING, False)]))
+        return self.is_square_attacked(player, king_square)
+    
+
+    def is_square_attacked_by_sliding(self, player: Player, square: tuple[int, int], x_ray: bool = False) -> bool:
+        col, row = square
+        for piece_type, promoted in self.piece_list[player]:
+            piece = Piece(player, piece_type, promoted)
+            if piece in SLIDING_MOVES_DICT:
+                for delta_col, delta_row in SLIDING_MOVES_DICT[piece]:
+                    from_col = col - delta_col
+                    from_row = row - delta_row
+                    while 0 <= from_col < 9 and 0 <= from_row < 9:
+                        if self.board[from_col*9 + from_row] == piece:
+                            return True
+                        # if the square is occupied by the same player we move on to the next direction
+                        # unless x_ray is True: this allows checking for discovered checks more efficiently
+                        elif self.board[from_col*9 + from_row] is not None and not x_ray:
+                            break
+                        from_col -= delta_col
+                        from_row -= delta_row
+        return False
+
 
     def move(self, move: List[Change]):
         for change in move:
@@ -191,7 +343,8 @@ class GameState:
                 self.piece_list[change.player][(change.piece_type, change.to_promoted)].add(change.to_pos)
         # switch player
         self.current_player = 1 - self.current_player
-
+        self.game_over = None
+        self.legal_moves = None
     
     def unmove(self, move: List[Change]):
         for change in reversed(move):
@@ -212,3 +365,6 @@ class GameState:
                 self.piece_list[change.player][(change.piece_type, change.from_promoted)].add(change.from_pos)
         # switch player
         self.current_player = 1 - self.current_player
+        self.game_over = None
+        self.winner = None
+        self.legal_moves = None

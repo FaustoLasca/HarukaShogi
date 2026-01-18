@@ -8,7 +8,7 @@ from game.misc import Player, PieceType, Change
 from game.misc import Piece as PieceClass
 from ui.misc import PIECE_IMAGE_PATHS
 
-class GUI:
+class Gui:
     def __init__(
         self,
         update_queue: Queue[(List[Change], GameState)],
