@@ -32,6 +32,10 @@ class MinMaxSearcher:
         # order moves to put more promising moves first
         # this maximizes pruning
         moves = self.game_state.generate_moves()
+        # fix for stalemate
+        # this check isn't made in is_game_over() because it's expensive
+        if len(moves) == 0:
+            return 0
         move_scores = self.evaluator.evaluate_moves(moves, self.game_state)
         moves = [move for _, move in sorted(zip(move_scores, moves), key=lambda x: x[0], reverse=True)]
 
