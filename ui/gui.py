@@ -158,8 +158,8 @@ class Board(GUIElement):
             if pos is not None:
                 x, y = self.pos_to_pixel(pos, mode="topleft")
                 self.move_highlights.append(HighlightSquare(
-                    color=(255, 255, 0, 100),
-                    pos=(x, y), size=self.cell_size)
+                    color=(255, 255, 0, 120),
+                    pos=(x+1, y+1), size=self.cell_size-2)
                 )
 
     
