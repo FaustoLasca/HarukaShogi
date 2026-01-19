@@ -58,13 +58,14 @@ class MiopicPlayer(Player):
 
 
 class MinMaxPlayer(Player):
-    def __init__(self, evaluator: Evaluator, depth: int):
+    def __init__(self, evaluator: Evaluator, max_depth: int, time_budget: float):
         self.evaluator = evaluator
-        self.depth = depth
+        self.max_depth = max_depth
+        self.time_budget = time_budget
 
     def update_state(self, move: int, game_state: GameState) -> int:
         self.state = game_state
 
     def get_move(self, available_moves: List[int]) -> int:
         searcher = MinMaxSearcher(self.state, self.evaluator)
-        return searcher.search(self.depth)
+        return searcher.search(self.max_depth, self.time_budget)

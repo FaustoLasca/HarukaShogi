@@ -19,8 +19,10 @@ SFEN_STRING = None
 # SFEN_STRING = "2b1g4/3+B1k1+P1/6N2/6P2/9/9/9/9/8K b S 1" # mate in 5
 # SFEN_STRING = "3lkg3/2+Bnnp3/3+L5/9/9/9/9/9/8K b S 1" # mate in 5
 # SFEN_STRING = "9/6B2/2+P2S3/3p1p3/2gk2n1+B/9/3S+p1G2/9/K6N1 b - 1" # mate in 5
-SFEN_STRING = "7nl/5R1gk/6Ppp/9/9/9/+p+p+p6/2+p6/K1+p6 b G 1" # mate in 5
+# SFEN_STRING = "7nl/5R1gk/6Ppp/9/9/9/+p+p+p6/2+p6/K1+p6 b G 1" # mate in 5
 # SFEN_STRING = "4R2nl/6sk1/6pp1/8p/9/9/+p+p+p6/2+p6/K1+p6 b GLB 1" # mate in 5
+
+# SFEN_STRING = "ln6l/1r2gkg2/4psnp1/p1pps1p1p/1p3p3/P1P1S1P1P/1PSPP1N2/2G2G3/LNK4RL w BPbp 48"
 
 
 
@@ -32,8 +34,8 @@ def start_controller(update_ui_queue: Queue, players: List[Player], sfen: str = 
 if __name__ == "__main__":
     update_ui_queue = Queue()
     players = [
-        MinMaxPlayer(SimpleEvaluator(), depth=5),
-        MinMaxPlayer(SimpleEvaluator(), depth=5),
+        MinMaxPlayer(SimpleEvaluator(), max_depth=4, time_budget=3),
+        MinMaxPlayer(SimpleEvaluator(), max_depth=4, time_budget=3),
     ]
 
     controller_thread = threading.Thread(target=start_controller, args=(update_ui_queue, players), kwargs={'sfen': SFEN_STRING})

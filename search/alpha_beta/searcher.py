@@ -20,26 +20,35 @@ class MinMaxSearcher:
         self.following_pv = False
 
 
-    def search(self, depth: int) -> int:
+    def search(self, max_depth: int = 10, time_budget: float = 1000000) -> int:
         self.node_count = 0
         t0 = time.time()
+        t_limit = t0 + time_budget
 
         # reset the pv table (only need to reset the length, the moves are overwritten)
         self.pv_length = [0] * 11
 
         # iterative deepening, using the pv table to store the best moves
-        for d in range(1, depth + 1):
+        for d in range(1, max_depth + 1):
             self.following_pv = True
-            evaluation = self.min_max(d, 0, -float('inf'), float('inf'))
-            if evaluation >= float('inf'):
+            try:
+                evaluation = self.min_max(d, 0, -float('inf'), float('inf'), t_limit)
+            except Exception as e:
+                break
+            depth = d
+            if time.time() > t_limit:
                 break
 
         d_time = time.time() - t0
-        print(f"Search finished. \t Evaluation: {evaluation}. \t Node count: {self.node_count}. \t Time taken: {d_time} seconds. \t Nodes per second: {self.node_count / d_time}")
+        print(f"Search finished.\t Evaluation: {evaluation}. \t Depth: {depth}.\t Node count: {self.node_count}.\t Time taken: {d_time} seconds.\t Nodes per second: {self.node_count / d_time}")
         return self.pv_table[0][0]
 
     
-    def min_max(self, depth: int, ply: int, alpha: int, beta: int) -> int:
+    def min_max(self, depth: int, ply: int, alpha: int, beta: int, time_limit: float) -> int:
+        # If the time budget is exceeded raise an exception
+        if time.time() > time_limit:
+            raise Exception("Time limit exceeded")
+
         self.node_count += 1
         # if a leaf node is reached return the evaluation
         if depth == 0 or self.game_state.is_game_over():
@@ -73,7 +82,7 @@ class MinMaxSearcher:
             self.game_state.move(move)
             # we invert and negate the alpha and beta values for the next move (negamax)
             # the alpha and beta values have their roles reversed for the opponent
-            evaluation = -self.min_max(depth - 1, ply + 1, -beta, -alpha)
+            evaluation = -self.min_max(depth - 1, ply + 1, -beta, -alpha, time_limit)
             self.game_state.unmove(move)
 
             # Check if move is the best so far
@@ -81,7 +90,6 @@ class MinMaxSearcher:
             # beta acts as the best evaluation for the opponent
             if evaluation > best_evaluation:
                 best_evaluation = evaluation
-                best_move = move
                 alpha = max(alpha, best_evaluation)
 
                 # update the pv table with the new best variation for this ply
