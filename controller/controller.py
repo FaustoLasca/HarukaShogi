@@ -20,6 +20,9 @@ class Controller:
         n_moves = 0
         while not self.state.is_game_over():
             moves = self.state.generate_moves()
+            # handle stalemate here (edge case that should never happen)
+            if len(moves) == 0:
+                break
             current_player = self.state.current_player
             move = self.players[current_player].get_move(moves)
 

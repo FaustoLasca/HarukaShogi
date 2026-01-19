@@ -44,11 +44,15 @@ class Gui:
             Player.WHITE: Hand(Player.WHITE, self.piece_images, self.hand_image, (0, 0), 400),
             Player.BLACK: Hand(Player.BLACK, self.piece_images, self.hand_image, (1400, 500), 400),
         }
+        self.winning_message = WinningMessage((1600, 100), 80)
     
     def update(self, move: List[Change], state: GameState):
         self.board.update(move, state)
         for player in Player:
             self.hands[player].update(move, state)
+        state.generate_moves()
+        if state.game_over:
+            self.winning_message.update(state.winner)
 
     def run(self):
         running = True
@@ -69,6 +73,7 @@ class Gui:
             self.board.draw(self.screen)
             for player in Player:
                 self.hands[player].draw(self.screen)
+            self.winning_message.draw(self.screen)
             pygame.display.flip()
             self.clock.tick(60)
         pygame.quit()
@@ -94,6 +99,24 @@ class Piece(GUIElement):
         screen.blit(self.image, self.rect)
 
 
+class HighlightSquare(GUIElement):
+    def __init__(
+        self,
+        color: tuple[int, int, int, int],
+        pos: tuple[int, int],
+        size: int
+    ) -> None:
+        self.color = color
+        self.x, self.y = pos
+        self.size = size
+        self.surface = pygame.Surface((self.size, self.size), pygame.SRCALPHA)
+        self.surface.fill(self.color)
+        self.rect = pygame.Rect(self.x, self.y, self.size, self.size)
+
+    def draw(self, screen):
+        screen.blit(self.surface, self.rect)
+
+
 class Board(GUIElement):
     def __init__(
         self,
@@ -111,6 +134,8 @@ class Board(GUIElement):
             Player.BLACK: {},
         }
         self.initialize_pieces(empty_piece_list)
+        self.move_highlights = []
+
 
     def initialize_pieces(self, piece_list: dict[PieceClass, set[tuple[int, int]]]):
         self.pieces = []
@@ -124,18 +149,51 @@ class Board(GUIElement):
                         image=self.piece_images[PieceClass(player, piece_type, promoted)],
                         pos=(x, y)
                     ))
+
+
+    def highlight_last_move(self, move: List[Change]):
+        self.move_highlights = []
+        positions = [move[-1].from_pos, move[-1].to_pos]
+        for pos in positions:
+            if pos is not None:
+                x, y = self.pos_to_pixel(pos, mode="topleft")
+                self.move_highlights.append(HighlightSquare(
+                    color=(255, 255, 0, 100),
+                    pos=(x, y), size=self.cell_size)
+                )
+
     
     def update(self, move: List[Change], state: GameState):
         self.initialize_pieces(state.piece_list)
+        if move is not None:
+            self.highlight_last_move(move)
+
 
     def draw(self, screen):
+        # draw board tiles
         for i in range(9):
             for j in range(9):
                 rect = self.board_tile_image.get_rect(center=((i + 0.5)*self.cell_size + self.board_start_pos[0], (j + 0.5)*self.cell_size + self.board_start_pos[1]))
                 screen.blit(self.board_tile_image, rect)
+        # draw move highlights
+        for highlight in self.move_highlights:
+            highlight.draw(screen)
+        # draw pieces
         for piece in self.pieces:
             piece.draw(screen)
 
+
+    def pos_to_pixel(self, pos: tuple[int, int], mode: str = "topleft") -> tuple[int, int]:
+        col, row = pos
+        x = (8 - col) * self.cell_size + self.board_start_pos[0]
+        y = (row) * self.cell_size + self.board_start_pos[1]
+        if mode == "topleft":
+            return (x, y)
+        elif mode == "center":
+            return (x + self.cell_size / 2, y + self.cell_size / 2)
+        else:
+            raise ValueError(f"Invalid mode: {mode}")
+        
 
 class Hand(GUIElement):
     def __init__(
@@ -186,3 +244,37 @@ class Hand(GUIElement):
         # screen.blit(self.hand_image, rect)
         for piece in self.pieces:
             piece.draw(screen)
+
+
+class WinningMessage(GUIElement):
+    def __init__(
+        self,
+        pos: tuple[int, int],
+        size: int
+    ) -> None:
+        self.x, self.y = pos
+        self.font = pygame.font.Font(None, size)
+        self.size = size
+        self.messages = []
+        self.rects = []
+
+    def update(self, winner: Player):
+        message1 = "Game Over!"
+        if winner == Player.BLACK:
+            message2 = " Black wins!"
+        elif winner == Player.WHITE:
+            message2 = " White wins!"
+        else:
+            message2 = " Draw!"
+        self.messages = [
+            self.font.render(message1, True, (255, 255, 255)),
+            self.font.render(message2, True, (255, 255, 255))
+            ]
+        self.rects = [
+            self.messages[0].get_rect(center=(self.x, self.y)),
+            self.messages[1].get_rect(center=(self.x, self.y + self.size))
+        ]
+
+    def draw(self, screen):
+        for message, rect in zip(self.messages, self.rects):
+            screen.blit(message, rect)
