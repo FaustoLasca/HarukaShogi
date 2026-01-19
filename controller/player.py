@@ -1,8 +1,10 @@
 from typing import List
 import time
 import random
+from queue import Queue
 
 from game.game_state import GameState
+from game.misc import Change
 from game.misc import Player as PlayerEnum
 from search.evaluation.evaluator import Evaluator
 from search.evaluation.move_ordering import MoveOrderer
@@ -69,3 +71,16 @@ class MinMaxPlayer(Player):
     def get_move(self, available_moves: List[int]) -> int:
         searcher = MinMaxSearcher(self.state, self.evaluator)
         return searcher.search(self.max_depth, self.time_budget)
+
+
+class GuiPlayer(Player):
+    def __init__(self,
+        move_request_queue: Queue[List[Change]],
+        move_response_queue: Queue[List[Change]]
+    ) -> None:
+        self.move_request_queue = move_request_queue
+        self.move_response_queue = move_response_queue
+
+    def get_move(self, available_moves: List[int]) -> int:
+        self.move_request_queue.put(available_moves)
+        return self.move_response_queue.get()

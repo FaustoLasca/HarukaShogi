@@ -3,7 +3,7 @@ from queue import Queue
 import threading
 
 from controller.controller import Controller
-from controller.player import Player, RandomPlayer, MiopicPlayer, MinMaxPlayer
+from controller.player import Player, RandomPlayer, MiopicPlayer, MinMaxPlayer, GuiPlayer
 from search.evaluation.piece_value import SimpleEvaluator
 from search.evaluation.move_ordering import SimpleMoveOrderer
 from ui.gui import Gui
@@ -33,13 +33,15 @@ def start_controller(update_ui_queue: Queue, players: List[Player], sfen: str = 
 
 if __name__ == "__main__":
     update_ui_queue = Queue()
+    move_request_queue = Queue()
+    move_response_queue = Queue()
     players = [
-        MinMaxPlayer(SimpleEvaluator(), max_depth=4, time_budget=3),
-        MinMaxPlayer(SimpleEvaluator(), max_depth=4, time_budget=3),
+        MinMaxPlayer(SimpleEvaluator(), max_depth=3, time_budget=1),
+        GuiPlayer(move_request_queue, move_response_queue),
     ]
 
     controller_thread = threading.Thread(target=start_controller, args=(update_ui_queue, players), kwargs={'sfen': SFEN_STRING})
     controller_thread.start()
 
-    ui = Gui(update_ui_queue, Queue(), Queue())
+    ui = Gui(update_ui_queue, move_request_queue, move_response_queue)
     ui.run()

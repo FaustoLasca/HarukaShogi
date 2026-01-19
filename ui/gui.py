@@ -39,10 +39,10 @@ class Gui:
         self.move_response_queue = move_response_queue
         
         # initialize elements
-        self.board = Board(self.piece_images, self.board_tile_image, (450, 0))
+        self.board = Board(self.move_response_queue, self.piece_images, self.board_tile_image, (450, 0))
         self.hands = {
-            Player.WHITE: Hand(Player.WHITE, self.piece_images, self.hand_image, (0, 0), 400),
-            Player.BLACK: Hand(Player.BLACK, self.piece_images, self.hand_image, (1400, 500), 400),
+            Player.WHITE: Hand(Player.WHITE, self.move_response_queue, self.board, self.piece_images, self.hand_image, (0, 0), 400),
+            Player.BLACK: Hand(Player.BLACK, self.move_response_queue, self.board, self.piece_images, self.hand_image, (1400, 500), 400),
         }
         self.winning_message = WinningMessage((1600, 100), 80)
     
@@ -60,13 +60,25 @@ class Gui:
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
+                # mouse interaction for moves
+                if event.type == pygame.MOUSEBUTTONDOWN:
+                    self.board.handle_mouse_press(event.pos)
+                    for player in Player:
+                        self.hands[player].handle_mouse_press(event.pos)
+                if event.type == pygame.MOUSEBUTTONUP:
+                    self.board.handle_mouse_release(event.pos, event.button)
+                    for player in Player:
+                        self.hands[player].handle_mouse_release(event.pos)
             try:
                 move, state = self.update_queue.get_nowait()
                 self.update(move, state)
             except Empty:
                 pass
             try:
-                available_moves = self.move_response_queue.get_nowait()
+                available_moves = self.move_request_queue.get_nowait()
+                self.board.update_available_moves(available_moves)
+                for player in Player:
+                    self.hands[player].update_available_moves(available_moves)
             except Empty:
                 pass
             self.screen.fill((0, 0, 0))
@@ -89,13 +101,30 @@ class Piece(GUIElement):
     def __init__(
         self,
         image: pygame.Surface,
-        pos: tuple[int, int]
+        pos: tuple[int, int],
+        piece_type: PieceType,
+        board_pos: tuple[int, int],
     ) -> None:
         self.image = image
         self.x, self.y = pos
         self.rect = image.get_rect(center=(self.x, self.y))
+        self.piece_type = piece_type
+        self.board_pos = board_pos
+        self.is_moving = False
+
+    def mouse_collides(self, pixel_pos: tuple[int, int]) -> bool:
+        return self.rect.collidepoint(pixel_pos)
+
+    def start_moving(self):
+        self.is_moving = True
+
+    def stop_moving(self):
+        self.is_moving = False
+        self.rect.center = (self.x, self.y)
 
     def draw(self, screen):
+        if self.is_moving:
+            self.rect.center = pygame.mouse.get_pos()
         screen.blit(self.image, self.rect)
 
 
@@ -120,10 +149,11 @@ class HighlightSquare(GUIElement):
 class Board(GUIElement):
     def __init__(
         self,
+        move_response_queue: Queue[List[Change]],
         piece_images: dict[PieceClass, pygame.Surface],
         board_tile_image: pygame.Surface,
         board_start_pos: tuple[int, int] = (0, 0),
-        board_size: int = 900,
+        board_size: int = 900
     ) -> None:
         self.board_tile_image = board_tile_image
         self.piece_images = piece_images
@@ -136,9 +166,15 @@ class Board(GUIElement):
         self.initialize_pieces(empty_piece_list)
         self.move_highlights = []
 
+        self.move_response_queue = move_response_queue
+        self.can_move = False
+        self.available_moves = {}
+        self.moving_piece : Piece= None
+        self.available_highlights : dict[tuple[int, int], HighlightSquare] = {}
+
 
     def initialize_pieces(self, piece_list: dict[PieceClass, set[tuple[int, int]]]):
-        self.pieces = []
+        self.pieces: List[Piece] = []
         for player in Player:
             for tuple, cells in piece_list[player].items():
                 piece_type, promoted = tuple
@@ -147,7 +183,9 @@ class Board(GUIElement):
                     y = (0.5 + row) * self.cell_size + self.board_start_pos[1]
                     self.pieces.append(Piece(
                         image=self.piece_images[PieceClass(player, piece_type, promoted)],
-                        pos=(x, y)
+                        pos=(x, y),
+                        piece_type=piece_type,
+                        board_pos=(col, row),
                     ))
 
 
@@ -169,6 +207,62 @@ class Board(GUIElement):
             self.highlight_last_move(move)
 
 
+    def update_available_moves(self, available_moves: List[List[Change]]):
+        self.available_moves: dict[tuple[int, int], List[List[Change]]] = {}
+        for move in available_moves:
+            if move[-1].from_pos is not None:
+                if move[-1].from_pos not in self.available_moves:
+                    self.available_moves[move[-1].from_pos] = []
+                self.available_moves[move[-1].from_pos].append(move)
+        self.can_move = True
+
+
+    def handle_mouse_press(self, pixel_pos: tuple[int, int]):
+        if self.can_move:
+            for piece in self.pieces:
+                if piece.mouse_collides(pixel_pos):
+                    start_pos = piece.board_pos
+                    if start_pos in self.available_moves:
+                        self.moving_piece = piece
+                        piece.start_moving()
+                        for move in self.available_moves[start_pos]:
+                            col, row = move[-1].to_pos
+                            if (col, row) not in self.available_highlights:
+                                x = (8 - col) * self.cell_size + self.board_start_pos[0]
+                                y = (row) * self.cell_size + self.board_start_pos[1]
+                                self.available_highlights[move[-1].to_pos] = HighlightSquare(
+                                    color=(255, 0, 0, 100),
+                                    pos=(x+1, y+1),
+                                    size=self.cell_size-2
+                                )
+
+
+    def handle_mouse_release(self, pixel_pos: tuple[int, int], button: int):
+        if self.moving_piece is not None:
+            end_pos = self.pixel_to_pos(pixel_pos)
+            chosen_moves = []
+
+            for move in self.available_moves[self.moving_piece.board_pos]:
+                if move[-1].to_pos == end_pos:
+                    chosen_moves.append(move)
+
+            if len(chosen_moves) == 1:
+                self.move_response_queue.put(chosen_moves[0])
+                self.can_move = False
+
+            # this happens when there is a promotion choice
+            elif len(chosen_moves) > 1:
+                if button == 1:
+                    self.move_response_queue.put(chosen_moves[0] if not chosen_moves[0][-1].to_promoted else chosen_moves[1])
+                elif button == 3:
+                    self.move_response_queue.put(chosen_moves[0] if chosen_moves[0][-1].to_promoted else chosen_moves[1])
+                self.can_move = False
+
+            self.moving_piece.stop_moving()
+            self.moving_piece = None
+            self.available_highlights = {}
+
+
     def draw(self, screen):
         # draw board tiles
         for i in range(9):
@@ -177,6 +271,8 @@ class Board(GUIElement):
                 screen.blit(self.board_tile_image, rect)
         # draw move highlights
         for highlight in self.move_highlights:
+            highlight.draw(screen)
+        for highlight in self.available_highlights.values():
             highlight.draw(screen)
         # draw pieces
         for piece in self.pieces:
@@ -193,18 +289,27 @@ class Board(GUIElement):
             return (x + self.cell_size / 2, y + self.cell_size / 2)
         else:
             raise ValueError(f"Invalid mode: {mode}")
+
+    def pixel_to_pos(self, pixel_pos: tuple[int, int]) -> tuple[int, int]:
+        x, y = pixel_pos
+        col = 8 -int((x - self.board_start_pos[0]) / self.cell_size)
+        row = int((y - self.board_start_pos[1]) / self.cell_size)
+        return (col, row)
         
 
 class Hand(GUIElement):
     def __init__(
         self,
         player: Player,
+        move_response_queue: Queue[List[Change]],
+        board: Board,
         piece_images: dict[PieceClass, pygame.Surface],
         hand_image: pygame.Surface,
         start_pos: tuple[int, int],
         size: int = 400,
     ) -> None:
         self.player = player
+        self.board = board
         self.piece_images = piece_images
         self.hand_image = hand_image
         self.start_pos = start_pos
@@ -216,8 +321,13 @@ class Hand(GUIElement):
         empty_hand = {}
         self.initialize_pieces(empty_hand)
 
+        self.move_response_queue = move_response_queue
+        self.can_move = False
+        self.moving_piece : Piece = None
+        self.available_moves : dict[PieceType, List[List[Change]]] = {}
+
     def initialize_pieces(self, hand: dict[PieceType, int]):
-        self.pieces = []
+        self.pieces: List[Piece] = []
         n_pieces = 0
         for piece_type, count in hand.items():
             for i in range(count):
@@ -232,12 +342,55 @@ class Hand(GUIElement):
                 y = (row + 0.5) * self.row_size + self.start_pos[1]
                 self.pieces.append(Piece(
                     image=self.piece_images[PieceClass(self.player, piece_type, False)],
-                    pos=(x, y)
+                    pos=(x, y),
+                    piece_type=piece_type,
+                    board_pos=None,
                 ))
                 n_pieces += 1
     
     def update(self, move: List[Change], state: GameState):
         self.initialize_pieces(state.hand[self.player])
+
+
+    def update_available_moves(self, available_moves: List[List[Change]]):
+        self.available_moves: dict[PieceType, List[List[Change]]] = {}
+        for move in available_moves:
+            if move[-1].from_pos is None:
+                for piece in self.pieces:
+                    if piece.piece_type == move[-1].piece_type:
+                        if piece.piece_type not in self.available_moves:
+                            self.available_moves[piece.piece_type] = []
+                        self.available_moves[piece.piece_type].append(move)
+        self.can_move = True
+
+
+    def handle_mouse_press(self, pixel_pos: tuple[int, int]):
+        if self.can_move:
+            for piece in self.pieces:
+                if piece.mouse_collides(pixel_pos):
+                    piece_type = piece.piece_type
+                    if piece_type in self.available_moves:
+                        self.moving_piece = piece
+                        piece.start_moving()
+
+
+    def handle_mouse_release(self, pixel_pos: tuple[int, int]):
+        if self.moving_piece is not None:
+            end_pos = self.board.pixel_to_pos(pixel_pos)
+            chosen_move = None
+
+            for move in self.available_moves[self.moving_piece.piece_type]:
+                if move[-1].to_pos == end_pos:
+                    chosen_move = move
+                    break
+
+            if chosen_move is not None:
+                self.move_response_queue.put(chosen_move)
+                self.can_move = False
+
+            self.moving_piece.stop_moving()
+            self.moving_piece = None
+
 
     def draw(self, screen):
         # rect = self.hand_image.get_rect(topleft=self.start_pos)
