@@ -4,6 +4,10 @@ project(HarukaShogi LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+# Generate compile_commands.json for clangd
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+# Pybind11 configuration
 set(PYBIND11_FINDPYTHON ON)
 find_package(pybind11 CONFIG REQUIRED)
 
@@ -14,6 +18,11 @@ pybind11_add_module(searchengine
 
 target_include_directories(searchengine PRIVATE include)
 
+# Standalone executable
+add_executable(test_types src/main.cpp)
+target_include_directories(test_types PRIVATE include)
+
+# Install targets (install searchengine library in the python environment)
 install(TARGETS searchengine
         LIBRARY DESTINATION .
 )

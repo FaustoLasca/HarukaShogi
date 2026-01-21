@@ -36,7 +36,8 @@ if __name__ == "__main__":
     move_request_queue = Queue()
     move_response_queue = Queue()
     players = [
-        MinMaxPlayer(SimpleEvaluator(), max_depth=4, time_budget=5),
+        # MinMaxPlayer(SimpleEvaluator(), max_depth=4, time_budget=5),
+        GuiPlayer(move_request_queue, move_response_queue),
         GuiPlayer(move_request_queue, move_response_queue),
     ]
 
