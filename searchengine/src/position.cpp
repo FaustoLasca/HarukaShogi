@@ -19,6 +19,10 @@ void Position::set(const std::string& sfenStr) {
 
     ss >> std::noskipws;
 
+    // empty board and hands
+    board.fill(NO_PIECE);
+    hands.fill(0);
+
     // 1. board pieces
     while ((ss >> token) && token != ' ') {
         if (isdigit(token))
@@ -52,6 +56,80 @@ void Position::set(const std::string& sfenStr) {
 
     // 4. full move count
     ss >> std::skipws >> gamePly;
+}
+
+// returns the SFEN string representation of the position
+std::string Position::sfen() const {
+    std::stringstream ss;
+    Square sq;
+    int empty_count = 0;
+    bool hands_empty = true;
+    Color c = BLACK;
+
+    // 1. board pieces
+    for (Rank r = R_1; r < NUM_RANKS; ++r) {
+        for (File f = F_9; f < NUM_FILES; --f) {
+            sq = make_square(f, r);
+
+            if (board[sq] == NO_PIECE) 
+                empty_count++;
+
+            else {
+                if (empty_count > 0) {
+                    ss << empty_count;
+                    empty_count = 0;
+                }
+                
+                if (is_promoted(board[sq])) {
+                    ss << '+';
+                    ss << PieceToChar[unpromote_piece(board[sq])];
+                }
+                else
+                    ss << PieceToChar[board[sq]];
+            }
+        }
+
+        if (empty_count > 0) {
+            ss << empty_count;
+            empty_count = 0;
+        }
+        if (r != R_9)
+            ss << '/';
+    }
+
+    // 2. side to move
+    ss << ' ';
+    ss << (sideToMove == BLACK ? 'b' : 'w');
+    ss << ' ';
+
+    // 3. hand pieces
+    for (int i = 0; i < NUM_COLORS; ++i) {
+        for (PieceType pt = GOLD; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
+            for (int count = 0; count < hands[c * NUM_UNPROMOTED_PIECE_TYPES + pt]; ++count) {
+                ss << PieceToChar[make_piece(c, pt)];
+                hands_empty = false;
+            }
+        }
+
+        c = ~c;
+    }
+    if (hands_empty)
+        ss << '-';
+
+    // 4. full move count
+    ss << ' ' << gamePly;
+
+    return ss.str();
+}
+
+void Position::make_move(Move m) {
+    board[m.to] = board[m.from];
+    board[m.from] = NO_PIECE;
+}
+
+void Position::undo_move(Move m) {
+    board[m.from] = board[m.to];
+    board[m.to] = NO_PIECE;
 }
 
 } // namespace harukashogi

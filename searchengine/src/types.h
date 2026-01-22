@@ -14,6 +14,8 @@ enum Color : uint8_t {
     NUM_COLORS = 2,
 };
 
+constexpr Color operator~(Color c) { return Color(1 - int(c)); };
+
 enum PieceType : uint8_t {
     KING,
     GOLD,
@@ -46,9 +48,13 @@ enum Piece : uint8_t {
     P_W_SILVER, P_W_LANCE, P_W_KNIGHT, P_W_BISHOP, P_W_ROOK, P_W_PAWN,
 };
 
-// functions to convert between types and pieces
+// functions on pieces and piece types
 constexpr PieceType type_of(Piece p) { return PieceType( (p-1) % NUM_PIECE_TYPES ); };
+constexpr Piece make_piece(Color c, PieceType pt) { return Piece(c * NUM_PIECE_TYPES + pt + 1); };
 constexpr Piece promote_piece( Piece p ) { return Piece(p + 6); };
+constexpr Piece unpromote_piece( Piece p ) { return Piece(p - 6); };
+constexpr bool is_promoted( PieceType pt ) { return pt >= P_SILVER; };
+constexpr bool is_promoted( Piece p ) { return is_promoted(type_of(p)); };
 
 enum Square : uint8_t {
     SQ_11, SQ_21, SQ_31, SQ_41, SQ_51, SQ_61, SQ_71, SQ_81, SQ_91,
@@ -63,6 +69,16 @@ enum Square : uint8_t {
     NO_SQUARE,
 
     NUM_SQUARES = 81,
+};
+
+enum File : uint8_t {
+    F_1, F_2, F_3, F_4, F_5, F_6, F_7, F_8, F_9,
+    NUM_FILES = 9,
+};
+
+enum Rank : uint8_t {
+    R_1, R_2, R_3, R_4, R_5, R_6, R_7, R_8, R_9,
+    NUM_RANKS = 9,
 };
 
 enum Direction : int8_t {
@@ -85,6 +101,23 @@ constexpr Square& operator+=(Square& sq, Direction d) { return sq = sq + d; }
 constexpr Square& operator-=(Square& sq, Direction d) { return sq = sq - d; }
 
 constexpr Direction operator*(int n, Direction d) { return Direction(n * int(d)); }
+
+// functions to convert between square, file and rank
+constexpr Square make_square(File f, Rank r) { return Square(r*9 + f); };
+constexpr File file_of(Square sq) { return File(sq % 9); };
+constexpr Rank rank_of(Square sq) { return Rank(sq / 9); };
+
+// enable increment and decrement operators
+#define ENABLE_INCR_OPERATORS_ON(T) \
+    constexpr T& operator++(T& t) { return t = T(int(t) + 1); } \
+    constexpr T& operator--(T& t) { return t = T(int(t) - 1); } 
+
+ENABLE_INCR_OPERATORS_ON(PieceType)
+ENABLE_INCR_OPERATORS_ON(Square)
+ENABLE_INCR_OPERATORS_ON(File)
+ENABLE_INCR_OPERATORS_ON(Rank)
+
+#undef ENABLE_INCR_OPERATORS_ON
 
 struct Move {
     Square from;
