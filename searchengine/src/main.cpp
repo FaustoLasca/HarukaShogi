@@ -19,5 +19,8 @@ int main() {
     pos.make_move(m);
     std::cout << "SFEN: " << pos.sfen() << std::endl;
 
+    pos.undo_move(m);
+    std::cout << "SFEN: " << pos.sfen() << std::endl;
+
     return 0;
 }

@@ -6,7 +6,7 @@
 
 namespace harukashogi {
 
-constexpr std::string_view PieceToChar(" kgslnbrp      KGSLNBRP");
+constexpr std::string_view PieceToChar(" KGSLNBRP      kgslnbrp");
 
 
 // initializes the position from a SFEN string
@@ -50,7 +50,7 @@ void Position::set(const std::string& sfenStr) {
 
     // 3. hand pieces
     while ((ss >> token) && token != ' ') {
-        color = isupper(token) ? WHITE : BLACK;
+        color = isupper(token) ? BLACK : WHITE;
         if ((idx = PieceToChar.find(tolower(token))) != std::string::npos)
             hands[color * NUM_UNPROMOTED_PIECE_TYPES + type_of(Piece(idx))]++;
     }
@@ -135,7 +135,7 @@ void Position::make_move(Move m) {
 
         // capture
         if (m.type_involved != NO_PIECE_TYPE)
-            hands[~sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved]++;
+            hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved]++;
 
         if (m.promotion)
             board[m.to] = promote_piece(board[m.to]);
@@ -149,6 +149,32 @@ void Position::make_move(Move m) {
     // update side to move and game ply
     sideToMove = ~sideToMove;
     gamePly++;
+}
+
+
+// undoes the given move.
+// the move is assumed to be legal.
+void Position::undo_move(Move m) {
+    // update side to move first makes logic more intuitive
+    // this way sideToMove is from before the move was made
+    sideToMove = ~sideToMove;
+    gamePly--;
+
+    // move is not a drop
+    if (m.from != NO_SQUARE) {
+        board[m.from] = board[m.to];
+
+        // capture
+        if (m.type_involved != NO_PIECE_TYPE) {
+            hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved]--;
+            board[m.to] = make_piece(~sideToMove, m.type_involved);
+        }
+        else
+            board[m.to] = NO_PIECE;
+            
+        if (m.promotion)
+            board[m.from] = unpromote_piece(board[m.from]);
+    }
 }
 
 } // namespace harukashogi
