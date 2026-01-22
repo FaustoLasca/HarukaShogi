@@ -8,6 +8,7 @@ namespace harukashogi {
 
 constexpr std::string_view PieceToChar(" kgslnbrp      KGSLNBRP");
 
+
 // initializes the position from a SFEN string
 void Position::set(const std::string& sfenStr) {
     char token;
@@ -57,6 +58,7 @@ void Position::set(const std::string& sfenStr) {
     // 4. full move count
     ss >> std::skipws >> gamePly;
 }
+
 
 // returns the SFEN string representation of the position
 std::string Position::sfen() const {
@@ -122,14 +124,31 @@ std::string Position::sfen() const {
     return ss.str();
 }
 
-void Position::make_move(Move m) {
-    board[m.to] = board[m.from];
-    board[m.from] = NO_PIECE;
-}
 
-void Position::undo_move(Move m) {
-    board[m.from] = board[m.to];
-    board[m.to] = NO_PIECE;
+// makes the given move.
+// the move is assumed to be legal.
+void Position::make_move(Move m) {
+    // move is not a drop
+    if (m.from != NO_SQUARE) {
+        board[m.to] = board[m.from];
+        board[m.from] = NO_PIECE;
+
+        // capture
+        if (m.type_involved != NO_PIECE_TYPE)
+            hands[~sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved]++;
+
+        if (m.promotion)
+            board[m.to] = promote_piece(board[m.to]);
+    }
+    // drop
+    else {
+        hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved]--;
+        board[m.to] = make_piece(sideToMove, m.type_involved);
+    }
+
+    // update side to move and game ply
+    sideToMove = ~sideToMove;
+    gamePly++;
 }
 
 } // namespace harukashogi

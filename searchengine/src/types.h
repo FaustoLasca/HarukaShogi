@@ -33,6 +33,8 @@ enum PieceType : uint8_t {
     P_ROOK,
     P_PAWN,
 
+    NO_PIECE_TYPE,
+
     NUM_PIECE_TYPES = 14,
     NUM_UNPROMOTED_PIECE_TYPES = 8,
     NUM_PIECES = 40,
@@ -122,8 +124,12 @@ ENABLE_INCR_OPERATORS_ON(Rank)
 struct Move {
     Square from;
     Square to;
-    bool promote;
-    Piece captured;
+    bool promotion;
+    // type of piece involved in the move
+    // for drops, this is the type of the piece dropped
+    // for captures, this is the type of the captured piece
+    // if the move is not a capture or drop, this is NO_PIECE_TYPE
+    PieceType type_involved;
 };
 
 } // namespace harukashogi

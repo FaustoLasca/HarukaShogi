@@ -2,6 +2,7 @@
 #include <string>
 
 #include "position.h"
+#include "types.h"
 
 
 using namespace harukashogi;
@@ -13,6 +14,10 @@ int main() {
 
     pos.set(sfen);
     std::cout << "SFEN: " << pos.sfen() << std::endl;
-    
+
+    Move m = { SQ_17, SQ_13, true, PAWN };
+    pos.make_move(m);
+    std::cout << "SFEN: " << pos.sfen() << std::endl;
+
     return 0;
 }
