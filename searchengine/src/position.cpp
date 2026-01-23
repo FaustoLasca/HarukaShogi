@@ -143,7 +143,8 @@ void Position::make_move(Move m) {
 
         // capture
         if (m.type_involved != NO_PIECE_TYPE) {
-            hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved]++;
+            // unpromote the piece before adding to hand
+            hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(m.type_involved)]++;
             // handle pawn files if a pawn is captured
             if (m.type_involved == PAWN)
                 pawnFiles[~sideToMove * NUM_FILES + file_of(m.to)] = false;
@@ -186,7 +187,8 @@ void Position::undo_move(Move m) {
 
         // capture
         if (m.type_involved != NO_PIECE_TYPE) {
-            hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved]--;
+            // piece was promoted, so unpromote it before removing from hand
+            hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(m.type_involved)]--;
             board[m.to] = make_piece(~sideToMove, m.type_involved);
             // handle pawn files if a pawn was captured and is now on the board
             if (m.type_involved == PAWN)

@@ -5,6 +5,17 @@ from typing import List
 from game.move_rules import FIXED_MOVES_DICT, SLIDING_MOVES_DICT
 from game.misc import Player, PieceType, Piece, PROMOTABLE, Change
 
+PIECE_CHAR_MAP = {
+    'k': PieceType.KING,
+    'g': PieceType.GOLD,
+    's': PieceType.SILVER,
+    'n': PieceType.KNIGHT,
+    'l': PieceType.LANCE,
+    'b': PieceType.BISHOP,
+    'r': PieceType.ROOK,
+    'p': PieceType.PAWN,
+}
+
 class GameState:
     def __init__(self, sfen: str = None):
         self.board : List[Piece | None] = [None] * 81
@@ -152,6 +163,62 @@ class GameState:
         # check if the game is over
         # this will set the game_over and winner flags
         self.is_game_over()
+
+
+    def get_sfen(self) -> str:
+        # 1. board representation
+        rows = []
+        for row in range(9):
+            row_str = ""
+            empty = 0
+            for col in range(8, -1, -1):
+                idx = col*9 + row
+                piece = self.board[idx]
+                if piece is None:
+                    empty += 1
+                else:
+                    if empty > 0:
+                        row_str += str(empty)
+                        empty = 0
+                    char = None
+                    for k, v in PIECE_CHAR_MAP.items():
+                        if v == piece.type:
+                            char = k
+                            break
+                    if piece.promoted:
+                        row_str += '+'
+                    if piece.player == Player.BLACK:
+                        row_str += char.upper()
+                    else:
+                        row_str += char.lower()
+            if empty > 0:
+                row_str += str(empty)
+            rows.append(row_str)
+        sfen = '/'.join(rows)
+
+        # 2. side to move
+        sfen += ' '
+        sfen += 'b' if self.current_player == Player.BLACK else 'w'
+
+        # 3. hand pieces
+        sfen += ' '
+        hand_str = ""
+        for player in [Player.BLACK, Player.WHITE]:
+            for key in ['R', 'B', 'G', 'S', 'N', 'L', 'P']:
+                piecetype = PIECE_CHAR_MAP[key.lower()]
+                count = self.hand[player][piecetype]
+                if count > 0:
+                    if count > 1:
+                        hand_str += str(count)
+                    hand_str += key if player == Player.BLACK else key.lower()
+        if hand_str == "":
+            hand_str = "-"
+        sfen += hand_str
+
+        # 4. move count
+        sfen += f' {self.move_count + 1}'
+
+        return sfen
     
 
     def generate_moves(self):

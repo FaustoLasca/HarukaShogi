@@ -66,9 +66,6 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
     Direction d;
     Square to = from;
 
-    if (pt == NO_PIECE_TYPE)
-        pt = type_of(pos.piece(from));
-
     // standard moves
     for (int i = 0; i < NUM_DIRECTIONS; ++i) {
         d = colorFactor * StandardMoveDirections[pt * NUM_DIRECTIONS + i];
@@ -88,7 +85,7 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
             if (!move.is_null()) {
                 if (pos.is_legal(move)) {
                     *moveList++ = move;
-                    if (promotion_zone(to, color)) {
+                    if ((promotion_zone(to, color) || promotion_zone(from, color)) && !is_promoted(pt)) {
                         move.promotion = true;
                         *moveList++ = move;
                     }
@@ -129,7 +126,7 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
                 if (!move.is_null()) {
                     if (pos.is_legal(move)) {
                         *moveList++ = move;
-                        if (promotion_zone(to, color)) {
+                        if ((promotion_zone(to, color) || promotion_zone(from, color)) && !is_promoted(pt)) {
                             move.promotion = true;
                             *moveList++ = move;
                         }

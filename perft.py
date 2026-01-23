@@ -11,18 +11,21 @@ def count_nodes(game_state: GameState, depth: int) -> int:
         game_state.unmove(move)
     return nodes
 
-for depth in range(0, 5):
-    game_state = GameState()
+DEPTH = 3
+SFEN = "lnsgkg1nl/1r3+B1b1/1ppppp1pp/p8/9/2P6/PP1PPPPPP/7R1/LNSGKGSNL w SP 6"
+
+for depth in range(0, DEPTH+1):
+    game_state = GameState(SFEN)
     start_time = time()
     nodes = count_nodes(game_state, depth)
     end_time = time()
     time_taken = end_time - start_time
     print(f"Depth {depth}: {nodes} nodes in {time_taken} seconds")
 
-DEPTH = 3
+game_state = GameState(SFEN)
 
 for move in game_state.generate_moves():
     game_state.move(move)
     nodes = count_nodes(game_state, DEPTH-1)
+    print(f"perft: {nodes} - sfen: {game_state.get_sfen()}")
     game_state.unmove(move)
-    print(f"Move: {move} - {nodes} nodes")
