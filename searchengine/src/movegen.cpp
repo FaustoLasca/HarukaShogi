@@ -67,6 +67,9 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
     Direction d;
     Square to = from;
 
+    if (pt == NO_PIECE_TYPE)
+        pt = type_of(pos.piece(from));
+
     // standard moves
     for (int i = 0; i < NUM_DIRECTIONS; ++i) {
         d = colorFactor * StandardMoveDirections[pt * NUM_DIRECTIONS + i];
@@ -139,6 +142,75 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
                 to = add_direction(to, d);
             }
         }
+    }
+
+    return moveList;
+}
+
+
+// generates all drop from the given position
+// the moves are added to the move list and the first free slot is returned
+Move* drop_moves(Position& pos, Move* moveList) {
+    Color toMove = pos.side_to_move();
+    int colorFactor = (toMove == BLACK) ? 1 : -1;
+    Square pawnAttack;
+    Move move = NULL_MOVE;
+    Rank lastRanks[2];
+    lastRanks[0] = (toMove == BLACK) ? R_1 : R_9;
+    lastRanks[1] = (toMove == BLACK) ? R_2 : R_8;
+
+    // loop through all free squares
+    for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
+        if (pos.piece(sq) == NO_PIECE) {
+
+            // loop through the pieces in the hand
+            // the pawn is special, so we handle it separately
+            for (PieceType pt = GOLD; pt < PAWN; ++pt) {
+                if (pos.hand_count(toMove, pt) > 0) {
+
+                    // LANCE and KNIGHT cannot be dropped on the last rank
+                    if ((pt == KNIGHT || pt == LANCE) && rank_of(sq) == lastRanks[0])
+                        continue;
+                    // KNIGHT cannot be dropped on the second last rank either
+                    else if (pt == KNIGHT && rank_of(sq) == lastRanks[1])
+                        continue;
+
+                    // add the drop to the move list
+                    move = Move{NO_SQUARE, sq, false, pt};
+                    // TODO: no need to always check if the move is legal, needs optimization
+                    if (pos.is_legal(move))
+                        *moveList++ = move;
+                    
+                }
+            }
+
+            // handle the pawn separately
+            // the pawn can't be dropped on the last rank
+            // the pawn can't be dropped on the same rank as other pawns
+            // the pawn drop can't checkmate (this is checked in is_legal)
+            if (pos.hand_count(toMove, PAWN) > 0) {
+                if (!pos.pawn_on_file(toMove, file_of(sq)) && rank_of(sq) != lastRanks[0]) {
+                    move = Move{NO_SQUARE, sq, false, PAWN};
+
+                    if (pos.is_legal(move))
+                        *moveList++ = move;
+                }
+            }
+        }
+    }
+
+    return moveList;
+}
+
+
+Move* generate_moves(Position& pos, Move* moveList) {
+    // generate drop moves
+    moveList = drop_moves(pos, moveList);
+
+    // for each piece on the board, generate piece moves
+    for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
+        if (pos.piece(sq) != NO_PIECE && color_of(pos.piece(sq)) == pos.side_to_move())
+            moveList = piece_moves(pos, moveList, sq);
     }
 
     return moveList;

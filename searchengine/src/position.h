@@ -27,12 +27,16 @@ class Position {
 
       // getters
       Piece piece(Square sq) const { return board[sq]; }
+      int hand_count(Color color, PieceType pt) const { return hands[color * NUM_UNPROMOTED_PIECE_TYPES + pt]; }
+      Color side_to_move() const { return sideToMove; }
+      bool pawn_on_file(Color color, File file) const { return pawnFiles[color * NUM_FILES + file]; }
 
     private:
       // data members
       std::array<Piece, NUM_SQUARES> board;
       std::array<uint8_t, NUM_COLORS * NUM_UNPROMOTED_PIECE_TYPES> hands;
       std::array<Square, NUM_COLORS> kingSq;
+      std::array<bool, NUM_COLORS * NUM_FILES> pawnFiles;
       Color sideToMove;
       int gamePly;
 };

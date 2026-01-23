@@ -182,6 +182,7 @@ struct Move {
     PieceType type_involved = NO_PIECE_TYPE;
 
     constexpr bool is_null() const { return from == NO_SQUARE && to == NO_SQUARE; };
+    constexpr bool is_drop() const { return from == NO_SQUARE; };
 };
 constexpr Move NULL_MOVE = Move{NO_SQUARE, NO_SQUARE, false, NO_PIECE_TYPE};
 

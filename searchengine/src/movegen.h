@@ -47,7 +47,7 @@ constexpr std::array<Direction, NUM_SLIDING_TYPES * MAX_SLIDING_DIRECTIONS> Slid
     NORTH, NO_DIR, NO_DIR, NO_DIR // LANCE
 };
 
-constexpr int8_t MAX_MOVES = 593;
+constexpr size_t MAX_MOVES = 593;
 
 } // namespace harukashogi
 

@@ -7,25 +7,31 @@
 
 using namespace harukashogi;
 
+
+int perft(Position& pos, int depth) {
+    if (depth == 0)
+        return 1;
+
+    Move moveList[MAX_MOVES];
+    Move* end = generate_moves(pos, moveList);
+    int nodes = 0;
+    for (Move* m = moveList; m < end; ++m) {
+        pos.make_move(*m);
+        nodes += perft(pos, depth - 1);
+        pos.undo_move(*m);
+    }
+
+    return nodes;
+};
+
+
 int main() {
     Position pos;
     std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
-
     pos.set(sfen);
-    std::cout << "SFEN: " << pos.sfen() << std::endl;
 
-    Move m = { SQ_17, SQ_13, true, PAWN };
-    pos.make_move(m);
-    std::cout << "SFEN: " << pos.sfen() << std::endl;
-
-    pos.undo_move(m);
-    std::cout << "SFEN: " << pos.sfen() << std::endl;
-
-
-    Move moveList[MAX_MOVES];
-    Move* end = piece_moves(pos, moveList, SQ_59);
-    for (Move* m = moveList; m < end; ++m) {
-        std::cout << "Move: " << int(m->from) << " -> " << int(m->to) << " (Promotion: " << m->promotion << ", Captured: " << int(m->type_involved) << ")" << std::endl;
+    for (int depth = 0; depth <= 5; ++depth) {
+        std::cout << "Perft(" << depth << "): " << perft(pos, depth) << std::endl;
     }
 
     return 0;
