@@ -233,14 +233,14 @@ bool Position::is_legal(Move m) {
     // TODO: this works but is very inefficient
     // generate pawn move and check for checkmate
     if (is_legal && m.is_drop() && m.type_involved == PAWN) {
-        Move moveList[MAX_MOVES];
-        piece_moves(*this, moveList, m.to);
+        Direction pawnAttack = (sideToMove == BLACK) ? SOUTH : NORTH;
         // if the pawn drop eats the king, check if there are any legal moves
         // for the opponent. If not it's checkmate.
-        if (moveList[0].type_involved == KING) {
+        if ((m.to + pawnAttack) == kingSq[sideToMove]) {
+            Move moveList[MAX_MOVES];
             generate_moves(*this, moveList);
             if (moveList[0].is_null())
-                is_legal = false;
+                is_legal = false;   
         }
     }
 

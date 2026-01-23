@@ -1,5 +1,3 @@
-#include <iostream>
-
 #include "movegen.h"
 #include "types.h"
 #include "position.h"

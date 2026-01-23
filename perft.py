@@ -11,8 +11,8 @@ def count_nodes(game_state: GameState, depth: int) -> int:
         game_state.unmove(move)
     return nodes
 
-DEPTH = 3
-SFEN = "lnsgkg1nl/1r3+B1b1/1ppppp1pp/p8/9/2P6/PP1PPPPPP/7R1/LNSGKGSNL w SP 6"
+DEPTH = 1
+SFEN = "lnsgkgsnl/1r5b1/ppppp1ppp/5B3/9/2P4r1/PP1PPPP1P/9/LNSGKGSnl w Pp 6"
 
 for depth in range(0, DEPTH+1):
     game_state = GameState(SFEN)

@@ -55,11 +55,14 @@ int main() {
     pos.set("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1");
     std::string sfen = pos.sfen();
 
-    // for (int depth = 0; depth <= 6; ++depth)
-    //     std::cout << count_leaves(pos, depth) << std::endl;
-    perft(pos, 6);
+    int max_depth = 6;
+
+    for (int depth = 0; depth <= max_depth; ++depth)
+        std::cout << count_leaves(pos, depth) << std::endl;
+    perft(pos, max_depth);
 
     std::cout << (pos.sfen() == sfen) << std::endl;
+
 
     // std::cout << pos.sfen() << std::endl;
 
