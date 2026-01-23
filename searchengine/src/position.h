@@ -21,10 +21,14 @@ class Position {
       void make_move(Move m);
       void undo_move(Move m);
 
+      // getters
+      Piece piece(Square sq) const { return board[sq]; }
+
     private:
       // data members
       std::array<Piece, NUM_SQUARES> board;
       std::array<uint8_t, NUM_COLORS * NUM_UNPROMOTED_PIECE_TYPES> hands;
+      std::array<Square, NUM_COLORS> kingSq;
       Color sideToMove;
       int gamePly;
 };

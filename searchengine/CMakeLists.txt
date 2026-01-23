@@ -19,7 +19,7 @@ pybind11_add_module(searchengine
 target_include_directories(searchengine PRIVATE include)
 
 # Standalone executable
-add_executable(test_types src/main.cpp src/position.cpp)
+add_executable(test_types src/main.cpp src/position.cpp src/movegen.cpp)
 target_include_directories(test_types PRIVATE include)
 
 # Install targets (install searchengine library in the python environment)

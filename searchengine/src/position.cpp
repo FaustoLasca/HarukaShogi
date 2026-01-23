@@ -3,6 +3,7 @@
 
 #include "position.h"
 #include "types.h"
+#include "movegen.h"
 
 namespace harukashogi {
 
@@ -36,8 +37,9 @@ void Position::set(const std::string& sfenStr) {
             promote = true;
 
         else if ((idx = PieceToChar.find(token)) != std::string::npos) {
-            
             board[sq] = promote ? promote_piece(Piece(idx)) : Piece(idx);
+            if (board[sq] == B_KING || board[sq] == W_KING)
+                kingSq[color_of(board[sq])] = sq;
             promote = false;
             sq += EAST;
         }
@@ -57,6 +59,7 @@ void Position::set(const std::string& sfenStr) {
 
     // 4. full move count
     ss >> std::skipws >> gamePly;
+    gamePly--;
 }
 
 
@@ -119,7 +122,7 @@ std::string Position::sfen() const {
         ss << '-';
 
     // 4. full move count
-    ss << ' ' << gamePly;
+    ss << ' ' << gamePly + 1;
 
     return ss.str();
 }

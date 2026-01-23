@@ -33,12 +33,12 @@ enum PieceType : uint8_t {
     P_ROOK,
     P_PAWN,
 
-    NO_PIECE_TYPE,
-
     NUM_PIECE_TYPES = 14,
-    NUM_UNPROMOTED_PIECE_TYPES = 8,
-    NUM_PIECES = 40,
+
+    NO_PIECE_TYPE,
 };
+constexpr uint8_t NUM_SLIDING_TYPES = 2;
+constexpr uint8_t NUM_UNPROMOTED_PIECE_TYPES = 8;
 
 enum Piece : uint8_t {
     NO_PIECE,
@@ -48,15 +48,30 @@ enum Piece : uint8_t {
 
     W_KING, W_GOLD, W_SILVER, W_LANCE, W_KNIGHT, W_BISHOP, W_ROOK, W_PAWN,
     P_W_SILVER, P_W_LANCE, P_W_KNIGHT, P_W_BISHOP, P_W_ROOK, P_W_PAWN,
+
+    NUM_PIECES = 28,
+    NUM_TOT_PIECES = 40,
 };
 
 // functions on pieces and piece types
 constexpr PieceType type_of(Piece p) { return PieceType( (p-1) % NUM_PIECE_TYPES ); };
+constexpr Color color_of(Piece p) { return Color( (p-1) / NUM_PIECE_TYPES ); };
 constexpr Piece make_piece(Color c, PieceType pt) { return Piece(c * NUM_PIECE_TYPES + pt + 1); };
 constexpr Piece promote_piece( Piece p ) { return Piece(p + 6); };
 constexpr Piece unpromote_piece( Piece p ) { return Piece(p - 6); };
 constexpr bool is_promoted( PieceType pt ) { return pt >= P_SILVER; };
 constexpr bool is_promoted( Piece p ) { return is_promoted(type_of(p)); };
+// used to index the sliding move directions array
+constexpr std::size_t sliding_type_index( PieceType pt ) { 
+    switch (pt) {
+        case BISHOP:
+            return 0;
+        case ROOK:
+            return 1;
+        default:
+            return -1;
+    }
+ };
 
 enum Square : uint8_t {
     SQ_11, SQ_21, SQ_31, SQ_41, SQ_51, SQ_61, SQ_71, SQ_81, SQ_91,
@@ -94,7 +109,16 @@ enum Direction : int8_t {
     NORTH_EAST = NORTH + EAST,
     SOUTH_WEST = SOUTH + WEST,
     SOUTH_EAST = SOUTH + EAST,
+
+    NO_DIR = 0
 };
+
+constexpr uint8_t NUM_DIRECTIONS = 8;
+constexpr uint8_t MAX_SLIDING_DIRECTIONS = 4;
+
+// max number of squares that can attack a given square
+// 1 for each direction and 2 knights
+constexpr uint8_t MAX_ATTACKERS = 10;
 
 // operators to add/subtract direction from square
 constexpr Square operator+(Square sq, Direction d) { return Square(int(sq) + int(d)); }
@@ -103,11 +127,23 @@ constexpr Square& operator+=(Square& sq, Direction d) { return sq = sq + d; }
 constexpr Square& operator-=(Square& sq, Direction d) { return sq = sq - d; }
 
 constexpr Direction operator*(int n, Direction d) { return Direction(n * int(d)); }
+constexpr Direction operator+(Direction d1, Direction d2) { return Direction(int(d1) + int(d2)); }
+constexpr Direction operator-(Direction d1, Direction d2) { return Direction(int(d1) - int(d2)); }
 
 // functions to convert between square, file and rank
 constexpr Square make_square(File f, Rank r) { return Square(r*9 + f); };
 constexpr File file_of(Square sq) { return File(sq % 9); };
 constexpr Rank rank_of(Square sq) { return Rank(sq / 9); };
+
+// safe way to add a direction to a square
+constexpr Square add_direction(Square square, Direction d) {
+    int f = file_of(square) + d % 9;
+    int r = rank_of(square) + d / 9;
+    if (f < F_1 || f > F_9 || r < R_1 || r > R_9)
+        return NO_SQUARE;
+    else
+        return square + d;
+}
 
 // enable increment and decrement operators
 #define ENABLE_INCR_OPERATORS_ON(T) \
