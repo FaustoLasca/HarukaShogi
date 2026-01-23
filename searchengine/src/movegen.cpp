@@ -34,8 +34,7 @@ bool is_attacked(const Position& pos, Square square, Color by) {
         // check sliding moves if necessary
         if (sliding_type_index(pt) != -1) {
             for (int i = 0; i < MAX_SLIDING_DIRECTIONS; ++i) {
-                // sliding moves are symmetric, so we can use the same direction for both colors
-                d = SlidingMoveDirections[sliding_type_index(pt) * MAX_SLIDING_DIRECTIONS + i];
+                d = colorFactor * SlidingMoveDirections[sliding_type_index(pt) * MAX_SLIDING_DIRECTIONS + i];
                 if (d == NO_DIR)
                     break;
 
@@ -105,7 +104,7 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
         bool collision = false;
 
         for (int i = 0; i < MAX_SLIDING_DIRECTIONS; ++i) {
-            d = SlidingMoveDirections[sliding_type_index(pt) * MAX_SLIDING_DIRECTIONS + i];
+            d = colorFactor * SlidingMoveDirections[sliding_type_index(pt) * MAX_SLIDING_DIRECTIONS + i];
             if (d == NO_DIR)
                 break;
 

@@ -24,6 +24,7 @@ void Position::set(const std::string& sfenStr) {
     // empty board and hands
     board.fill(NO_PIECE);
     hands.fill(0);
+    pawnFiles.fill(false);
 
     // 1. board pieces
     while ((ss >> token) && token != ' ') {
@@ -38,8 +39,12 @@ void Position::set(const std::string& sfenStr) {
 
         else if ((idx = PieceToChar.find(token)) != std::string::npos) {
             board[sq] = promote ? promote_piece(Piece(idx)) : Piece(idx);
-            if (board[sq] == B_KING || board[sq] == W_KING)
+            // update the king location
+            if (type_of(board[sq]) == KING)
                 kingSq[color_of(board[sq])] = sq;
+            // update the pawn file
+            if (type_of(board[sq]) == PAWN)
+                pawnFiles[color_of(board[sq]) * NUM_FILES + file_of(sq)] = true;
             promote = false;
             sq += EAST;
         }
@@ -137,8 +142,13 @@ void Position::make_move(Move m) {
         board[m.from] = NO_PIECE;
 
         // capture
-        if (m.type_involved != NO_PIECE_TYPE)
+        if (m.type_involved != NO_PIECE_TYPE) {
             hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved]++;
+            // handle pawn files if a pawn is captured
+            if (m.type_involved == PAWN)
+                pawnFiles[~sideToMove * NUM_FILES + file_of(m.to)] = false;
+        }
+            
 
         if (m.promotion)
             board[m.to] = promote_piece(board[m.to]);
@@ -151,6 +161,9 @@ void Position::make_move(Move m) {
     else {
         hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved]--;
         board[m.to] = make_piece(sideToMove, m.type_involved);
+        // handle pawn files if a pawn is dropped
+        if (m.type_involved == PAWN)
+            pawnFiles[sideToMove * NUM_FILES + file_of(m.to)] = true;
     }
 
     // update side to move and game ply
@@ -175,6 +188,9 @@ void Position::undo_move(Move m) {
         if (m.type_involved != NO_PIECE_TYPE) {
             hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved]--;
             board[m.to] = make_piece(~sideToMove, m.type_involved);
+            // handle pawn files if a pawn was captured and is now on the board
+            if (m.type_involved == PAWN)
+                pawnFiles[~sideToMove * NUM_FILES + file_of(m.to)] = true;
         }
         else
             board[m.to] = NO_PIECE;
@@ -185,6 +201,15 @@ void Position::undo_move(Move m) {
         // update king square
         if (type_of(board[m.from]) == KING)
             kingSq[sideToMove] = m.from;
+    }
+
+    // move is a drop
+    else {
+        hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved]++;
+        board[m.to] = NO_PIECE;
+        // handle pawn files if a pawn was dropped and is now not on the board
+        if (m.type_involved == PAWN)
+            pawnFiles[sideToMove * NUM_FILES + file_of(m.to)] = false;
     }
 }
 

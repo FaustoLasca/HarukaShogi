@@ -11,10 +11,18 @@ def count_nodes(game_state: GameState, depth: int) -> int:
         game_state.unmove(move)
     return nodes
 
-for depth in range(0, 4):
+for depth in range(0, 5):
     game_state = GameState()
     start_time = time()
     nodes = count_nodes(game_state, depth)
     end_time = time()
     time_taken = end_time - start_time
     print(f"Depth {depth}: {nodes} nodes in {time_taken} seconds")
+
+DEPTH = 3
+
+for move in game_state.generate_moves():
+    game_state.move(move)
+    nodes = count_nodes(game_state, DEPTH-1)
+    game_state.unmove(move)
+    print(f"Move: {move} - {nodes} nodes")
