@@ -142,6 +142,10 @@ void Position::make_move(Move m) {
 
         if (m.promotion)
             board[m.to] = promote_piece(board[m.to]);
+
+        // update king square
+        if (type_of(board[m.to]) == KING)
+            kingSq[sideToMove] = m.to;
     }
     // drop
     else {
@@ -177,7 +181,29 @@ void Position::undo_move(Move m) {
             
         if (m.promotion)
             board[m.from] = unpromote_piece(board[m.from]);
+
+        // update king square
+        if (type_of(board[m.from]) == KING)
+            kingSq[sideToMove] = m.from;
     }
 }
+
+
+bool Position::is_in_check(Color color) const {
+    return is_attacked(*this, kingSq[color], ~color);
+}
+
+
+bool Position::is_legal(Move m) {
+    if (m.is_null())
+        return false;
+
+    // TODO: this is unoptimized, needs to be optimized
+    make_move(m);
+    bool is_legal = !is_in_check(~sideToMove);
+    undo_move(m);
+    return is_legal;
+}
+
 
 } // namespace harukashogi

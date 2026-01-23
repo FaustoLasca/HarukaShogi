@@ -21,5 +21,12 @@ int main() {
     pos.undo_move(m);
     std::cout << "SFEN: " << pos.sfen() << std::endl;
 
+
+    Move moveList[MAX_MOVES];
+    Move* end = piece_moves(pos, moveList, SQ_59);
+    for (Move* m = moveList; m < end; ++m) {
+        std::cout << "Move: " << int(m->from) << " -> " << int(m->to) << " (Promotion: " << m->promotion << ", Captured: " << int(m->type_involved) << ")" << std::endl;
+    }
+
     return 0;
 }

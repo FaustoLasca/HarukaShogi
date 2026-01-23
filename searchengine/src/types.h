@@ -37,7 +37,7 @@ enum PieceType : uint8_t {
 
     NO_PIECE_TYPE,
 };
-constexpr uint8_t NUM_SLIDING_TYPES = 2;
+constexpr uint8_t NUM_SLIDING_TYPES = 3;
 constexpr uint8_t NUM_UNPROMOTED_PIECE_TYPES = 8;
 
 enum Piece : uint8_t {
@@ -65,9 +65,13 @@ constexpr bool is_promoted( Piece p ) { return is_promoted(type_of(p)); };
 constexpr std::size_t sliding_type_index( PieceType pt ) { 
     switch (pt) {
         case BISHOP:
+        case P_BISHOP:
             return 0;
         case ROOK:
+        case P_ROOK:
             return 1;
+        case LANCE:
+            return 2;
         default:
             return -1;
     }
@@ -98,20 +102,26 @@ enum Rank : uint8_t {
     NUM_RANKS = 9,
 };
 
-enum Direction : int8_t {
-    SOUTH = 9,
-    WEST = 1,
+struct Direction {
+    int8_t df;
+    int8_t dr;
 
-    NORTH = -SOUTH,
-    EAST = -WEST,
+    constexpr Direction(int8_t df, int8_t dr) : df(df), dr(dr) {}
+    constexpr Direction() : Direction(0, 0) {}
 
-    NORTH_WEST = NORTH + WEST,
-    NORTH_EAST = NORTH + EAST,
-    SOUTH_WEST = SOUTH + WEST,
-    SOUTH_EAST = SOUTH + EAST,
+    constexpr int8_t d_index() const { return dr*9 + df; }
 
-    NO_DIR = 0
+    constexpr bool operator==(const Direction& other) const { return df == other.df && dr == other.dr; }
 };
+constexpr Direction NO_DIR = Direction(0, 0);
+constexpr Direction NORTH_EAST = Direction(-1, -1);
+constexpr Direction NORTH = Direction(0, -1);
+constexpr Direction NORTH_WEST = Direction(1, -1);
+constexpr Direction WEST = Direction(1, 0);
+constexpr Direction SOUTH_WEST = Direction(1, 1);
+constexpr Direction SOUTH = Direction(0, 1);
+constexpr Direction SOUTH_EAST = Direction(-1, 1);
+constexpr Direction EAST = Direction(-1, 0);
 
 constexpr uint8_t NUM_DIRECTIONS = 8;
 constexpr uint8_t MAX_SLIDING_DIRECTIONS = 4;
@@ -121,25 +131,29 @@ constexpr uint8_t MAX_SLIDING_DIRECTIONS = 4;
 constexpr uint8_t MAX_ATTACKERS = 10;
 
 // operators to add/subtract direction from square
-constexpr Square operator+(Square sq, Direction d) { return Square(int(sq) + int(d)); }
-constexpr Square operator-(Square sq, Direction d) { return Square(int(sq) - int(d)); }
+constexpr Square operator+(Square sq, Direction d) { return Square(int(sq) + d.d_index()); }
+constexpr Square operator-(Square sq, Direction d) { return Square(int(sq) - d.d_index()); }
 constexpr Square& operator+=(Square& sq, Direction d) { return sq = sq + d; }
 constexpr Square& operator-=(Square& sq, Direction d) { return sq = sq - d; }
 
-constexpr Direction operator*(int n, Direction d) { return Direction(n * int(d)); }
-constexpr Direction operator+(Direction d1, Direction d2) { return Direction(int(d1) + int(d2)); }
-constexpr Direction operator-(Direction d1, Direction d2) { return Direction(int(d1) - int(d2)); }
+constexpr Direction operator*(int n, Direction d) { return Direction(n * d.df, n * d.dr); }
+constexpr Direction operator+(Direction d1, Direction d2) { return Direction(d1.df + d2.df, d1.dr + d2.dr); }
+constexpr Direction operator-(Direction d1, Direction d2) { return Direction(d1.df - d2.df, d1.dr - d2.dr); }
 
 // functions to convert between square, file and rank
 constexpr Square make_square(File f, Rank r) { return Square(r*9 + f); };
 constexpr File file_of(Square sq) { return File(sq % 9); };
 constexpr Rank rank_of(Square sq) { return Rank(sq / 9); };
 
+constexpr bool promotion_zone(Square sq, Color c) { 
+    return rank_of(sq) <= R_3 && c == BLACK || rank_of(sq) >= R_7 && c == WHITE;
+};
+
 // safe way to add a direction to a square
 constexpr Square add_direction(Square square, Direction d) {
-    int f = file_of(square) + d % 9;
-    int r = rank_of(square) + d / 9;
-    if (f < F_1 || f > F_9 || r < R_1 || r > R_9)
+    uint8_t f = file_of(square) + d.df;
+    uint8_t r = rank_of(square) + d.dr;
+    if (f > F_9 || r > R_9)
         return NO_SQUARE;
     else
         return square + d;
@@ -158,15 +172,18 @@ ENABLE_INCR_OPERATORS_ON(Rank)
 #undef ENABLE_INCR_OPERATORS_ON
 
 struct Move {
-    Square from;
-    Square to;
-    bool promotion;
+    Square from = NO_SQUARE;
+    Square to = NO_SQUARE;
+    bool promotion = false;
     // type of piece involved in the move
     // for drops, this is the type of the piece dropped
     // for captures, this is the type of the captured piece
     // if the move is not a capture or drop, this is NO_PIECE_TYPE
-    PieceType type_involved;
+    PieceType type_involved = NO_PIECE_TYPE;
+
+    constexpr bool is_null() const { return from == NO_SQUARE && to == NO_SQUARE; };
 };
+constexpr Move NULL_MOVE = Move{NO_SQUARE, NO_SQUARE, false, NO_PIECE_TYPE};
 
 } // namespace harukashogi
 

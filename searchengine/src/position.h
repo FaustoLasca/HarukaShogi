@@ -21,6 +21,10 @@ class Position {
       void make_move(Move m);
       void undo_move(Move m);
 
+      // checkers
+      bool is_in_check(Color color) const;
+      bool is_legal(Move m);
+
       // getters
       Piece piece(Square sq) const { return board[sq]; }
 

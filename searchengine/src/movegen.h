@@ -8,15 +8,15 @@ namespace harukashogi {
 
 
 // generate all legal moves
-// moves are added to the move list
+// moves are added to the move list and the first free slot is returned
 Move* generate_moves(Position& pos, Move* moveList);
 
 // generate all legal moves from the piece in the given square
-// moves are added to the move list
+// moves are added to the move list and the first free slot is returned
 Move* piece_moves(Position& pos, Move* moveList, Square from);
 
 // returns the squares a piece attacks
-bool is_attacked(Position& pos, Square square, Color by);
+bool is_attacked(const Position& pos, Square square, Color by);
 
 
 // data structures for move generation
@@ -44,7 +44,10 @@ constexpr std::array<Direction, NUM_PIECE_TYPES * NUM_DIRECTIONS> StandardMoveDi
 constexpr std::array<Direction, NUM_SLIDING_TYPES * MAX_SLIDING_DIRECTIONS> SlidingMoveDirections = {
     NORTH_EAST, NORTH_WEST, SOUTH_WEST, SOUTH_EAST, // BISHOP
     NORTH, WEST,    SOUTH,  EAST,   // ROOK
+    NORTH, NO_DIR, NO_DIR, NO_DIR // LANCE
 };
+
+constexpr int8_t MAX_MOVES = 593;
 
 } // namespace harukashogi
 
