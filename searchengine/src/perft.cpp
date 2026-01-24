@@ -24,6 +24,7 @@ int perft(Position& pos, int depth) {
     for (Move* m = moveList; m < end; ++m) {
         pos.make_move(*m);
         count += perft(pos, depth - 1);
+
         pos.undo_move(*m);
     }
 

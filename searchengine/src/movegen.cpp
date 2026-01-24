@@ -85,7 +85,7 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
                 move = Move{from, to, false, type_of(pos.piece(to))};
 
             // check if promotion is available
-            if ((promotion_zone(to, color) || promotion_zone(from, color)) && !is_promoted(pt)) {
+            if ((promotion_zone(to, color) || promotion_zone(from, color)) && !is_promoted(pt) && can_promote(pt)) {
                 promotion = true;
                 // check if promotion is forced
                 // applies to pawns and knights for standard moves

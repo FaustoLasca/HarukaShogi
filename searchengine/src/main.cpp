@@ -9,10 +9,10 @@ using namespace harukashogi;
 
 int main() {
     Position pos;
-    pos.set("1n1g5/lr3kg2/p2pppn+P1/2ps2p1B/1p7/2P5l/PPSPPPPLN/2G2K1pP/LN4G1b b SSPr 59");
+    pos.set("8l/lpsg1b3/3k5/pP2PpPrp/1Np4n1/P5G2/3PGS2P/4K2P1/L6RL b GSNNPPsbpppp 113");
     std::string sfen = pos.sfen();
 
-    perft_test(pos, 1);
+    perft_test(pos, 3);
 
     std::cout << (pos.sfen() == sfen) << std::endl;
 
