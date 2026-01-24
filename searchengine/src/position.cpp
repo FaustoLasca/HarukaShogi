@@ -4,10 +4,9 @@
 #include "position.h"
 #include "types.h"
 #include "movegen.h"
+#include "misc.h"
 
 namespace harukashogi {
-
-constexpr std::string_view PieceToChar(" KGSLNBRP      kgslnbrp");
 
 
 // initializes the position from a SFEN string
