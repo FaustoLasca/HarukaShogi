@@ -207,9 +207,7 @@ class GameState:
             for key in ['R', 'B', 'G', 'S', 'N', 'L', 'P']:
                 piecetype = PIECE_CHAR_MAP[key.lower()]
                 count = self.hand[player][piecetype]
-                if count > 0:
-                    if count > 1:
-                        hand_str += str(count)
+                for _ in range(count):
                     hand_str += key if player == Player.BLACK else key.lower()
         if hand_str == "":
             hand_str = "-"

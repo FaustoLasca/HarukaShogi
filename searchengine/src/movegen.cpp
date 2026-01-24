@@ -106,11 +106,13 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
                         *moveList++ = move;
                     }
                 }
-                promotion = false;
-                forced_promotion = false;
-                move = NULL_MOVE;
-                captured = NO_PIECE_TYPE;
             }
+
+            // reset flags and move
+            promotion = false;
+            forced_promotion = false;
+            move = NULL_MOVE;
+            captured = NO_PIECE_TYPE;
         }
     }
 
@@ -144,7 +146,7 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
                 if ((promotion_zone(to, color) || promotion_zone(from, color)) && !is_promoted(pt)) {
                     promotion = true;
                     // check if promotion is forced
-                    // only applie to lance for sliding moves
+                    // only applies to lance for sliding moves
                     if (pt == LANCE && rank_of(move.to) == lastRank)
                         forced_promotion = true;
                 }
@@ -159,11 +161,13 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
                             *moveList++ = move;
                         }
                     }
-                    promotion = false;
-                    forced_promotion = false;
-                    move = NULL_MOVE;
-                    captured = NO_PIECE_TYPE;
                 }
+
+                // reset flags and move
+                promotion = false;
+                forced_promotion = false;
+                move = NULL_MOVE;
+                captured = NO_PIECE_TYPE;
 
                 to = add_direction(to, d);
             }

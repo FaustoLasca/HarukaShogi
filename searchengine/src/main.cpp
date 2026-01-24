@@ -9,7 +9,7 @@ using namespace harukashogi;
 
 int main() {
     Position pos;
-    pos.set("1n5bl/lr2gkgP1/4psnp1/p1pps1p1p/1p3p3/P1P1S1P1P/1PSPP1N2/2G2G3/LNK4RL b Bp 51");
+    pos.set("1n1g5/lr3kg2/p2pppn+P1/2ps2p1B/1p7/2P5l/PPSPPPPLN/2G2K1pP/LN4G1b b SSPr 59");
     std::string sfen = pos.sfen();
 
     perft_test(pos, 1);
