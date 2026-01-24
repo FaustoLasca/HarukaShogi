@@ -61,6 +61,10 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
     Move move = NULL_MOVE;
     Color color = color_of(pos.piece(from));
     int colorFactor = (color == BLACK) ? 1 : -1;
+    bool promotion = false;
+    bool forced_promotion = false;
+    Rank lastRank = (color == BLACK) ? R_1 : R_9;
+    Rank secondLastRank = (color == BLACK) ? R_2 : R_8;
     Direction d;
     Square to = from;
 
@@ -80,14 +84,30 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
             else if (color_of(pos.piece(to)) == ~color)
                 move = Move{from, to, false, type_of(pos.piece(to))};
 
+            // check if promotion is available
+            if ((promotion_zone(to, color) || promotion_zone(from, color)) && !is_promoted(pt)) {
+                promotion = true;
+                // check if promotion is forced
+                // applies to pawns and knights for standard moves
+                if ((pt == PAWN || pt == KNIGHT) && rank_of(move.to) == lastRank)
+                    forced_promotion = true;
+                else if (pt == KNIGHT && rank_of(move.to) == secondLastRank)
+                    forced_promotion = true;
+            }
+           
+
+            // add move to the list
             if (!move.is_null()) {
                 if (pos.is_legal(move)) {
-                    *moveList++ = move;
-                    if ((promotion_zone(to, color) || promotion_zone(from, color)) && !is_promoted(pt)) {
+                    if (!forced_promotion)
+                        *moveList++ = move;
+                    if (promotion) {
                         move.promotion = true;
                         *moveList++ = move;
                     }
                 }
+                promotion = false;
+                forced_promotion = false;
                 move = NULL_MOVE;
                 captured = NO_PIECE_TYPE;
             }
@@ -120,15 +140,27 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
                     collision = true;
                 }
 
+                // check if promotion is available
+                if ((promotion_zone(to, color) || promotion_zone(from, color)) && !is_promoted(pt)) {
+                    promotion = true;
+                    // check if promotion is forced
+                    // only applie to lance for sliding moves
+                    if (pt == LANCE && rank_of(move.to) == lastRank)
+                        forced_promotion = true;
+                }
+
                 // if valid move, add to move list
                 if (!move.is_null()) {
                     if (pos.is_legal(move)) {
-                        *moveList++ = move;
-                        if ((promotion_zone(to, color) || promotion_zone(from, color)) && !is_promoted(pt)) {
+                        if (!forced_promotion)
+                            *moveList++ = move;
+                        if (promotion) {
                             move.promotion = true;
                             *moveList++ = move;
                         }
                     }
+                    promotion = false;
+                    forced_promotion = false;
                     move = NULL_MOVE;
                     captured = NO_PIECE_TYPE;
                 }

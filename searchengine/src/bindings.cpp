@@ -12,9 +12,7 @@ PYBIND11_MODULE(searchengine, m) {
         .def(py::init<int>())
         .def("search", &Test::search, py::call_guard<py::gil_scoped_release>());
 
-    m.def("perft", [](const std::string& sfen, int depth) {
-        return perft(sfen, depth);
-    }, py::arg("sfen"), py::arg("depth"));
+    m.def("perft", py::overload_cast<std::string, int>(&perft));
 }
 
 } // namespace harukashogi
