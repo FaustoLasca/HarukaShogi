@@ -19,7 +19,7 @@ class Position {
 
       // move methods
       void make_move(Move m);
-      void undo_move(Move m);
+      void unmake_move(Move m);
 
       // checkers
       bool is_in_check(Color color) const;

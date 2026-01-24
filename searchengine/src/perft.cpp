@@ -25,7 +25,7 @@ int perft(Position& pos, int depth) {
         pos.make_move(*m);
         count += perft(pos, depth - 1);
 
-        pos.undo_move(*m);
+        pos.unmake_move(*m);
     }
 
     return count;
@@ -58,7 +58,7 @@ void perft_test(Position& pos, int depth) {
         pos.make_move(*m);
         count = perft(pos, depth - 1);
         std::cout << *m << "\t -  " << count << " \t -  " << pos.sfen() << std::endl;
-        pos.undo_move(*m);
+        pos.unmake_move(*m);
     }
 }
 

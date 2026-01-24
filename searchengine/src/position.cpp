@@ -149,9 +149,16 @@ void Position::make_move(Move m) {
                 pawnFiles[~sideToMove * NUM_FILES + file_of(m.to)] = false;
         }
             
-
-        if (m.promotion)
+        // promote the piece if it's a promotion
+        if (m.promotion) {
             board[m.to] = promote_piece(board[m.to]);
+            // if a pawn is promoted, update the pawn file
+            // pawns can be dropped to tha same file of the promoted pawn
+            if (type_of(board[m.to]) == P_PAWN) {
+                pawnFiles[sideToMove * NUM_FILES + file_of(m.from)] = false;
+            }
+        }
+            
 
         // update king square
         if (type_of(board[m.to]) == KING)
@@ -174,7 +181,7 @@ void Position::make_move(Move m) {
 
 // undoes the given move.
 // the move is assumed to be legal.
-void Position::undo_move(Move m) {
+void Position::unmake_move(Move m) {
     // update side to move first makes logic more intuitive
     // this way sideToMove is from before the move was made
     sideToMove = ~sideToMove;
@@ -196,8 +203,14 @@ void Position::undo_move(Move m) {
         else
             board[m.to] = NO_PIECE;
             
-        if (m.promotion)
+        // unpromote the piece if it's a promotion
+        if (m.promotion) {
             board[m.from] = unpromote_piece(board[m.from]);
+            // if the promoted piece was a pawn, update the pawn file
+            if (type_of(board[m.from]) == PAWN) {
+                pawnFiles[sideToMove * NUM_FILES + file_of(m.from)] = true;
+            }
+        }
 
         // update king square
         if (type_of(board[m.from]) == KING)
@@ -243,7 +256,7 @@ bool Position::is_legal(Move m) {
         }
     }
 
-    undo_move(m);
+    unmake_move(m);
 
     return is_legal;
 }
