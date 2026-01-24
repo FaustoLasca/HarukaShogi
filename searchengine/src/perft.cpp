@@ -31,6 +31,12 @@ int perft(Position& pos, int depth) {
     return count;
 }
 
+int perft(std::string sfen, int depth) {
+    Position pos;
+    pos.set(sfen);
+    return perft(pos, depth);
+}
+
 
 void perft_test(Position& pos, int depth) {
     std::cout << "Perft test at depth " << depth << std::endl;
@@ -51,10 +57,15 @@ void perft_test(Position& pos, int depth) {
     for (Move* m = moveList; m < end; ++m) {
         pos.make_move(*m);
         count = perft(pos, depth - 1);
+        std::cout << *m << "\t -  " << count << " \t -  " << pos.sfen() << std::endl;
         pos.undo_move(*m);
-
-        std::cout << *m << "\t -  " << count << std::endl;
     }
+}
+
+void perft_test(std::string sfen, int depth) {
+    Position pos;
+    pos.set(sfen);
+    perft_test(pos, depth);
 }
 
 } // namespace harukashogi
