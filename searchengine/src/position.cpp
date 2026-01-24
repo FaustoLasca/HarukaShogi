@@ -24,6 +24,8 @@ void Position::set(const std::string& sfenStr) {
     board.fill(NO_PIECE);
     hands.fill(0);
     pawnFiles.fill(false);
+    gameStatus = NONE;
+    winner = NO_COLOR;
 
     // 1. board pieces
     while ((ss >> token) && token != ' ') {
@@ -187,6 +189,10 @@ void Position::unmake_move(Move m) {
     sideToMove = ~sideToMove;
     gamePly--;
 
+    // update game status
+    gameStatus = IN_PROGRESS;
+    winner = NO_COLOR;
+
     // move is not a drop
     if (m.from != NO_SQUARE) {
         board[m.from] = board[m.to];
@@ -261,5 +267,45 @@ bool Position::is_legal(Move m) {
     return is_legal;
 }
 
+
+bool Position::is_checkmate() {
+    Color color = sideToMove;
+    // only go forward if the king is in check
+    if (is_in_check(color)) {
+        // first check if the king has any legal moves
+        Move moveList[MAX_MOVES];
+        piece_moves(*this, moveList, kingSq[color]);
+
+        // if the king has no legal move, generate all moves
+        if (moveList[0].is_null()) {
+            generate_moves(*this, moveList);
+            if (moveList[0].is_null()) {
+                gameStatus = GAME_OVER;
+                winner = ~color;
+                return true;
+            }  
+        }
+    }
+
+    gameStatus = IN_PROGRESS;
+    return false;
+}
+
+
+bool Position::is_game_over() {
+    if (gameStatus == NONE)
+        is_checkmate();
+
+    if (gameStatus == GAME_OVER)
+        return true;
+
+    // no check for stalemate atm
+    return false;
+}
+
+
+Color Position::get_winner() const {
+    return winner;
+}
 
 } // namespace harukashogi

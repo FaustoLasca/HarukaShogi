@@ -9,13 +9,15 @@ namespace harukashogi {
 
 
 int perft(Position& pos, int depth) {
-    if (depth == 0) {
+    if (depth == 0 || pos.is_game_over()) {
         return 1;
     }
 
     Move moveList[MAX_MOVES];
     Move* end = generate_moves(pos, moveList);
 
+    // in case of stalemate
+    // extremely rare but possible
     if (moveList[0].is_null()) {
         return 1;
     }
@@ -30,6 +32,7 @@ int perft(Position& pos, int depth) {
 
     return count;
 }
+
 
 int perft(std::string sfen, int depth) {
     Position pos;
