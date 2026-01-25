@@ -189,6 +189,13 @@ struct Move {
     constexpr bool is_capture() const { return from != NO_SQUARE && type_involved != NO_PIECE_TYPE; };
     constexpr bool is_promotion() const { return promotion; };
 
+    constexpr bool operator==(const Move& other) const {
+        return from == other.from && 
+                to == other.to && 
+                promotion == other.promotion &&
+                type_involved == other.type_involved;
+    };
+
     std::string to_string() const;
 };
 constexpr Move NULL_MOVE = Move{NO_SQUARE, NO_SQUARE, false, NO_PIECE_TYPE};

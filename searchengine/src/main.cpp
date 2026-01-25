@@ -13,14 +13,14 @@ using namespace harukashogi;
 
 int main() {
     Position pos;
-    pos.set("9/9/2R1g4/S5P2/4k1+l2/9/3+P2+P2/9/8K b - 1");
+    pos.set("ln6l/1r2gkg2/4psnp1/p1pps1p1p/1p3p3/P1P1S1P1P/1PSPP1N2/2G2G3/LNK4RL w BPbp 48");
     std::string sfen = pos.sfen();
 
     Searcher searcher;
 
     auto start_time = std::chrono::high_resolution_clock::now();
 
-    int score = searcher.min_max(pos, 5);
+    int score = searcher.iterative_deepening(pos, 5);
 
     auto end_time = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end_time - start_time);
