@@ -13,9 +13,9 @@ using namespace harukashogi;
 
 int main() {
     Searcher searcher;
-    searcher.set_position("lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1");
+    searcher.set_position("1r4k1l/1P4gs1/4+Sp3/l1pB3pp/PN1p3n1/2P2P1GP/K2+bP4/SG7/r7L w GNNLPPPPsppp 110");
 
-    std::string bestMove = searcher.search(500);
+    std::string bestMove = searcher.search(1000);
 
     std::cout << "Best Move: " << bestMove << std::endl;
 

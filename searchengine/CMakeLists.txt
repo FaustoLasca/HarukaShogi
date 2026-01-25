@@ -17,6 +17,9 @@ pybind11_add_module(searchengine
     src/position.cpp
     src/movegen.cpp
     src/perft.cpp
+    src/evaluate.cpp
+    src/search.cpp
+    src/misc.cpp
 )
 
 target_include_directories(searchengine PRIVATE include)

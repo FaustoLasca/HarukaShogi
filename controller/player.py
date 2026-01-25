@@ -4,11 +4,13 @@ import random
 from queue import Queue
 
 from game.game_state import GameState
-from game.misc import Change
+from game.misc import Change, string_to_move
 from game.misc import Player as PlayerEnum
 from search.evaluation.evaluator import Evaluator
 from search.evaluation.move_ordering import MoveOrderer
 from search.alpha_beta.searcher import MinMaxSearcher
+
+from searchengine import Searcher
 
 
 class Player:
@@ -60,7 +62,7 @@ class MiopicPlayer(Player):
 
 
 class MinMaxPlayer(Player):
-    def __init__(self, evaluator: Evaluator, max_depth: int, time_budget: float):
+    def __init__(self, evaluator: Evaluator, max_depth: int = 20, time_budget: float = 600):
         self.evaluator = evaluator
         self.max_depth = max_depth
         self.time_budget = time_budget
@@ -71,6 +73,24 @@ class MinMaxPlayer(Player):
     def get_move(self, available_moves: List[int]) -> int:
         searcher = MinMaxSearcher(self.state, self.evaluator)
         return searcher.search(self.max_depth, self.time_budget)
+
+
+# Haruka uses the searchengine library to search for the best move
+class Haruka(Player):
+    def __init__(self, time_limit: int = 600000, max_depth: int = 20):
+        self.time_limit = time_limit
+        self.max_depth = max_depth
+        self.searcher = Searcher()
+        self.state = GameState()
+    
+    def update_state(self, move: int, game_state: GameState) -> int:
+        self.state = game_state
+        self.searcher.set_position(game_state.get_sfen())
+
+    def get_move(self, available_moves: List[List[Change]]) -> List[Change]:
+        move_str = self.searcher.search(self.time_limit, self.max_depth)
+        return string_to_move(move_str, self.state)
+
 
 
 class GuiPlayer(Player):
