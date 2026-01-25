@@ -13,7 +13,6 @@ find_package(pybind11 CONFIG REQUIRED)
 
 pybind11_add_module(searchengine
     src/bindings.cpp
-    src/test.cpp
     src/position.cpp
     src/movegen.cpp
     src/perft.cpp
