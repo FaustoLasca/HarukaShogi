@@ -1,31 +1,72 @@
 #include <iostream>
 #include <algorithm>
+#include <chrono>
 
 #include "search.h"
 #include "movegen.h"
 #include "evaluate.h"
 #include "misc.h"
 
+
+namespace chr = std::chrono;
+
 namespace harukashogi {
 
 
-int Searcher::iterative_deepening(Position& pos, int depth) {
+Move Searcher::search(chr::milliseconds timeLimit, int maxDepth) {
+    iterative_deepening(timeLimit, maxDepth);
+    return get_best_move();
+}
+
+std::string Searcher::search(int timeLimit, int maxDepth) {
+    Move bestMove = search(chr::milliseconds(timeLimit), maxDepth);
+    return bestMove.to_string();
+}
+
+
+int Searcher::iterative_deepening(chr::milliseconds timeLimit, int maxDepth) {
+    // set the time limit and start time
+    this->timeLimit = timeLimit;
+    startTime = chr::steady_clock::now();
+    timeUp = false;
+
+    // initialize the required variables
     int score = 0;
-    for (int d = 1; d <= depth; d++) {
-        score = min_max(pos, d);
+    int depth;
+    followingPV = false;
+
+    // loop through the depths
+    for (depth = 1; depth <= maxDepth; depth++) {
+        try {
+            score = min_max(depth);
+        } catch (const TimeUpException& e) {
+            // if the time is up, exit the loop
+            break;
+        }
         followingPV = true;
     }
+
+    chr::milliseconds timeTaken = chr::duration_cast<chr::milliseconds>(chr::steady_clock::now() - startTime);
+    int nodesPS = nodeCount / (timeTaken.count() / 1000.0);
+
+    std::cout << "Evaluation: " << score << "\t Depth: " << depth - 1 << "\t Nodes: " << nodeCount
+              << "\t Time: " << timeTaken.count() << "ms" << "\t Nodes/s: " << nodesPS << std::endl;
+
     return score;
 }
 
 
-int Searcher::min_max(Position& pos, int depth, int ply, int alpha, int beta) {
+int Searcher::min_max(int depth, int ply, int alpha, int beta) {
     // increment node count
     nodeCount++;
 
     // if the depth is 0, return the evaluation of the position
     if (depth == 0 || pos.is_game_over())
         return evaluate(pos);
+
+    // if the time is up, throw an exception
+    if (is_time_up())
+        throw TimeUpException();
 
     // generate all moves from the position
     Move moveList[MAX_MOVES];
@@ -62,8 +103,17 @@ int Searcher::min_max(Position& pos, int depth, int ply, int alpha, int beta) {
     int best_score = -INF_SCORE;
     int score;
     for (ValMove* m = scoredMoves; m < endScored; ++m) {
+
         pos.make_move(*m);
-        score = -min_max(pos, depth - 1, ply + 1, -beta, -alpha);
+        // in case of time up, unmake the move before stopping
+        // the pos must be restored to the original position
+        try {
+            score = -min_max(depth - 1, ply + 1, -beta, -alpha);
+        } catch (const TimeUpException& e) {
+            pos.unmake_move(*m);
+            throw e;
+        }
+        
         pos.unmake_move(*m);
 
         // update best score and the pv table
@@ -95,5 +145,18 @@ int Searcher::min_max(Position& pos, int depth, int ply, int alpha, int beta) {
     return best_score;
 }
 
+
+bool Searcher::is_time_up() {
+    if (timeUp) return true;
+
+    timeUp = (std::chrono::steady_clock::now() - startTime) > timeLimit;
+    return timeUp;
+}
+
+
+void Searcher::set_position(std::string sfen) {
+    pos = Position();
+    pos.set(sfen);
+}
 
 } // namespace harukashogi
