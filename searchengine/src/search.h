@@ -30,6 +30,7 @@ class Searcher {
         Searcher() {
             nodeCount = 0;
             followingPV = false;
+            bestMove = NULL_MOVE;
             pvTable.fill(NULL_MOVE);
             pvLength.fill(0);
         };
@@ -48,13 +49,14 @@ class Searcher {
 
         // getters
         int get_node_count() const { return nodeCount; }
-        Move get_best_move() const { return pvTable[0]; }
+        Move get_best_move() const { return bestMove; }
 
     private:
         Position pos;
         
         std::array<Move, MAX_DEPTH * MAX_DEPTH> pvTable;
         std::array<int, MAX_DEPTH> pvLength;
+        Move bestMove;
         bool followingPV;
         int nodeCount;
         

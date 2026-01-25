@@ -34,7 +34,7 @@ int Searcher::iterative_deepening(chr::milliseconds timeLimit, int maxDepth) {
     int score = 0;
     int depth;
     followingPV = false;
-
+    bestMove = NULL_MOVE;
     // loop through the depths
     for (depth = 1; depth <= maxDepth; depth++) {
         try {
@@ -43,6 +43,7 @@ int Searcher::iterative_deepening(chr::milliseconds timeLimit, int maxDepth) {
             // if the time is up, exit the loop
             break;
         }
+        bestMove = pvTable[0];
         followingPV = true;
     }
 
@@ -157,6 +158,10 @@ bool Searcher::is_time_up() {
 void Searcher::set_position(std::string sfen) {
     pos = Position();
     pos.set(sfen);
+    bestMove = NULL_MOVE;
+    pvTable.fill(NULL_MOVE);
+    pvLength.fill(0);
+    nodeCount = 0;
 }
 
 } // namespace harukashogi

@@ -40,7 +40,7 @@ class MinMaxSearcher:
                 break
 
         d_time = time.time() - t0
-        print(f"Evaluation: {evaluation}. \t Depth: {depth}.\t Nodes: {self.node_count}.\t Time: {d_time} s.\t Nodes per second: {self.node_count / d_time}")
+        print(f"Evaluation: {evaluation}. \t Depth: {depth}.\t Nodes: {self.node_count}.\t Time: {d_time} s.\t Nodes/s: {self.node_count / d_time}")
         return self.pv_table[0][0]
 
     
