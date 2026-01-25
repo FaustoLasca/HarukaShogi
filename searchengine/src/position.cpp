@@ -24,7 +24,8 @@ void Position::set(const std::string& sfenStr) {
     board.fill(NO_PIECE);
     hands.fill(0);
     pawnFiles.fill(false);
-    gameStatus = NONE;
+    gameStatus = NO_STATUS;
+    checkStatus.fill(CHECK_UNRESOLVED);
     winner = NO_COLOR;
 
     // 1. board pieces
@@ -191,6 +192,7 @@ void Position::unmake_move(Move m) {
 
     // update game status
     gameStatus = IN_PROGRESS;
+    checkStatus.fill(CHECK_UNRESOLVED);
     winner = NO_COLOR;
 
     // move is not a drop
@@ -234,8 +236,11 @@ void Position::unmake_move(Move m) {
 }
 
 
-bool Position::is_in_check(Color color) const {
-    return is_attacked(*this, kingSq[color], ~color);
+bool Position::is_in_check(Color color) {
+    if (checkStatus[color] == CHECK_UNRESOLVED) {
+        checkStatus[color] = is_attacked(*this, kingSq[color], ~color) ? CHECK : NOT_CHECK;
+    }
+    return checkStatus[color] == CHECK;
 }
 
 
@@ -293,7 +298,7 @@ bool Position::is_checkmate() {
 
 
 bool Position::is_game_over() {
-    if (gameStatus == NONE)
+    if (gameStatus == NO_STATUS)
         is_checkmate();
 
     if (gameStatus == GAME_OVER)

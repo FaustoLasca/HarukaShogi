@@ -10,9 +10,16 @@ namespace harukashogi {
 
 
 enum GameStatus {
-    NONE,
+    NO_STATUS,
     IN_PROGRESS,
     GAME_OVER
+};
+
+
+enum CheckStatus {
+    NOT_CHECK,
+    CHECK,
+    CHECK_UNRESOLVED
 };
 
 
@@ -30,7 +37,7 @@ class Position {
       void unmake_move(Move m);
 
       
-      bool is_in_check(Color color) const;
+      bool is_in_check(Color color);
       bool is_legal(Move m);
       bool is_checkmate();
       bool is_game_over();
@@ -42,6 +49,7 @@ class Position {
       Color side_to_move() const { return sideToMove; }
       bool pawn_on_file(Color color, File file) const { return pawnFiles[color * NUM_FILES + file]; }
       Color get_winner() const;
+      int get_move_count() const { return gamePly; }
 
     private:
       // data members
@@ -52,6 +60,7 @@ class Position {
       Color sideToMove;
       int gamePly;
       GameStatus gameStatus;
+      std::array<CheckStatus, NUM_COLORS> checkStatus;
       Color winner;
 };
 

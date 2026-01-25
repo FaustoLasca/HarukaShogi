@@ -28,6 +28,8 @@ add_executable(test_types
     src/movegen.cpp
     src/misc.cpp
     src/perft.cpp
+    src/evaluate.cpp
+    src/search.cpp
 )
 target_include_directories(test_types PRIVATE include)
 
