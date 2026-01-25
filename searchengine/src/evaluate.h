@@ -8,9 +8,11 @@ namespace harukashogi {
 
 int evaluate(Position& pos);
 
+int evaluate_move(Position& pos, Move move);
 
-constexpr int WIN_SCORE = 100000;
-constexpr int INF_SCORE = 100001;
+
+constexpr int WIN_SCORE = 1000000;
+constexpr int INF_SCORE = 1000001;
 
 
 } // namespace harukashogi

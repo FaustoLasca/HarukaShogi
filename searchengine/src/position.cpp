@@ -177,6 +177,8 @@ void Position::make_move(Move m) {
     }
 
     // update side to move and game ply
+    checkStatus.fill(CHECK_UNRESOLVED);
+    gameStatus = NO_STATUS;
     sideToMove = ~sideToMove;
     gamePly++;
 }

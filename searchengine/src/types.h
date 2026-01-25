@@ -186,6 +186,8 @@ struct Move {
 
     constexpr bool is_null() const { return from == NO_SQUARE && to == NO_SQUARE; };
     constexpr bool is_drop() const { return from == NO_SQUARE; };
+    constexpr bool is_capture() const { return from != NO_SQUARE && type_involved != NO_PIECE_TYPE; };
+    constexpr bool is_promotion() const { return promotion; };
 
     std::string to_string() const;
 };

@@ -6,8 +6,8 @@ namespace harukashogi {
 
 
 constexpr int PieceValues[NUM_PIECE_TYPES] = {
-    0, 6000, 5000, 4000, 3000, 10000, 12000, 1000,
-    6000, 6000, 6000, 16000, 16000, 6000
+    0, 6, 5, 4, 3, 10, 12, 1,
+    6, 6, 6, 16, 16, 6
 };
 
 
@@ -25,18 +25,35 @@ int evaluate(Position& pos) {
     for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
         if (pos.piece(sq) != NO_PIECE)
             score += (color_of(pos.piece(sq)) == sideToMove) ? 
-                PieceValues[type_of(pos.piece(sq))] : -PieceValues[type_of(pos.piece(sq))];
+                1000*PieceValues[type_of(pos.piece(sq))] : -1000*PieceValues[type_of(pos.piece(sq))];
     }
 
     // add the value of the hand pieces
     for (PieceType pt = SILVER; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
-        score += (pos.hand_count(sideToMove, pt) * PieceValues[pt]);
-        score -= (pos.hand_count(~sideToMove, pt) * PieceValues[pt]);
+        // hand pieces are volued more than board pieces
+        score += (pos.hand_count(sideToMove, pt) * 1200*PieceValues[pt]);
+        score -= (pos.hand_count(~sideToMove, pt) * 12000*PieceValues[pt]);
     }
 
     // add a small penalty for the number of moves
     // for equivalent outcomes, the direction with less moves is preferred
     score += (score >= 0) ? -moveCount : moveCount;
+
+    return score;
+}
+
+
+int evaluate_move(const Position& pos, Move move) {
+    int score = 0;
+    // if the move is a capture, add a bonus to the score
+    // based on the value of the captured piece and the piece that made the capture
+    if (move.is_capture())
+        score += 1000*PieceValues[move.type_involved] - 100*PieceValues[type_of(pos.piece(move.from))];
+
+    // if the move is a promotion, add a bonus to the score
+    // based on the value of the promoted piece
+    if (move.is_promotion())
+        score += 1000 * (PieceValues[type_of(promote_piece(pos.piece(move.from)))] - PieceValues[type_of(pos.piece(move.from))] );
 
     return score;
 }

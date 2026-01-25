@@ -10,7 +10,7 @@ from ui.gui import Gui
 
 
 SFEN_STRING = None
-# SFEN_STRING = "7nl/7k1/6Ppp/9/9/9/+p+p+p6/2+p6/K1+p6 b GG 1" # mate in 3
+SFEN_STRING = "7nl/7k1/6Ppp/9/9/9/+p+p+p6/2+p6/K1+p6 b GG 1" # mate in 3
 # SFEN_STRING = "7nl/7k1/5+Pppp/9/9/9/+p+p+p6/2+p6/K1+p6 b brppSG 1" # mate in 3
 # SFEN_STRING = "5b1nl/4g1sk1/4ppppp/9/4B4/9/+p+p+p6/2+p6/K1+p6 b GN 1" # mate in 3
 # SFEN_STRING = "9/9/2R1g4/S5P2/4k1+l2/9/3+P2+P2/9/8K b - 1" # mate in 5
@@ -36,9 +36,9 @@ if __name__ == "__main__":
     move_request_queue = Queue()
     move_response_queue = Queue()
     players = [
-        # MinMaxPlayer(SimpleEvaluator(), max_depth=4, time_budget=5),
+        MinMaxPlayer(SimpleEvaluator(), max_depth=3, time_budget=10000),
         GuiPlayer(move_request_queue, move_response_queue),
-        GuiPlayer(move_request_queue, move_response_queue),
+        # GuiPlayer(move_request_queue, move_response_queue),
     ]
 
     controller_thread = threading.Thread(target=start_controller, args=(update_ui_queue, players), kwargs={'sfen': SFEN_STRING})

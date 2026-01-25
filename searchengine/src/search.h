@@ -9,9 +9,16 @@ namespace harukashogi {
 
 class Searcher {
     public:
-        Searcher() = default;
+        Searcher() : nodeCount(0) {};
 
-        int min_max(Position& pos, int depth);
+        int min_max(Position& pos, int depth, int ply = 0, int alpha = -INF_SCORE, int beta = INF_SCORE);
+
+        int get_node_count() const { return nodeCount; }
+        Move get_best_move() const { return bestMove; }
+
+    private:
+        Move bestMove;
+        int nodeCount;
 };
 
 
