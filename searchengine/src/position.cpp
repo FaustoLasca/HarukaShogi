@@ -1,5 +1,6 @@
 #include <sstream>
 #include <iostream>
+#include <random>
 
 #include "position.h"
 #include "types.h"
@@ -7,6 +8,45 @@
 #include "misc.h"
 
 namespace harukashogi {
+
+
+// put all the zobrist hash code related functions here to avoid confusion
+namespace Zobrist {
+
+    uint64_t boardKeys[NUM_SQUARES][NUM_PIECES];
+    uint64_t handKeys[NUM_COLORS][NUM_UNPROMOTED_PIECE_TYPES][MAX_HAND_COUNT];
+    uint64_t sideToMoveKey;
+
+    void init() {
+        // Create a 64-bit Mersenne Twister PRNG
+        std::mt19937_64 rng(12345);
+        
+        // Generate random uint64_t values for board keys
+        for (int sq = 0; sq < NUM_SQUARES; ++sq) {
+            for (int piece = 0; piece < NUM_PIECES; ++piece) {
+                boardKeys[sq][piece] = rng();
+            }
+        }
+        
+        // Generate random uint64_t values for hand keys
+        for (int color = 0; color < NUM_COLORS; ++color) {
+            for (int pieceType = 0; pieceType < NUM_UNPROMOTED_PIECE_TYPES; ++pieceType) {
+                for (int count = 0; count < MAX_HAND_COUNT; ++count) {
+                    handKeys[color][pieceType][count] = rng();
+                }
+            }
+        }
+        
+        // Generate random uint64_t value for side to move
+        sideToMoveKey = rng();
+    }
+}
+
+
+// initializes the position
+void Position::init() {
+    Zobrist::init();
+}
 
 
 // initializes the position from a SFEN string
@@ -67,6 +107,9 @@ void Position::set(const std::string& sfenStr) {
     // 4. full move count
     ss >> std::skipws >> gamePly;
     gamePly--;
+
+    // compute the zobrist hash code
+    compute_key();
 }
 
 
@@ -138,19 +181,31 @@ std::string Position::sfen() const {
 // makes the given move.
 // the move is assumed to be legal.
 void Position::make_move(Move m) {
+    uint8_t count;
+
     // move is not a drop
     if (m.from != NO_SQUARE) {
-        board[m.to] = board[m.from];
-        board[m.from] = NO_PIECE;
+        // update the zobrist key by removing the piece from the from square
+        key ^= Zobrist::boardKeys[m.from][board[m.from]];
 
         // capture
         if (m.type_involved != NO_PIECE_TYPE) {
             // unpromote the piece before adding to hand
+            count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(m.type_involved)];
             hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(m.type_involved)]++;
             // handle pawn files if a pawn is captured
             if (m.type_involved == PAWN)
                 pawnFiles[~sideToMove * NUM_FILES + file_of(m.to)] = false;
+
+            // update the zobrist key by removing the captured piece from the to square
+            // and adding the captured piece to the hand
+            key ^= Zobrist::boardKeys[m.to][board[m.to]];
+            key ^= Zobrist::handKeys[sideToMove][unpromoted_type(m.type_involved)][count];
         }
+
+        // update the board pieces
+        board[m.to] = board[m.from];
+        board[m.from] = NO_PIECE;
             
         // promote the piece if it's a promotion
         if (m.promotion) {
@@ -161,7 +216,9 @@ void Position::make_move(Move m) {
                 pawnFiles[sideToMove * NUM_FILES + file_of(m.from)] = false;
             }
         }
-            
+
+        // update the zobrist key by adding the piece after the move to the to square
+        key ^= Zobrist::boardKeys[m.to][board[m.to]];
 
         // update king square
         if (type_of(board[m.to]) == KING)
@@ -170,10 +227,15 @@ void Position::make_move(Move m) {
     // drop
     else {
         hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved]--;
+        count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved];
         board[m.to] = make_piece(sideToMove, m.type_involved);
         // handle pawn files if a pawn is dropped
         if (m.type_involved == PAWN)
             pawnFiles[sideToMove * NUM_FILES + file_of(m.to)] = true;
+
+        // update the zobrist key
+        key ^= Zobrist::handKeys[sideToMove][m.type_involved][count];
+        key ^= Zobrist::boardKeys[m.to][board[m.to]];
     }
 
     // update side to move and game ply
@@ -181,12 +243,19 @@ void Position::make_move(Move m) {
     gameStatus = NO_STATUS;
     sideToMove = ~sideToMove;
     gamePly++;
+
+    // update the zobrist key by toggling the side to move
+    key ^= Zobrist::sideToMoveKey;
+
+    // compute_key();
 }
 
 
 // undoes the given move.
 // the move is assumed to be legal.
 void Position::unmake_move(Move m) {
+    uint8_t count;
+
     // update side to move first makes logic more intuitive
     // this way sideToMove is from before the move was made
     sideToMove = ~sideToMove;
@@ -199,16 +268,26 @@ void Position::unmake_move(Move m) {
 
     // move is not a drop
     if (m.from != NO_SQUARE) {
+        // remove the piece from the zobrist key by removing the piece from the to square
+        key ^= Zobrist::boardKeys[m.to][board[m.to]];
+
+        // update the board
         board[m.from] = board[m.to];
 
         // capture
         if (m.type_involved != NO_PIECE_TYPE) {
             // piece was promoted, so unpromote it before removing from hand
             hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(m.type_involved)]--;
+            count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(m.type_involved)];
             board[m.to] = make_piece(~sideToMove, m.type_involved);
             // handle pawn files if a pawn was captured and is now on the board
             if (m.type_involved == PAWN)
                 pawnFiles[~sideToMove * NUM_FILES + file_of(m.to)] = true;
+
+            // update the zobrist key by adding the captured piece to the to square
+            // and removing the captured piece from the hand
+            key ^= Zobrist::boardKeys[m.to][board[m.to]];
+            key ^= Zobrist::handKeys[sideToMove][unpromoted_type(m.type_involved)][count];
         }
         else
             board[m.to] = NO_PIECE;
@@ -222,6 +301,9 @@ void Position::unmake_move(Move m) {
             }
         }
 
+        // update the zobrist key by adding the piece to the from square
+        key ^= Zobrist::boardKeys[m.from][board[m.from]];
+
         // update king square
         if (type_of(board[m.from]) == KING)
             kingSq[sideToMove] = m.from;
@@ -229,12 +311,24 @@ void Position::unmake_move(Move m) {
 
     // move is a drop
     else {
+        count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved];
         hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved]++;
+
+        // update the zobrist key by adding the piece to the hand
+        // and removing the piece from the to square
+        key ^= Zobrist::handKeys[sideToMove][m.type_involved][count];
+        key ^= Zobrist::boardKeys[m.to][board[m.to]];
+
         board[m.to] = NO_PIECE;
         // handle pawn files if a pawn was dropped and is now not on the board
         if (m.type_involved == PAWN)
             pawnFiles[sideToMove * NUM_FILES + file_of(m.to)] = false;
     }
+
+    // update the zobrist key by toggling the side to move
+    key ^= Zobrist::sideToMoveKey;
+
+    // compute_key();
 }
 
 
@@ -314,5 +408,33 @@ bool Position::is_game_over() {
 Color Position::get_winner() const {
     return winner;
 }
+
+
+// computes the zobrist hash code of the position
+// this is only called when setting the position
+// otherwise it's updated incrementally in make_move and unmake_move
+void Position::compute_key() {
+    key = 0;
+
+    // board pieces
+    for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
+        if (board[sq] != NO_PIECE) {
+            key ^= Zobrist::boardKeys[sq][board[sq]];
+        }
+    }
+
+    // hand pieces
+    for (Color color = BLACK; color < NUM_COLORS; ++color) {
+        for (PieceType pt = GOLD; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
+            for (uint8_t count = 0; count < hands[color * NUM_UNPROMOTED_PIECE_TYPES + pt]; ++count)
+                key ^= Zobrist::handKeys[color][pt][count];
+        }
+    }
+
+    // side to move
+    if (sideToMove == BLACK)
+        key ^= Zobrist::sideToMoveKey;
+}
+
 
 } // namespace harukashogi

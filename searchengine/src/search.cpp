@@ -1,6 +1,7 @@
 #include <iostream>
 #include <algorithm>
 #include <chrono>
+#include <iomanip>
 
 #include "search.h"
 #include "movegen.h"

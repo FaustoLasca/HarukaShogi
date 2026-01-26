@@ -1,23 +1,24 @@
 #include <iostream>
-#include <string>
-#include <chrono>
+#include <random>
+#include <iomanip>
 
+#include "movegen.h"
+#include "types.h"
 #include "position.h"
-#include "perft.h"
-#include "evaluate.h"
-#include "misc.h"
 #include "search.h"
+#include "misc.h"
 
 using namespace harukashogi;
 
 
 int main() {
+    Position::init();
     Searcher searcher;
-    searcher.set_position("1r4k1l/1P4gs1/4+Sp3/l1pB3pp/PN1p3n1/2P2P1GP/K2+bP4/SG7/r7L w GNNLPPPPsppp 110");
+    searcher.set_position("8l/lpsg1b3/3k5/pP2PpPrp/1Np4n1/P5G2/3PGS2P/4K2P1/L6RL b GSNNPPsbpppp 113");
 
-    std::string bestMove = searcher.search(1000);
+    std::string bestMove = searcher.search(1000, 6);
 
-    std::cout << "Best Move: " << bestMove << std::endl;
+    std::cout << "Best move: " << bestMove << std::endl;
 
     return 0;
 }

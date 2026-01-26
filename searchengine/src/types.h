@@ -168,6 +168,8 @@ constexpr Square add_direction(Square square, Direction d) {
     constexpr T& operator--(T& t) { return t = T(int(t) - 1); } 
 
 ENABLE_INCR_OPERATORS_ON(PieceType)
+ENABLE_INCR_OPERATORS_ON(Piece)
+ENABLE_INCR_OPERATORS_ON(Color)
 ENABLE_INCR_OPERATORS_ON(Square)
 ENABLE_INCR_OPERATORS_ON(File)
 ENABLE_INCR_OPERATORS_ON(Rank)
