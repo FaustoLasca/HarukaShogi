@@ -1,6 +1,7 @@
 #include <sstream>
 #include <iostream>
 #include <random>
+#include <algorithm>
 
 #include "position.h"
 #include "types.h"
@@ -436,5 +437,21 @@ void Position::compute_key() {
         key ^= Zobrist::sideToMoveKey;
 }
 
+
+uint8_t RepetitionTable::count(uint64_t key) {
+    // if the count is less than the draw repetition limit, return the count
+    // even if it's wrong, it doesn't matter
+    if (table[index(key)] < 2) {
+        return table[index(key)];
+    }
+
+    else {
+        int count = std::count(keyHistory.begin(), keyHistory.end(), key);
+        countsNeeded++;
+        if (count > 1)
+            repetitions++;
+        return count;
+    }
+}
 
 } // namespace harukashogi
