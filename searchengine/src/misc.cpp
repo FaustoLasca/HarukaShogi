@@ -1,8 +1,14 @@
 #include <sstream>
 
 #include "misc.h"
+#include "position.h"
 
 namespace harukashogi {
+
+
+void init() {
+    Position::init();
+}
 
 
 std::ostream& operator<<(std::ostream& os, Square sq) {

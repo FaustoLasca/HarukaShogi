@@ -4,6 +4,7 @@
 #include <array>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include "types.h"
 
@@ -24,8 +25,35 @@ enum CheckStatus {
 };
 
 
-constexpr uint8_t MAX_HAND_COUNT = 18;
+constexpr uint8_t MAX_REPETITIONS = 4;
 
+class RepetitionTable {
+	public:
+		RepetitionTable() {
+			keyHistory.reserve(512);
+		};
+
+		void add(uint64_t key) { table[index(key)]++; keyHistory.push_back(key); }
+		void remove(uint64_t key) { table[index(key)]--; keyHistory.pop_back(); }
+
+		bool reached_repetitions(uint64_t key, uint8_t nRepetitions = MAX_REPETITIONS);
+
+		int get_counts_needed() const { return countsNeeded; }
+		int get_repetitions() const { return repetitions; }
+		
+		private:
+		// table size is 2^14
+		// the first 14 bits of the key are used to index
+		uint8_t table[16384] = {};
+		std::vector<uint64_t> keyHistory;
+		int countsNeeded = 0;
+		int repetitions = 0;
+		
+		size_t index(uint64_t key) const { return key >> 50; }
+};
+
+
+constexpr uint8_t MAX_HAND_COUNT = 18;
 
 class Position {
     public:
@@ -59,11 +87,20 @@ class Position {
 		int get_move_count() const { return gamePly; }
 		uint64_t get_key() const { return key; }
 
+		// temporary method to debug the repetition table
+		void print_repetition_values() const {
+			std::cout << "counts needed: " << repetitionTable.get_counts_needed() << std::endl;
+			std::cout << "repetitions: " << repetitionTable.get_repetitions() << std::endl;
+		}
+
 		
 		private:
 		// zobrist hash code
 		void compute_key();
 		uint64_t key;
+
+		// repetition table
+		RepetitionTable repetitionTable;
 
 		// data members
 		std::array<Piece, NUM_SQUARES> board;
@@ -75,34 +112,6 @@ class Position {
 		GameStatus gameStatus;
 		std::array<CheckStatus, NUM_COLORS> checkStatus;
 		Color winner;
-};
-
-
-constexpr int8_t DRAW_REPETITIONS = 4;
-
-class RepetitionTable {
-	public:
-		RepetitionTable() {
-			keyHistory.reserve(512);
-		};
-
-		void add(uint64_t key) { table[index(key)]++; keyHistory.push_back(key); }
-		void remove(uint64_t key) { table[index(key)]--; keyHistory.pop_back(); }
-
-		uint8_t count(uint64_t key);
-
-		int get_counts_needed() const { return countsNeeded; }
-		int get_repetitions() const { return repetitions; }
-		
-		private:
-		// table size is 2^14
-		// the first 14 bits of the key are used to index
-		uint8_t table[16384] = {};
-		std::vector<uint64_t> keyHistory;
-		int countsNeeded = 0;
-		int repetitions = 0;
-		
-		size_t index(uint64_t key) const { return key >> 50; }
 };
 
 

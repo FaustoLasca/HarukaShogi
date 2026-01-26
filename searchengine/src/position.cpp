@@ -111,6 +111,10 @@ void Position::set(const std::string& sfenStr) {
 
     // compute the zobrist hash code
     compute_key();
+
+    // initialize the repetition table and add the initial position
+    repetitionTable = RepetitionTable();
+    repetitionTable.add(key);
 }
 
 
@@ -249,6 +253,9 @@ void Position::make_move(Move m) {
     key ^= Zobrist::sideToMoveKey;
 
     // compute_key();
+
+    // update the repetition table
+    repetitionTable.add(key);
 }
 
 
@@ -256,6 +263,9 @@ void Position::make_move(Move m) {
 // the move is assumed to be legal.
 void Position::unmake_move(Move m) {
     uint8_t count;
+
+    // update the repetition table
+    repetitionTable.remove(key);
 
     // update side to move first makes logic more intuitive
     // this way sideToMove is from before the move was made
@@ -395,8 +405,15 @@ bool Position::is_checkmate() {
 
 
 bool Position::is_game_over() {
-    if (gameStatus == NO_STATUS)
-        is_checkmate();
+    if (gameStatus == NO_STATUS) {
+        if (repetitionTable.reached_repetitions(key, MAX_REPETITIONS)) {
+            gameStatus = GAME_OVER;
+            winner = NO_COLOR;
+        }
+        else
+            is_checkmate();
+    }
+        
 
     if (gameStatus == GAME_OVER)
         return true;
@@ -438,19 +455,38 @@ void Position::compute_key() {
 }
 
 
-uint8_t RepetitionTable::count(uint64_t key) {
+bool RepetitionTable::reached_repetitions(uint64_t key, uint8_t nRepetitions) {
     // if the count is less than the draw repetition limit, return the count
     // even if it's wrong, it doesn't matter
-    if (table[index(key)] < 2) {
-        return table[index(key)];
+    if (table[index(key)] < nRepetitions) {
+        return false;
     }
 
     else {
-        int count = std::count(keyHistory.begin(), keyHistory.end(), key);
         countsNeeded++;
-        if (count > 1)
-            repetitions++;
-        return count;
+        // search backwards in the key history to count the repetitions
+        // this is more efficient than searching forwards in realistic scenarios
+        int wrongHits = 0;
+        int count = 0;
+        for (auto el = keyHistory.rbegin(); el != keyHistory.rend(); ++el) {
+            if (index(*el) == index(key)) {
+                if (*el == key) {
+                    count++;
+                    if (count >= nRepetitions) {
+                        repetitions++;
+                        return true;
+                    }
+                        
+                }
+                else
+                    wrongHits++;
+                // if the remaining hits are less than the repetitions limit, exit early and return false
+                if (table[index(*el)] - wrongHits < nRepetitions)
+                    return false;
+            }
+        }
+
+        return false;
     }
 }
 

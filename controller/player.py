@@ -10,7 +10,7 @@ from search.evaluation.evaluator import Evaluator
 from search.evaluation.move_ordering import MoveOrderer
 from search.alpha_beta.searcher import MinMaxSearcher
 
-from searchengine import Searcher
+import searchengine as haruka
 
 
 class Player:
@@ -78,9 +78,11 @@ class MinMaxPlayer(Player):
 # Haruka uses the searchengine library to search for the best move
 class Haruka(Player):
     def __init__(self, time_limit: int = 600000, max_depth: int = 20):
+        haruka.init()
+        
         self.time_limit = time_limit
         self.max_depth = max_depth
-        self.searcher = Searcher()
+        self.searcher = haruka.Searcher()
         self.state = GameState()
     
     def update_state(self, move: int, game_state: GameState) -> int:

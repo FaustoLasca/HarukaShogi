@@ -16,6 +16,9 @@ std::ostream& operator<<(std::ostream& os, Square t);
 std::ostream& operator<<(std::ostream& os, Move pt);
 
 
+void init();
+
+
 } // namespace harukashogi
 
 #endif // MISC_H

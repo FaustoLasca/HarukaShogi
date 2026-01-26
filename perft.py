@@ -15,7 +15,7 @@ def count_nodes(game_state: GameState, depth: int) -> int:
         return 1
     return nodes
 
-DEPTH = 3
+DEPTH = 4
 # SFEN = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
 # SFEN = "ln6l/1r2gkg2/4psnp1/p1pps1p1p/1p3p3/P1P1S1P1P/1PSPP1N2/2G2G3/LNK4RL w BPbp 48"
 # SFEN = "ln1g5/1r3kg2/p2pppn+P1/2ps2p2/1p6l/2P6/PPSPPPPLN/2G2K1pP/LN4G1b w BSSPr 56"

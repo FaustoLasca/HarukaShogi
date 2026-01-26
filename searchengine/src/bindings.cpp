@@ -2,6 +2,7 @@
 
 # include "perft.h"
 # include "search.h"
+# include "misc.h"
 
 namespace py = pybind11;
 
@@ -17,6 +18,8 @@ PYBIND11_MODULE(searchengine, m) {
             py::call_guard<py::gil_scoped_release>());
 
     m.def("perft", py::overload_cast<std::string, int>(&perft));
+
+    m.def("init", &init);
 }
 
 } // namespace harukashogi
