@@ -29,7 +29,7 @@ int test_repetition_table(Position& pos, RepetitionTable& rt, int depth) {
 
         nodes += test_repetition_table(pos, rt, depth - 1);
 
-        rt.reached_repetitions(pos.get_key(), 2);
+        // rt.reached_repetitions(pos.get_key(), pos.si, 2);
 
         rt.remove(pos.get_key());
         pos.unmake_move(*m);
@@ -43,9 +43,15 @@ int main() {
     Position::init();
 
     Position pos;
-    pos.set("l+R1g3nl/2n1k1gs1/3ppp1pp/1Pps2P2/2P3S2/P1B6/2gPPP2P/2B1KL+r2/7NL b SNPgppp 81");
+    pos.set();
 
-    perft_test(pos, 4);
+    std::printf("Key: %16lx\n", pos.get_key());
+
+    perft(pos, 5);
+
+    std::printf("Key: %16lx\n", pos.get_key());
+
+    pos.print_repetition_values();
 
     return 0;
 }

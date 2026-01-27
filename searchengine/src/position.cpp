@@ -1,7 +1,6 @@
 #include <sstream>
 #include <iostream>
 #include <random>
-#include <algorithm>
 
 #include "position.h"
 #include "types.h"
@@ -66,7 +65,6 @@ void Position::set(const std::string& sfenStr) {
     hands.fill(0);
     pawnFiles.fill(false);
     gameStatus = NO_STATUS;
-    checkStatus.fill(CHECK_UNRESOLVED);
     winner = NO_COLOR;
 
     // 1. board pieces
@@ -109,12 +107,16 @@ void Position::set(const std::string& sfenStr) {
     ss >> std::skipws >> gamePly;
     gamePly--;
 
+    // initialize the state info list
+    si.clear();
+    si.push_front(StateInfo());
+
     // compute the zobrist hash code
     compute_key();
 
     // initialize the repetition table and add the initial position
     repetitionTable = RepetitionTable();
-    repetitionTable.add(key);
+    repetitionTable.add(si.front().key);
 }
 
 
@@ -188,10 +190,14 @@ std::string Position::sfen() const {
 void Position::make_move(Move m) {
     uint8_t count;
 
+    // add a new state info to the list
+    // copy the current state info to the new one
+    si.push_front(StateInfo(si.front()));
+
     // move is not a drop
     if (m.from != NO_SQUARE) {
         // update the zobrist key by removing the piece from the from square
-        key ^= Zobrist::boardKeys[m.from][board[m.from]];
+        si.front().key ^= Zobrist::boardKeys[m.from][board[m.from]];
 
         // capture
         if (m.type_involved != NO_PIECE_TYPE) {
@@ -204,8 +210,8 @@ void Position::make_move(Move m) {
 
             // update the zobrist key by removing the captured piece from the to square
             // and adding the captured piece to the hand
-            key ^= Zobrist::boardKeys[m.to][board[m.to]];
-            key ^= Zobrist::handKeys[sideToMove][unpromoted_type(m.type_involved)][count];
+            si.front().key ^= Zobrist::boardKeys[m.to][board[m.to]];
+            si.front().key ^= Zobrist::handKeys[sideToMove][unpromoted_type(m.type_involved)][count];
         }
 
         // update the board pieces
@@ -223,7 +229,7 @@ void Position::make_move(Move m) {
         }
 
         // update the zobrist key by adding the piece after the move to the to square
-        key ^= Zobrist::boardKeys[m.to][board[m.to]];
+        si.front().key ^= Zobrist::boardKeys[m.to][board[m.to]];
 
         // update king square
         if (type_of(board[m.to]) == KING)
@@ -239,23 +245,23 @@ void Position::make_move(Move m) {
             pawnFiles[sideToMove * NUM_FILES + file_of(m.to)] = true;
 
         // update the zobrist key
-        key ^= Zobrist::handKeys[sideToMove][m.type_involved][count];
-        key ^= Zobrist::boardKeys[m.to][board[m.to]];
+        si.front().key ^= Zobrist::handKeys[sideToMove][m.type_involved][count];
+        si.front().key ^= Zobrist::boardKeys[m.to][board[m.to]];
     }
 
     // update side to move and game ply
-    checkStatus.fill(CHECK_UNRESOLVED);
+    si.front().checkStatus.fill(CHECK_UNRESOLVED);
     gameStatus = NO_STATUS;
     sideToMove = ~sideToMove;
     gamePly++;
 
     // update the zobrist key by toggling the side to move
-    key ^= Zobrist::sideToMoveKey;
+    si.front().key ^= Zobrist::sideToMoveKey;
 
     // compute_key();
 
     // update the repetition table
-    repetitionTable.add(key);
+    repetitionTable.add(si.front().key);
 }
 
 
@@ -264,8 +270,11 @@ void Position::make_move(Move m) {
 void Position::unmake_move(Move m) {
     uint8_t count;
 
-    // update the repetition table
-    repetitionTable.remove(key);
+    // update the repetition table before removing the state info
+    repetitionTable.remove(si.front().key);
+
+    // remove the current state info from the list
+    si.pop_front();
 
     // update side to move first makes logic more intuitive
     // this way sideToMove is from before the move was made
@@ -274,14 +283,10 @@ void Position::unmake_move(Move m) {
 
     // update game status
     gameStatus = IN_PROGRESS;
-    checkStatus.fill(CHECK_UNRESOLVED);
     winner = NO_COLOR;
 
     // move is not a drop
     if (m.from != NO_SQUARE) {
-        // remove the piece from the zobrist key by removing the piece from the to square
-        key ^= Zobrist::boardKeys[m.to][board[m.to]];
-
         // update the board
         board[m.from] = board[m.to];
 
@@ -294,11 +299,6 @@ void Position::unmake_move(Move m) {
             // handle pawn files if a pawn was captured and is now on the board
             if (m.type_involved == PAWN)
                 pawnFiles[~sideToMove * NUM_FILES + file_of(m.to)] = true;
-
-            // update the zobrist key by adding the captured piece to the to square
-            // and removing the captured piece from the hand
-            key ^= Zobrist::boardKeys[m.to][board[m.to]];
-            key ^= Zobrist::handKeys[sideToMove][unpromoted_type(m.type_involved)][count];
         }
         else
             board[m.to] = NO_PIECE;
@@ -312,9 +312,6 @@ void Position::unmake_move(Move m) {
             }
         }
 
-        // update the zobrist key by adding the piece to the from square
-        key ^= Zobrist::boardKeys[m.from][board[m.from]];
-
         // update king square
         if (type_of(board[m.from]) == KING)
             kingSq[sideToMove] = m.from;
@@ -325,29 +322,22 @@ void Position::unmake_move(Move m) {
         count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved];
         hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved]++;
 
-        // update the zobrist key by adding the piece to the hand
-        // and removing the piece from the to square
-        key ^= Zobrist::handKeys[sideToMove][m.type_involved][count];
-        key ^= Zobrist::boardKeys[m.to][board[m.to]];
-
         board[m.to] = NO_PIECE;
         // handle pawn files if a pawn was dropped and is now not on the board
         if (m.type_involved == PAWN)
             pawnFiles[sideToMove * NUM_FILES + file_of(m.to)] = false;
     }
 
-    // update the zobrist key by toggling the side to move
-    key ^= Zobrist::sideToMoveKey;
-
     // compute_key();
 }
 
 
 bool Position::is_in_check(Color color) {
-    if (checkStatus[color] == CHECK_UNRESOLVED) {
-        checkStatus[color] = is_attacked(*this, kingSq[color], ~color) ? CHECK : NOT_CHECK;
+    CheckStatus& checkStatus = si.front().checkStatus[color];
+    if (checkStatus == CHECK_UNRESOLVED) {
+        checkStatus = is_attacked(*this, kingSq[color], ~color) ? CHECK : NOT_CHECK;
     }
-    return checkStatus[color] == CHECK;
+    return checkStatus == CHECK;
 }
 
 
@@ -406,7 +396,7 @@ bool Position::is_checkmate() {
 
 bool Position::is_game_over() {
     if (gameStatus == NO_STATUS) {
-        if (repetitionTable.reached_repetitions(key, MAX_REPETITIONS)) {
+        if (repetitionTable.reached_repetitions(si.front().key, si)) {
             gameStatus = GAME_OVER;
             winner = NO_COLOR;
         }
@@ -432,7 +422,7 @@ Color Position::get_winner() const {
 // this is only called when setting the position
 // otherwise it's updated incrementally in make_move and unmake_move
 void Position::compute_key() {
-    key = 0;
+    uint64_t key = 0;
 
     // board pieces
     for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
@@ -452,10 +442,12 @@ void Position::compute_key() {
     // side to move
     if (sideToMove == BLACK)
         key ^= Zobrist::sideToMoveKey;
+
+    si.front().key = key;
 }
 
 
-bool RepetitionTable::reached_repetitions(uint64_t key, uint8_t nRepetitions) {
+bool RepetitionTable::reached_repetitions(uint64_t key, std::forward_list<StateInfo>& si, uint8_t nRepetitions) {
     // if the count is less than the draw repetition limit, return the count
     // even if it's wrong, it doesn't matter
     if (table[index(key)] < nRepetitions) {
@@ -468,9 +460,9 @@ bool RepetitionTable::reached_repetitions(uint64_t key, uint8_t nRepetitions) {
         // this is more efficient than searching forwards in realistic scenarios
         int wrongHits = 0;
         int count = 0;
-        for (auto el = keyHistory.rbegin(); el != keyHistory.rend(); ++el) {
-            if (index(*el) == index(key)) {
-                if (*el == key) {
+        for (StateInfo& st : si) {
+            if (index(st.key) == index(key)) {
+                if (st.key == key) {
                     count++;
                     if (count >= nRepetitions) {
                         repetitions++;
@@ -481,7 +473,7 @@ bool RepetitionTable::reached_repetitions(uint64_t key, uint8_t nRepetitions) {
                 else
                     wrongHits++;
                 // if the remaining hits are less than the repetitions limit, exit early and return false
-                if (table[index(*el)] - wrongHits < nRepetitions)
+                if (table[index(st.key)] - wrongHits < nRepetitions)
                     return false;
             }
         }

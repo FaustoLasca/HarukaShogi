@@ -1,9 +1,10 @@
 #ifndef POSITION_H
 #define POSITION_H
 
-#include <array>
 #include <string>
+#include <array>
 #include <vector>
+#include <forward_list>
 #include <iostream>
 
 #include "types.h"
@@ -25,18 +26,27 @@ enum CheckStatus {
 };
 
 
+struct StateInfo {
+	StateInfo() : capturedPiece(NO_PIECE_TYPE), checkStatus{CHECK_UNRESOLVED, CHECK_UNRESOLVED}, key(0) {}
+
+	PieceType capturedPiece;
+
+	std::array<CheckStatus, NUM_COLORS> checkStatus;
+
+	uint64_t key;
+};
+
+
 constexpr uint8_t MAX_REPETITIONS = 4;
 
 class RepetitionTable {
 	public:
-		RepetitionTable() {
-			keyHistory.reserve(512);
-		};
+		RepetitionTable() = default;
 
-		void add(uint64_t key) { table[index(key)]++; keyHistory.push_back(key); }
-		void remove(uint64_t key) { table[index(key)]--; keyHistory.pop_back(); }
+		void add(uint64_t key) { table[index(key)]++;}
+		void remove(uint64_t key) { table[index(key)]--;}
 
-		bool reached_repetitions(uint64_t key, uint8_t nRepetitions = MAX_REPETITIONS);
+		bool reached_repetitions(uint64_t key, std::forward_list<StateInfo>& si, uint8_t nRepetitions = MAX_REPETITIONS);
 
 		int get_counts_needed() const { return countsNeeded; }
 		int get_repetitions() const { return repetitions; }
@@ -45,7 +55,6 @@ class RepetitionTable {
 		// table size is 2^14
 		// the first 14 bits of the key are used to index
 		uint8_t table[16384] = {};
-		std::vector<uint64_t> keyHistory;
 		int countsNeeded = 0;
 		int repetitions = 0;
 		
@@ -64,7 +73,7 @@ class Position {
 		static void init();
 
 		// SFEN string methods
-		void set(const std::string& sfenStr);
+		void set(const std::string& sfenStr = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1");
 		std::string sfen() const;
 
 		// move methods
@@ -85,7 +94,7 @@ class Position {
 		bool pawn_on_file(Color color, File file) const { return pawnFiles[color * NUM_FILES + file]; }
 		Color get_winner() const;
 		int get_move_count() const { return gamePly; }
-		uint64_t get_key() const { return key; }
+		uint64_t get_key() const { return si.front().key; }
 
 		// temporary method to debug the repetition table
 		void print_repetition_values() const {
@@ -95,13 +104,12 @@ class Position {
 
 		
 		private:
-		// zobrist hash code
+		// compute the zobrist hash code
 		void compute_key();
-		uint64_t key;
-
+		
 		// repetition table
 		RepetitionTable repetitionTable;
-
+		
 		// data members
 		std::array<Piece, NUM_SQUARES> board;
 		std::array<uint8_t, NUM_COLORS * NUM_UNPROMOTED_PIECE_TYPES> hands;
@@ -109,9 +117,11 @@ class Position {
 		std::array<bool, NUM_COLORS * NUM_FILES> pawnFiles;
 		Color sideToMove;
 		int gamePly;
+		
 		GameStatus gameStatus;
-		std::array<CheckStatus, NUM_COLORS> checkStatus;
 		Color winner;
+		
+		std::forward_list<StateInfo> si;
 };
 
 
