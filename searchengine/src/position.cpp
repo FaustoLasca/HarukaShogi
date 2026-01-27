@@ -1,5 +1,6 @@
 #include <sstream>
 #include <iostream>
+#include <random>
 
 #include "position.h"
 #include "types.h"
@@ -7,6 +8,45 @@
 #include "misc.h"
 
 namespace harukashogi {
+
+
+// put all the zobrist hash code related functions here to avoid confusion
+namespace Zobrist {
+
+    uint64_t boardKeys[NUM_SQUARES][NUM_PIECES];
+    uint64_t handKeys[NUM_COLORS][NUM_UNPROMOTED_PIECE_TYPES][MAX_HAND_COUNT];
+    uint64_t sideToMoveKey;
+
+    void init() {
+        // Create a 64-bit Mersenne Twister PRNG
+        std::mt19937_64 rng(12345);
+        
+        // Generate random uint64_t values for board keys
+        for (int sq = 0; sq < NUM_SQUARES; ++sq) {
+            for (int piece = 0; piece < NUM_PIECES; ++piece) {
+                boardKeys[sq][piece] = rng();
+            }
+        }
+        
+        // Generate random uint64_t values for hand keys
+        for (int color = 0; color < NUM_COLORS; ++color) {
+            for (int pieceType = 0; pieceType < NUM_UNPROMOTED_PIECE_TYPES; ++pieceType) {
+                for (int count = 0; count < MAX_HAND_COUNT; ++count) {
+                    handKeys[color][pieceType][count] = rng();
+                }
+            }
+        }
+        
+        // Generate random uint64_t value for side to move
+        sideToMoveKey = rng();
+    }
+}
+
+
+// initializes the position
+void Position::init() {
+    Zobrist::init();
+}
 
 
 // initializes the position from a SFEN string
@@ -25,7 +65,6 @@ void Position::set(const std::string& sfenStr) {
     hands.fill(0);
     pawnFiles.fill(false);
     gameStatus = NO_STATUS;
-    checkStatus.fill(CHECK_UNRESOLVED);
     winner = NO_COLOR;
 
     // 1. board pieces
@@ -67,6 +106,17 @@ void Position::set(const std::string& sfenStr) {
     // 4. full move count
     ss >> std::skipws >> gamePly;
     gamePly--;
+
+    // initialize the state info list
+    si.clear();
+    si.push_front(StateInfo());
+
+    // compute the zobrist hash code
+    compute_key();
+
+    // initialize the repetition table and add the initial position
+    repetitionTable = RepetitionTable();
+    repetitionTable.add(si.front().key);
 }
 
 
@@ -138,55 +188,97 @@ std::string Position::sfen() const {
 // makes the given move.
 // the move is assumed to be legal.
 void Position::make_move(Move m) {
+    uint8_t count;
+
+    // add a new state info to the list
+    // copy the current state info to the new one
+    si.push_front(StateInfo(si.front()));
+    si.front().checkStatus.fill(CHECK_UNRESOLVED);
+    si.front().capturedPT = NO_PIECE_TYPE;
+
     // move is not a drop
-    if (m.from != NO_SQUARE) {
-        board[m.to] = board[m.from];
-        board[m.from] = NO_PIECE;
+    if (!m.is_drop()) {
+        // update the zobrist key by removing the piece from the from square
+        si.front().key ^= Zobrist::boardKeys[m.from()][board[m.from()]];
 
         // capture
-        if (m.type_involved != NO_PIECE_TYPE) {
+        if (board[m.to()] != NO_PIECE) {
+            PieceType capturedPT = type_of(board[m.to()]);
             // unpromote the piece before adding to hand
-            hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(m.type_involved)]++;
+            count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(capturedPT)];
+            hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(capturedPT)]++;
             // handle pawn files if a pawn is captured
-            if (m.type_involved == PAWN)
-                pawnFiles[~sideToMove * NUM_FILES + file_of(m.to)] = false;
+            if (capturedPT == PAWN)
+                pawnFiles[~sideToMove * NUM_FILES + file_of(m.to())] = false;
+
+            // update the zobrist key by removing the captured piece from the to square
+            // and adding the captured piece to the hand
+            si.front().key ^= Zobrist::boardKeys[m.to()][board[m.to()]];
+            si.front().key ^= Zobrist::handKeys[sideToMove][unpromoted_type(capturedPT)][count];
+
+            // update the captured piece type in the state info
+            si.front().capturedPT = capturedPT;
         }
+
+        // update the board pieces
+        board[m.to()] = board[m.from()];
+        board[m.from()] = NO_PIECE;
             
         // promote the piece if it's a promotion
-        if (m.promotion) {
-            board[m.to] = promote_piece(board[m.to]);
+        if (m.is_promotion()) {
+            board[m.to()] = promote_piece(board[m.to()]);
             // if a pawn is promoted, update the pawn file
             // pawns can be dropped to tha same file of the promoted pawn
-            if (type_of(board[m.to]) == P_PAWN) {
-                pawnFiles[sideToMove * NUM_FILES + file_of(m.from)] = false;
+            if (type_of(board[m.to()]) == P_PAWN) {
+                pawnFiles[sideToMove * NUM_FILES + file_of(m.from())] = false;
             }
         }
-            
+
+        // update the zobrist key by adding the piece after the move to the to square
+        si.front().key ^= Zobrist::boardKeys[m.to()][board[m.to()]];
 
         // update king square
-        if (type_of(board[m.to]) == KING)
-            kingSq[sideToMove] = m.to;
+        if (type_of(board[m.to()]) == KING)
+            kingSq[sideToMove] = m.to();
     }
     // drop
     else {
-        hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved]--;
-        board[m.to] = make_piece(sideToMove, m.type_involved);
+        hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.dropped()]--;
+        count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.dropped()];
+        board[m.to()] = make_piece(sideToMove, m.dropped());
         // handle pawn files if a pawn is dropped
-        if (m.type_involved == PAWN)
-            pawnFiles[sideToMove * NUM_FILES + file_of(m.to)] = true;
+        if (m.dropped() == PAWN)
+            pawnFiles[sideToMove * NUM_FILES + file_of(m.to())] = true;
+
+        // update the zobrist key
+        si.front().key ^= Zobrist::handKeys[sideToMove][m.dropped()][count];
+        si.front().key ^= Zobrist::boardKeys[m.to()][board[m.to()]];
     }
 
     // update side to move and game ply
-    checkStatus.fill(CHECK_UNRESOLVED);
+    si.front().checkStatus.fill(CHECK_UNRESOLVED);
     gameStatus = NO_STATUS;
     sideToMove = ~sideToMove;
     gamePly++;
+
+    // update the zobrist key by toggling the side to move
+    si.front().key ^= Zobrist::sideToMoveKey;
+
+    // compute_key();
+
+    // update the repetition table
+    repetitionTable.add(si.front().key);
 }
 
 
 // undoes the given move.
 // the move is assumed to be legal.
 void Position::unmake_move(Move m) {
+    uint8_t count;
+
+    // update the repetition table before removing the state info
+    repetitionTable.remove(si.front().key);
+
     // update side to move first makes logic more intuitive
     // this way sideToMove is from before the move was made
     sideToMove = ~sideToMove;
@@ -194,55 +286,64 @@ void Position::unmake_move(Move m) {
 
     // update game status
     gameStatus = IN_PROGRESS;
-    checkStatus.fill(CHECK_UNRESOLVED);
     winner = NO_COLOR;
 
     // move is not a drop
-    if (m.from != NO_SQUARE) {
-        board[m.from] = board[m.to];
+    if (!m.is_drop()) {
+        // update the board
+        board[m.from()] = board[m.to()];
 
         // capture
-        if (m.type_involved != NO_PIECE_TYPE) {
+        if (si.front().capturedPT != NO_PIECE_TYPE) {
+            PieceType capturedPT = si.front().capturedPT;
             // piece was promoted, so unpromote it before removing from hand
-            hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(m.type_involved)]--;
-            board[m.to] = make_piece(~sideToMove, m.type_involved);
+            hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(capturedPT)]--;
+            count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(capturedPT)];
+            board[m.to()] = make_piece(~sideToMove, capturedPT);
             // handle pawn files if a pawn was captured and is now on the board
-            if (m.type_involved == PAWN)
-                pawnFiles[~sideToMove * NUM_FILES + file_of(m.to)] = true;
+            if (capturedPT == PAWN)
+                pawnFiles[~sideToMove * NUM_FILES + file_of(m.to())] = true;
         }
         else
-            board[m.to] = NO_PIECE;
+            board[m.to()] = NO_PIECE;
             
         // unpromote the piece if it's a promotion
-        if (m.promotion) {
-            board[m.from] = unpromote_piece(board[m.from]);
+        if (m.is_promotion()) {
+            board[m.from()] = unpromote_piece(board[m.from()]);
             // if the promoted piece was a pawn, update the pawn file
-            if (type_of(board[m.from]) == PAWN) {
-                pawnFiles[sideToMove * NUM_FILES + file_of(m.from)] = true;
+            if (type_of(board[m.from()]) == PAWN) {
+                pawnFiles[sideToMove * NUM_FILES + file_of(m.from())] = true;
             }
         }
 
         // update king square
-        if (type_of(board[m.from]) == KING)
-            kingSq[sideToMove] = m.from;
+        if (type_of(board[m.from()]) == KING)
+            kingSq[sideToMove] = m.from();
     }
 
     // move is a drop
     else {
-        hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved]++;
-        board[m.to] = NO_PIECE;
+        count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.dropped()];
+        hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.dropped()]++;
+
+        board[m.to()] = NO_PIECE;
         // handle pawn files if a pawn was dropped and is now not on the board
-        if (m.type_involved == PAWN)
-            pawnFiles[sideToMove * NUM_FILES + file_of(m.to)] = false;
+        if (m.dropped() == PAWN)
+            pawnFiles[sideToMove * NUM_FILES + file_of(m.to())] = false;
     }
+
+    // remove the current state info from the list
+    si.pop_front();
 }
 
 
 bool Position::is_in_check(Color color) {
-    if (checkStatus[color] == CHECK_UNRESOLVED) {
-        checkStatus[color] = is_attacked(*this, kingSq[color], ~color) ? CHECK : NOT_CHECK;
+    CheckStatus& checkStatus = si.front().checkStatus[color];
+    // CheckStatus checkStatus = CHECK_UNRESOLVED;
+    if (checkStatus == CHECK_UNRESOLVED) {
+        checkStatus = is_attacked(*this, kingSq[color], ~color) ? CHECK : NOT_CHECK;
     }
-    return checkStatus[color] == CHECK;
+    return checkStatus == CHECK;
 }
 
 
@@ -257,11 +358,11 @@ bool Position::is_legal(Move m) {
     // pawn drop can't checkmate
     // TODO: this works but is very inefficient
     // generate pawn move and check for checkmate
-    if (is_legal && m.is_drop() && m.type_involved == PAWN) {
+    if (is_legal && m.is_drop() && m.dropped() == PAWN) {
         Direction pawnAttack = (sideToMove == BLACK) ? SOUTH : NORTH;
         // if the pawn drop eats the king, check if there are any legal moves
         // for the opponent. If not it's checkmate.
-        if ((m.to + pawnAttack) == kingSq[sideToMove]) {
+        if ((m.to() + pawnAttack) == kingSq[sideToMove]) {
             Move moveList[MAX_MOVES];
             generate_moves(*this, moveList);
             if (moveList[0].is_null())
@@ -275,22 +376,27 @@ bool Position::is_legal(Move m) {
 }
 
 
+bool Position::is_capture(Move m) const {
+    return board[m.to()] != NO_PIECE;
+}
+
+
 bool Position::is_checkmate() {
     Color color = sideToMove;
     // only go forward if the king is in check
     if (is_in_check(color)) {
         // first check if the king has any legal moves
         Move moveList[MAX_MOVES];
-        piece_moves(*this, moveList, kingSq[color]);
+        Move* end = piece_moves(*this, moveList, kingSq[color]);
 
         // if the king has no legal move, generate all moves
-        if (moveList[0].is_null()) {
-            generate_moves(*this, moveList);
-            if (moveList[0].is_null()) {
+        if (end == moveList) {
+            end = generate_moves(*this, moveList);
+            if (end == moveList) {
                 gameStatus = GAME_OVER;
                 winner = ~color;
                 return true;
-            }  
+            }
         }
     }
 
@@ -300,19 +406,90 @@ bool Position::is_checkmate() {
 
 
 bool Position::is_game_over() {
-    if (gameStatus == NO_STATUS)
-        is_checkmate();
+    if (gameStatus == NO_STATUS) {
+        if (repetitionTable.reached_repetitions(si.front().key, si)) {
+            gameStatus = GAME_OVER;
+            winner = NO_COLOR;
+        }
+        else
+            is_checkmate();
+    }
+        
 
     if (gameStatus == GAME_OVER)
         return true;
-
-    // no check for stalemate atm
-    return false;
+    else
+        return false;
 }
 
 
 Color Position::get_winner() const {
     return winner;
+}
+
+
+// computes the zobrist hash code of the position
+// this is only called when setting the position
+// otherwise it's updated incrementally in make_move and unmake_move
+void Position::compute_key() {
+    uint64_t key = 0;
+
+    // board pieces
+    for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
+        if (board[sq] != NO_PIECE) {
+            key ^= Zobrist::boardKeys[sq][board[sq]];
+        }
+    }
+
+    // hand pieces
+    for (Color color = BLACK; color < NUM_COLORS; ++color) {
+        for (PieceType pt = GOLD; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
+            for (uint8_t count = 0; count < hands[color * NUM_UNPROMOTED_PIECE_TYPES + pt]; ++count)
+                key ^= Zobrist::handKeys[color][pt][count];
+        }
+    }
+
+    // side to move
+    if (sideToMove == BLACK)
+        key ^= Zobrist::sideToMoveKey;
+
+    si.front().key = key;
+}
+
+
+bool RepetitionTable::reached_repetitions(uint64_t key, std::forward_list<StateInfo>& si, uint8_t nRepetitions) {
+    // if the count is less than the draw repetition limit, return the count
+    // even if it's wrong, it doesn't matter
+    if (table[index(key)] < nRepetitions) {
+        return false;
+    }
+
+    else {
+        countsNeeded++;
+        // search backwards in the key history to count the repetitions
+        // this is more efficient than searching forwards in realistic scenarios
+        int wrongHits = 0;
+        int count = 0;
+        for (StateInfo& st : si) {
+            if (index(st.key) == index(key)) {
+                if (st.key == key) {
+                    count++;
+                    if (count >= nRepetitions) {
+                        repetitions++;
+                        return true;
+                    }
+                        
+                }
+                else
+                    wrongHits++;
+                // if the remaining hits are less than the repetitions limit, exit early and return false
+                if (table[index(st.key)] - wrongHits < nRepetitions)
+                    return false;
+            }
+        }
+
+        return false;
+    }
 }
 
 } // namespace harukashogi

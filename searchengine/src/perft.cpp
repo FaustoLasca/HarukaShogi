@@ -18,7 +18,7 @@ int perft(Position& pos, int depth) {
 
     // in case of stalemate
     // extremely rare but possible
-    if (moveList[0].is_null()) {
+    if (end == moveList) {
         return 1;
     }
 

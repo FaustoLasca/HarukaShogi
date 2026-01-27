@@ -58,7 +58,7 @@ bool is_attacked(const Position& pos, Square square, Color by) {
 Move* piece_moves(Position& pos, Move* moveList, Square from) {
     PieceType pt = type_of(pos.piece(from));
     PieceType captured = NO_PIECE_TYPE;
-    Move move = NULL_MOVE;
+    Move move = Move::null();
     Color color = color_of(pos.piece(from));
     int colorFactor = (color == BLACK) ? 1 : -1;
     bool promotion = false;
@@ -76,22 +76,18 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
 
         to = add_direction(from, d);
         if (to != NO_SQUARE) {
-            // empty square
-            if (pos.piece(to) == NO_PIECE)
-                move = Move{from, to, false, NO_PIECE_TYPE};
-
-            // capture piece
-            else if (color_of(pos.piece(to)) == ~color)
-                move = Move{from, to, false, type_of(pos.piece(to))};
+            // empty square or capture
+            if (pos.piece(to) == NO_PIECE || color_of(pos.piece(to)) == ~color)
+                move = Move(from, to);
 
             // check if promotion is available
             if ((promotion_zone(to, color) || promotion_zone(from, color)) && !is_promoted(pt) && can_promote(pt)) {
                 promotion = true;
                 // check if promotion is forced
                 // applies to pawns and knights for standard moves
-                if ((pt == PAWN || pt == KNIGHT) && rank_of(move.to) == lastRank)
+                if ((pt == PAWN || pt == KNIGHT) && rank_of(move.to()) == lastRank)
                     forced_promotion = true;
-                else if (pt == KNIGHT && rank_of(move.to) == secondLastRank)
+                else if (pt == KNIGHT && rank_of(move.to()) == secondLastRank)
                     forced_promotion = true;
             }
            
@@ -102,7 +98,7 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
                     if (!forced_promotion)
                         *moveList++ = move;
                     if (promotion) {
-                        move.promotion = true;
+                        move = Move(move.from(), move.to(), true);
                         *moveList++ = move;
                     }
                 }
@@ -111,7 +107,7 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
             // reset flags and move
             promotion = false;
             forced_promotion = false;
-            move = NULL_MOVE;
+            move = Move::null();
             captured = NO_PIECE_TYPE;
         }
     }
@@ -131,10 +127,10 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
 
             while (to != NO_SQUARE && !collision) {
                 if (pos.piece(to) == NO_PIECE)
-                    move = Move{from, to, false, NO_PIECE_TYPE};
+                    move = Move(from, to);
 
                 else if (color_of(pos.piece(to)) == ~color) {
-                    move = Move{from, to, false, type_of(pos.piece(to))};
+                    move = Move(from, to);
                     collision = true;
                 }
 
@@ -147,7 +143,7 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
                     promotion = true;
                     // check if promotion is forced
                     // only applies to lance for sliding moves
-                    if (pt == LANCE && rank_of(move.to) == lastRank)
+                    if (pt == LANCE && rank_of(move.to()) == lastRank)
                         forced_promotion = true;
                 }
 
@@ -157,7 +153,7 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
                         if (!forced_promotion)
                             *moveList++ = move;
                         if (promotion) {
-                            move.promotion = true;
+                            move = Move(move.from(), move.to(), true);
                             *moveList++ = move;
                         }
                     }
@@ -166,7 +162,7 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
                 // reset flags and move
                 promotion = false;
                 forced_promotion = false;
-                move = NULL_MOVE;
+                move = Move::null();
                 captured = NO_PIECE_TYPE;
 
                 to = add_direction(to, d);
@@ -184,7 +180,7 @@ Move* drop_moves(Position& pos, Move* moveList) {
     Color toMove = pos.side_to_move();
     int colorFactor = (toMove == BLACK) ? 1 : -1;
     Square pawnAttack;
-    Move move = NULL_MOVE;
+    Move move = Move::null();
     Rank lastRanks[2];
     lastRanks[0] = (toMove == BLACK) ? R_1 : R_9;
     lastRanks[1] = (toMove == BLACK) ? R_2 : R_8;
@@ -206,7 +202,7 @@ Move* drop_moves(Position& pos, Move* moveList) {
                         continue;
 
                     // add the drop to the move list
-                    move = Move{NO_SQUARE, sq, false, pt};
+                    move = Move(pt, sq);
                     // TODO: no need to always check if the move is legal, needs optimization
                     if (pos.is_legal(move))
                         *moveList++ = move;
@@ -220,7 +216,7 @@ Move* drop_moves(Position& pos, Move* moveList) {
             // the pawn drop can't checkmate (this is checked in is_legal)
             if (pos.hand_count(toMove, PAWN) > 0) {
                 if (!pos.pawn_on_file(toMove, file_of(sq)) && rank_of(sq) != lastRanks[0]) {
-                    move = Move{NO_SQUARE, sq, false, PAWN};
+                    move = Move(PAWN, sq);
 
                     if (pos.is_legal(move))
                         *moveList++ = move;

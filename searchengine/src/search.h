@@ -30,8 +30,8 @@ class Searcher {
         Searcher() {
             nodeCount = 0;
             followingPV = false;
-            bestMove = NULL_MOVE;
-            pvTable.fill(NULL_MOVE);
+            bestMove = Move::null();
+            pvTable.fill(Move::null());
             pvLength.fill(0);
         };
 

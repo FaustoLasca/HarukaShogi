@@ -3,6 +3,7 @@
 
 #include <cstdint>
 #include <string>
+#include <cassert>
 
 namespace harukashogi {
 
@@ -168,37 +169,62 @@ constexpr Square add_direction(Square square, Direction d) {
     constexpr T& operator--(T& t) { return t = T(int(t) - 1); } 
 
 ENABLE_INCR_OPERATORS_ON(PieceType)
+ENABLE_INCR_OPERATORS_ON(Piece)
+ENABLE_INCR_OPERATORS_ON(Color)
 ENABLE_INCR_OPERATORS_ON(Square)
 ENABLE_INCR_OPERATORS_ON(File)
 ENABLE_INCR_OPERATORS_ON(Rank)
 
 #undef ENABLE_INCR_OPERATORS_ON
 
-struct Move {
-    Square from = NO_SQUARE;
-    Square to = NO_SQUARE;
-    bool promotion = false;
-    // type of piece involved in the move
-    // for drops, this is the type of the piece dropped
-    // for captures, this is the type of the captured piece
-    // if the move is not a capture or drop, this is NO_PIECE_TYPE
-    PieceType type_involved = NO_PIECE_TYPE;
 
-    constexpr bool is_null() const { return from == NO_SQUARE && to == NO_SQUARE; };
-    constexpr bool is_drop() const { return from == NO_SQUARE; };
-    constexpr bool is_capture() const { return from != NO_SQUARE && type_involved != NO_PIECE_TYPE; };
-    constexpr bool is_promotion() const { return promotion; };
+// class to represent a move
+// a move is represented with 16 bits:
+// 7 bits for either the from square or the dropped piece
+// (the first 2 bits can be used to indicate if the move is a drop or not)
+// (if bits 6 and 7 are both 1, then the move is a drop, there is no square that starts with 11)
+// (THE PATENTED 6 7 METHOD(c))
+// 7 bits for the to square
+// 2 bits for flags. this is for now only used for promotion
+class Move {
+    public:
+        Move() = default;
+        constexpr explicit Move(uint16_t data) : data(data) {}
 
-    constexpr bool operator==(const Move& other) const {
-        return from == other.from && 
-                to == other.to && 
-                promotion == other.promotion &&
-                type_involved == other.type_involved;
-    };
+        constexpr Move(Square from, Square to, bool promotion = false) : 
+            data((promotion ? 1u << 14 : 0u) | to << 7 | from) {}
+        constexpr Move(PieceType dropped, Square to) :
+            data(to << 7 | 0x60u | dropped) {}
+            
+        constexpr bool operator==(const Move& other) const { return data == other.data; }
+            
+        static constexpr Move null() { return Move(0); }
+        constexpr bool is_null() const { return *this == null(); }
 
-    std::string to_string() const;
+        constexpr bool is_drop() const { return (data & 0x60u) == 0x60u; }
+
+        constexpr Square from() const {
+            assert(!is_drop());
+            return Square(data & 0x7Fu);
+        }
+        constexpr PieceType dropped() const {
+            assert(is_drop());
+            return PieceType(data & 0xFu);
+        }
+        constexpr Square to() const {
+            return Square((data & 0x3F80u) >> 7);
+        }
+        constexpr bool is_promotion() const {
+            return data & 0x4000u;
+        }
+
+        constexpr uint16_t raw() const { return data; }
+
+        std::string to_string() const;
+
+    protected:
+        uint16_t data;
 };
-constexpr Move NULL_MOVE = Move{NO_SQUARE, NO_SQUARE, false, NO_PIECE_TYPE};
 
 } // namespace harukashogi
 

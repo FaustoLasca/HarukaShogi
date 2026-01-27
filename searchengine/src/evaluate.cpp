@@ -17,9 +17,14 @@ int evaluate(Position& pos) {
     int score = 0;
 
     // if the game is over, return the winning score
-    if (pos.is_game_over())
+    if (pos.is_game_over()) {
         // if the game is over, the side to move has lost
-        return -WIN_SCORE + moveCount;
+        if (pos.get_winner() == NO_COLOR)
+            return 0;
+        else
+            return -WIN_SCORE + moveCount;
+    }
+        
 
     // add the piece values to the score
     for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
@@ -32,7 +37,7 @@ int evaluate(Position& pos) {
     for (PieceType pt = SILVER; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
         // hand pieces are volued more than board pieces
         score += (pos.hand_count(sideToMove, pt) * 1200*PieceValues[pt]);
-        score -= (pos.hand_count(~sideToMove, pt) * 12000*PieceValues[pt]);
+        score -= (pos.hand_count(~sideToMove, pt) * 1200*PieceValues[pt]);
     }
 
     // add a small penalty for the number of moves
@@ -47,13 +52,13 @@ int evaluate_move(const Position& pos, Move move) {
     int score = 0;
     // if the move is a capture, add a bonus to the score
     // based on the value of the captured piece and the piece that made the capture
-    if (move.is_capture())
-        score += 1000*PieceValues[move.type_involved] - 100*PieceValues[type_of(pos.piece(move.from))];
+    if (pos.is_capture(move))
+        score += 1000*PieceValues[type_of(pos.piece(move.to()))] - 100*PieceValues[type_of(pos.piece(move.from()))];
 
     // if the move is a promotion, add a bonus to the score
     // based on the value of the promoted piece
     if (move.is_promotion())
-        score += 1000 * (PieceValues[type_of(promote_piece(pos.piece(move.from)))] - PieceValues[type_of(pos.piece(move.from))] );
+        score += 1000 * (PieceValues[type_of(promote_piece(pos.piece(move.from())))] - PieceValues[type_of(pos.piece(move.from()))] );
 
     return score;
 }
