@@ -47,11 +47,9 @@ int main() {
 
     std::printf("Key: %16lx\n", pos.get_key());
 
-    perft(pos, 5);
+    perft_test(pos, 5);
 
     std::printf("Key: %16lx\n", pos.get_key());
-
-    pos.print_repetition_values();
 
     return 0;
 }

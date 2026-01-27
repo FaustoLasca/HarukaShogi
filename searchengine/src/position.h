@@ -27,9 +27,9 @@ enum CheckStatus {
 
 
 struct StateInfo {
-	StateInfo() : capturedPiece(NO_PIECE_TYPE), checkStatus{CHECK_UNRESOLVED, CHECK_UNRESOLVED}, key(0) {}
+	StateInfo() : capturedPT(NO_PIECE_TYPE), checkStatus{CHECK_UNRESOLVED, CHECK_UNRESOLVED}, key(0) {}
 
-	PieceType capturedPiece;
+	PieceType capturedPT;
 
 	std::array<CheckStatus, NUM_COLORS> checkStatus;
 

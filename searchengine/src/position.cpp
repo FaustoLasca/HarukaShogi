@@ -193,6 +193,8 @@ void Position::make_move(Move m) {
     // add a new state info to the list
     // copy the current state info to the new one
     si.push_front(StateInfo(si.front()));
+    si.front().checkStatus.fill(CHECK_UNRESOLVED);
+    si.front().capturedPT = NO_PIECE_TYPE;
 
     // move is not a drop
     if (m.from != NO_SQUARE) {
@@ -200,18 +202,22 @@ void Position::make_move(Move m) {
         si.front().key ^= Zobrist::boardKeys[m.from][board[m.from]];
 
         // capture
-        if (m.type_involved != NO_PIECE_TYPE) {
+        if (board[m.to] != NO_PIECE) {
+            PieceType capturedPT = type_of(board[m.to]);
             // unpromote the piece before adding to hand
-            count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(m.type_involved)];
-            hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(m.type_involved)]++;
+            count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(capturedPT)];
+            hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(capturedPT)]++;
             // handle pawn files if a pawn is captured
-            if (m.type_involved == PAWN)
+            if (capturedPT == PAWN)
                 pawnFiles[~sideToMove * NUM_FILES + file_of(m.to)] = false;
 
             // update the zobrist key by removing the captured piece from the to square
             // and adding the captured piece to the hand
             si.front().key ^= Zobrist::boardKeys[m.to][board[m.to]];
-            si.front().key ^= Zobrist::handKeys[sideToMove][unpromoted_type(m.type_involved)][count];
+            si.front().key ^= Zobrist::handKeys[sideToMove][unpromoted_type(capturedPT)][count];
+
+            // update the captured piece type in the state info
+            si.front().capturedPT = capturedPT;
         }
 
         // update the board pieces
@@ -273,9 +279,6 @@ void Position::unmake_move(Move m) {
     // update the repetition table before removing the state info
     repetitionTable.remove(si.front().key);
 
-    // remove the current state info from the list
-    si.pop_front();
-
     // update side to move first makes logic more intuitive
     // this way sideToMove is from before the move was made
     sideToMove = ~sideToMove;
@@ -291,13 +294,14 @@ void Position::unmake_move(Move m) {
         board[m.from] = board[m.to];
 
         // capture
-        if (m.type_involved != NO_PIECE_TYPE) {
+        if (si.front().capturedPT != NO_PIECE_TYPE) {
+            PieceType capturedPT = si.front().capturedPT;
             // piece was promoted, so unpromote it before removing from hand
-            hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(m.type_involved)]--;
-            count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(m.type_involved)];
-            board[m.to] = make_piece(~sideToMove, m.type_involved);
+            hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(capturedPT)]--;
+            count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(capturedPT)];
+            board[m.to] = make_piece(~sideToMove, capturedPT);
             // handle pawn files if a pawn was captured and is now on the board
-            if (m.type_involved == PAWN)
+            if (capturedPT == PAWN)
                 pawnFiles[~sideToMove * NUM_FILES + file_of(m.to)] = true;
         }
         else
@@ -328,7 +332,8 @@ void Position::unmake_move(Move m) {
             pawnFiles[sideToMove * NUM_FILES + file_of(m.to)] = false;
     }
 
-    // compute_key();
+    // remove the current state info from the list
+    si.pop_front();
 }
 
 
