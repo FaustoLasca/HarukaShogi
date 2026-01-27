@@ -25,15 +25,15 @@ std::string Move::to_string() const {
 
 std::ostream& operator<<(std::ostream& os, Move m) {
     if (m.is_drop()) {
-        os << PieceToChar[make_piece(BLACK, m.type_involved)] << "*";
+        os << PieceToChar[make_piece(BLACK, m.dropped())] << "*";
     }
     else {
-        os << m.from;
+        os << m.from();
     }
 
-    os << m.to;
+    os << m.to();
 
-    if (m.promotion) {
+    if (m.is_promotion()) {
         os << "+";
     }
 

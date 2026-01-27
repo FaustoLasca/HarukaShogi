@@ -20,11 +20,7 @@ class ValMove : public Move {
         int value;
 
         void operator=(Move& move) {
-            this->from = move.from;
-            this->to = move.to;
-            this->promotion = move.promotion;
-            this->type_involved = move.type_involved;
-            this->value = 0;
+            this->data = move.raw();
         };
 };
 

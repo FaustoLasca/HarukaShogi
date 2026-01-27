@@ -13,43 +13,37 @@
 using namespace harukashogi;
 
 
-int test_repetition_table(Position& pos, RepetitionTable& rt, int depth) {
-    if (depth == 0 || pos.is_game_over()) {
-        return 1;
-    }
-
-    int nodes = 0;
-
-    Move moveList[MAX_MOVES];
-    Move* end = generate_moves(pos, moveList);
-
-    for (Move* m = moveList; m < end; ++m) {
-        pos.make_move(*m);
-        rt.add(pos.get_key());
-
-        nodes += test_repetition_table(pos, rt, depth - 1);
-
-        // rt.reached_repetitions(pos.get_key(), pos.si, 2);
-
-        rt.remove(pos.get_key());
-        pos.unmake_move(*m);
-    }
-
-    return nodes;
-}
-
-
 int main() {
     Position::init();
 
     Position pos;
-    pos.set();
+    pos.set("1r4k1l/1P4gs1/4+Sp3/l1p4pp/PN1p3n1/1BP2P1GP/K3P4/SG+b6/r7L w GNNLPPPPsppp 112");
+
+    std::cout << pos.is_game_over() << " - " << int(pos.get_winner()) << std::endl;
 
     std::printf("Key: %16lx\n", pos.get_key());
 
-    perft_test(pos, 5);
+    Move move = Move(SILVER, SQ_96);
 
-    std::printf("Key: %16lx\n", pos.get_key());
+    pos.make_move(move);
+    
+    std::cout << pos.is_game_over() << " - " << int(pos.get_winner()) << std::endl;
+
+    std::cout << pos.sfen() << std::endl;
+
+    // Move move = Move(PAWN, SQ_12);
+
+    // std::cout << move << std::endl;
+    // std::cout << "from: " << move.from() << std::endl;
+    // std::cout << "dropped: " << int(move.dropped()) << std::endl;
+    // std::cout << "to: " << move.to() << std::endl;
+    // std::cout << "promotion: " << move.is_promotion() << std::endl;
+    // std::cout << "drop: " << move.is_drop() << std::endl;
+    // std::printf("Raw: %016b\n", move.raw());
+
+    // perft_test(pos, 2);
+
+    // std::printf("Key: %16lx\n", pos.get_key());
 
     return 0;
 }

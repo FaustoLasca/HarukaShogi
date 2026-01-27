@@ -197,23 +197,23 @@ void Position::make_move(Move m) {
     si.front().capturedPT = NO_PIECE_TYPE;
 
     // move is not a drop
-    if (m.from != NO_SQUARE) {
+    if (!m.is_drop()) {
         // update the zobrist key by removing the piece from the from square
-        si.front().key ^= Zobrist::boardKeys[m.from][board[m.from]];
+        si.front().key ^= Zobrist::boardKeys[m.from()][board[m.from()]];
 
         // capture
-        if (board[m.to] != NO_PIECE) {
-            PieceType capturedPT = type_of(board[m.to]);
+        if (board[m.to()] != NO_PIECE) {
+            PieceType capturedPT = type_of(board[m.to()]);
             // unpromote the piece before adding to hand
             count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(capturedPT)];
             hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(capturedPT)]++;
             // handle pawn files if a pawn is captured
             if (capturedPT == PAWN)
-                pawnFiles[~sideToMove * NUM_FILES + file_of(m.to)] = false;
+                pawnFiles[~sideToMove * NUM_FILES + file_of(m.to())] = false;
 
             // update the zobrist key by removing the captured piece from the to square
             // and adding the captured piece to the hand
-            si.front().key ^= Zobrist::boardKeys[m.to][board[m.to]];
+            si.front().key ^= Zobrist::boardKeys[m.to()][board[m.to()]];
             si.front().key ^= Zobrist::handKeys[sideToMove][unpromoted_type(capturedPT)][count];
 
             // update the captured piece type in the state info
@@ -221,38 +221,38 @@ void Position::make_move(Move m) {
         }
 
         // update the board pieces
-        board[m.to] = board[m.from];
-        board[m.from] = NO_PIECE;
+        board[m.to()] = board[m.from()];
+        board[m.from()] = NO_PIECE;
             
         // promote the piece if it's a promotion
-        if (m.promotion) {
-            board[m.to] = promote_piece(board[m.to]);
+        if (m.is_promotion()) {
+            board[m.to()] = promote_piece(board[m.to()]);
             // if a pawn is promoted, update the pawn file
             // pawns can be dropped to tha same file of the promoted pawn
-            if (type_of(board[m.to]) == P_PAWN) {
-                pawnFiles[sideToMove * NUM_FILES + file_of(m.from)] = false;
+            if (type_of(board[m.to()]) == P_PAWN) {
+                pawnFiles[sideToMove * NUM_FILES + file_of(m.from())] = false;
             }
         }
 
         // update the zobrist key by adding the piece after the move to the to square
-        si.front().key ^= Zobrist::boardKeys[m.to][board[m.to]];
+        si.front().key ^= Zobrist::boardKeys[m.to()][board[m.to()]];
 
         // update king square
-        if (type_of(board[m.to]) == KING)
-            kingSq[sideToMove] = m.to;
+        if (type_of(board[m.to()]) == KING)
+            kingSq[sideToMove] = m.to();
     }
     // drop
     else {
-        hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved]--;
-        count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved];
-        board[m.to] = make_piece(sideToMove, m.type_involved);
+        hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.dropped()]--;
+        count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.dropped()];
+        board[m.to()] = make_piece(sideToMove, m.dropped());
         // handle pawn files if a pawn is dropped
-        if (m.type_involved == PAWN)
-            pawnFiles[sideToMove * NUM_FILES + file_of(m.to)] = true;
+        if (m.dropped() == PAWN)
+            pawnFiles[sideToMove * NUM_FILES + file_of(m.to())] = true;
 
         // update the zobrist key
-        si.front().key ^= Zobrist::handKeys[sideToMove][m.type_involved][count];
-        si.front().key ^= Zobrist::boardKeys[m.to][board[m.to]];
+        si.front().key ^= Zobrist::handKeys[sideToMove][m.dropped()][count];
+        si.front().key ^= Zobrist::boardKeys[m.to()][board[m.to()]];
     }
 
     // update side to move and game ply
@@ -289,9 +289,9 @@ void Position::unmake_move(Move m) {
     winner = NO_COLOR;
 
     // move is not a drop
-    if (m.from != NO_SQUARE) {
+    if (!m.is_drop()) {
         // update the board
-        board[m.from] = board[m.to];
+        board[m.from()] = board[m.to()];
 
         // capture
         if (si.front().capturedPT != NO_PIECE_TYPE) {
@@ -299,37 +299,37 @@ void Position::unmake_move(Move m) {
             // piece was promoted, so unpromote it before removing from hand
             hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(capturedPT)]--;
             count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(capturedPT)];
-            board[m.to] = make_piece(~sideToMove, capturedPT);
+            board[m.to()] = make_piece(~sideToMove, capturedPT);
             // handle pawn files if a pawn was captured and is now on the board
             if (capturedPT == PAWN)
-                pawnFiles[~sideToMove * NUM_FILES + file_of(m.to)] = true;
+                pawnFiles[~sideToMove * NUM_FILES + file_of(m.to())] = true;
         }
         else
-            board[m.to] = NO_PIECE;
+            board[m.to()] = NO_PIECE;
             
         // unpromote the piece if it's a promotion
-        if (m.promotion) {
-            board[m.from] = unpromote_piece(board[m.from]);
+        if (m.is_promotion()) {
+            board[m.from()] = unpromote_piece(board[m.from()]);
             // if the promoted piece was a pawn, update the pawn file
-            if (type_of(board[m.from]) == PAWN) {
-                pawnFiles[sideToMove * NUM_FILES + file_of(m.from)] = true;
+            if (type_of(board[m.from()]) == PAWN) {
+                pawnFiles[sideToMove * NUM_FILES + file_of(m.from())] = true;
             }
         }
 
         // update king square
-        if (type_of(board[m.from]) == KING)
-            kingSq[sideToMove] = m.from;
+        if (type_of(board[m.from()]) == KING)
+            kingSq[sideToMove] = m.from();
     }
 
     // move is a drop
     else {
-        count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved];
-        hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.type_involved]++;
+        count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.dropped()];
+        hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.dropped()]++;
 
-        board[m.to] = NO_PIECE;
+        board[m.to()] = NO_PIECE;
         // handle pawn files if a pawn was dropped and is now not on the board
-        if (m.type_involved == PAWN)
-            pawnFiles[sideToMove * NUM_FILES + file_of(m.to)] = false;
+        if (m.dropped() == PAWN)
+            pawnFiles[sideToMove * NUM_FILES + file_of(m.to())] = false;
     }
 
     // remove the current state info from the list
@@ -339,6 +339,7 @@ void Position::unmake_move(Move m) {
 
 bool Position::is_in_check(Color color) {
     CheckStatus& checkStatus = si.front().checkStatus[color];
+    // CheckStatus checkStatus = CHECK_UNRESOLVED;
     if (checkStatus == CHECK_UNRESOLVED) {
         checkStatus = is_attacked(*this, kingSq[color], ~color) ? CHECK : NOT_CHECK;
     }
@@ -357,11 +358,11 @@ bool Position::is_legal(Move m) {
     // pawn drop can't checkmate
     // TODO: this works but is very inefficient
     // generate pawn move and check for checkmate
-    if (is_legal && m.is_drop() && m.type_involved == PAWN) {
+    if (is_legal && m.is_drop() && m.dropped() == PAWN) {
         Direction pawnAttack = (sideToMove == BLACK) ? SOUTH : NORTH;
         // if the pawn drop eats the king, check if there are any legal moves
         // for the opponent. If not it's checkmate.
-        if ((m.to + pawnAttack) == kingSq[sideToMove]) {
+        if ((m.to() + pawnAttack) == kingSq[sideToMove]) {
             Move moveList[MAX_MOVES];
             generate_moves(*this, moveList);
             if (moveList[0].is_null())
@@ -375,22 +376,27 @@ bool Position::is_legal(Move m) {
 }
 
 
+bool Position::is_capture(Move m) const {
+    return board[m.to()] != NO_PIECE;
+}
+
+
 bool Position::is_checkmate() {
     Color color = sideToMove;
     // only go forward if the king is in check
     if (is_in_check(color)) {
         // first check if the king has any legal moves
         Move moveList[MAX_MOVES];
-        piece_moves(*this, moveList, kingSq[color]);
+        Move* end = piece_moves(*this, moveList, kingSq[color]);
 
         // if the king has no legal move, generate all moves
-        if (moveList[0].is_null()) {
+        if (end == moveList) {
             generate_moves(*this, moveList);
             if (moveList[0].is_null()) {
                 gameStatus = GAME_OVER;
                 winner = ~color;
                 return true;
-            }  
+            }
         }
     }
 
@@ -412,9 +418,8 @@ bool Position::is_game_over() {
 
     if (gameStatus == GAME_OVER)
         return true;
-
-    // no check for stalemate atm
-    return false;
+    else
+        return false;
 }
 
 

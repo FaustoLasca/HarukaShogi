@@ -35,7 +35,7 @@ int Searcher::iterative_deepening(chr::milliseconds timeLimit, int maxDepth) {
     int score = 0;
     int depth;
     followingPV = false;
-    bestMove = NULL_MOVE;
+    bestMove = Move::null();
     // loop through the depths
     for (depth = 1; depth <= maxDepth; depth++) {
         try {
@@ -159,8 +159,8 @@ bool Searcher::is_time_up() {
 void Searcher::set_position(std::string sfen) {
     pos = Position();
     pos.set(sfen);
-    bestMove = NULL_MOVE;
-    pvTable.fill(NULL_MOVE);
+    bestMove = Move::null();
+    pvTable.fill(Move::null());
     pvLength.fill(0);
     nodeCount = 0;
 }

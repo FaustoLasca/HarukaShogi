@@ -82,10 +82,11 @@ class Position {
 
 		
 		bool is_in_check(Color color);
-		bool is_legal(Move m);
 		bool is_checkmate();
 		bool is_game_over();
-      
+		
+		bool is_legal(Move m);
+		bool is_capture(Move m) const;
 
 		// getters
 		Piece piece(Square sq) const { return board[sq]; }
