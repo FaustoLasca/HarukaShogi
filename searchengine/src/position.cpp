@@ -391,8 +391,8 @@ bool Position::is_checkmate() {
 
         // if the king has no legal move, generate all moves
         if (end == moveList) {
-            generate_moves(*this, moveList);
-            if (moveList[0].is_null()) {
+            end = generate_moves(*this, moveList);
+            if (end == moveList) {
                 gameStatus = GAME_OVER;
                 winner = ~color;
                 return true;

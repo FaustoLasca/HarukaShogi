@@ -21,15 +21,15 @@ int main() {
 
     std::cout << pos.is_game_over() << " - " << int(pos.get_winner()) << std::endl;
 
-    std::printf("Key: %16lx\n", pos.get_key());
+    // std::printf("Key: %16lx\n", pos.get_key());
 
-    Move move = Move(SILVER, SQ_96);
+    // Move move = Move(SILVER, SQ_96);
 
-    pos.make_move(move);
+    // pos.make_move(move);
     
-    std::cout << pos.is_game_over() << " - " << int(pos.get_winner()) << std::endl;
+    // std::cout << pos.is_game_over() << " - " << int(pos.get_winner()) << std::endl;
 
-    std::cout << pos.sfen() << std::endl;
+    // std::cout << pos.sfen() << std::endl;
 
     // Move move = Move(PAWN, SQ_12);
 
@@ -41,9 +41,9 @@ int main() {
     // std::cout << "drop: " << move.is_drop() << std::endl;
     // std::printf("Raw: %016b\n", move.raw());
 
-    // perft_test(pos, 2);
+    perft_test(pos, 2);
 
-    // std::printf("Key: %16lx\n", pos.get_key());
+    std::printf("Key: %16lx\n", pos.get_key());
 
     return 0;
 }
