@@ -15,19 +15,17 @@ using namespace harukashogi;
 
 
 int main() {
-    TTable* tt = new TTable();
+    
+    Position::init();
 
-    std::cout << sizeof(*tt) << std::endl;
+    Searcher searcher;
+    searcher.set_position("1r4k1l/1P4gs1/4+Sp3/l1pB3pp/PN1p3n1/2P2P1GP/K2+bP4/SG7/r7L w GNNLPPPPsppp 110");
 
-    uint64_t key = 0x1234567890abcdef;
-    std::cout << "key: " << key << std::endl;
-    std::cout << "idx: " << tt->index(key) << std::endl;
-    std::tuple<bool, TTEntry*> result = tt->probe(key);
-    bool hit = std::get<0>(result);
-    TTEntry* entry = std::get<1>(result);
+    Move bestMove = searcher.search(chr::milliseconds(600000), 5);
 
-    std::cout << "hit: " << hit << std::endl;
-    std::cout << "entry: " << entry->key << std::endl;
+    std::cout << "Best move: " << bestMove << std::endl;
+
+    searcher.tt.print_stats();
 
     return 0;
 }

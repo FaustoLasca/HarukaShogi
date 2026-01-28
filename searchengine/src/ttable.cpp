@@ -26,4 +26,11 @@ std::tuple<bool, TTEntry*> TTable::probe(uint64_t key) {
 }
 
 
+void TTable::print_stats() const {
+    std::cout << "Count: " << count << std::endl;
+    std::cout << "Hits: " << hits << std::endl;
+    std::cout << "Collisions: " << collisions << std::endl;
+}
+
+
 } // namespace harukashogi

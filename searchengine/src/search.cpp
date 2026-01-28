@@ -70,6 +70,40 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
     if (is_time_up())
         throw TimeUpException();
 
+    // probe the transposition table for an entry
+    std::tuple<bool, TTEntry*> result = tt.probe(pos.get_key());
+    bool hit = std::get<0>(result);
+    TTEntry* ttEntry = std::get<1>(result);
+    // if an entry is found, check if the depth is equal or greater than the current depth
+    // if it is, there are 3 possibilities to prune:
+    // 1. PV_NODE  (exact score): return the score of the entry
+    // 3. CUT_NODE (lower bound): return the score if it is greater than beta (pruned)
+    // 2. ALL_NODE (upper bound): return the score if it is lower than alpha (already found better)
+    if (hit) {
+        if (ttEntry->depth >= depth) {
+            // case 1: PV_NODE (exact score)
+            if (ttEntry->nodeType == PV_NODE) {
+                return ttEntry->score;
+            }
+            // case 2: CUT_NODE (lower bound)
+            if (ttEntry->nodeType == CUT_NODE) {
+                if (ttEntry->score >= beta) {
+                    return ttEntry->score;
+                }
+            }
+            // case 3: ALL_NODE (upper bound)
+            if (ttEntry->nodeType == ALL_NODE) {
+                if (ttEntry->score < alpha) {
+                    return ttEntry->score;
+                }
+            }
+        }
+    }
+    // initialize the node type to ALL_NODE
+    // if the entry is pruned, set the node type to CUT_NODE
+    // if a score >= alpha, set the node type to PV_NODE
+    NodeType nodeType = ALL_NODE;
+
     // generate all moves from the position
     Move moveList[MAX_MOVES];
     Move* end = generate_moves(pos, moveList);
@@ -103,6 +137,7 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
 
     // loop through children nodes
     int best_score = -INF_SCORE;
+    Move bestMove = Move::null();
     int score;
     for (ValMove* m = scoredMoves; m < endScored; ++m) {
 
@@ -121,7 +156,8 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
         // update best score and the pv table
         if (score > best_score) {
             best_score = score;
-            
+            bestMove = *m;
+
             // update the pv table for the current ply
             // the pv starts with the best move for the current ply
             // then continues with the pv of the next ply
@@ -133,16 +169,29 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
 
             // alpha-beta pruning
             // if the score is greater than alpha, update alpha
-            if (score > alpha) {
+            if (score >= alpha) {
                 alpha = score;
+                nodeType = PV_NODE;
 
                 // if alpha is greater than beta, prune the search
                 // fail soft
-                if (alpha >= beta)
+                if (alpha >= beta) {
+                    ttEntry->key = pos.get_key();
+                    ttEntry->score = best_score;
+                    ttEntry->depth = depth;
+                    ttEntry->nodeType = CUT_NODE;
+                    ttEntry->bestMove = bestMove;
                     return best_score;
+                }
             }
         } 
     }
+
+    ttEntry->key = pos.get_key();
+    ttEntry->score = best_score;
+    ttEntry->depth = depth;
+    ttEntry->nodeType = nodeType;
+    ttEntry->bestMove = bestMove;
 
     return best_score;
 }
