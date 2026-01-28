@@ -1,7 +1,7 @@
 #ifndef TRANSPOSITION_H
 #define TRANSPOSITION_H
 
-#include <array>
+#include <memory>
 
 #include "types.h"
 
@@ -32,20 +32,24 @@ struct TTEntry {
 };
 
 
-class TranspositionTable {
+class TTable {
     public:
-        TranspositionTable() = default;
+        TTable() = default;
 
         // probe the transposition table for an entry
         // returns a tuple with a boolean indicating if the entry was found
         // and a pointer to the entry.
         // If the entry was not found, the pointer is to the location for the new entry.
         std::tuple<bool, TTEntry*> probe(uint64_t key);
-    private:
-        // uses the bottom 20 bits of the key to index the table
-        // 2^22 = 4 194 304 entries, 16 bytes each = 64 MB
-        std::array<TTEntry, 4194304> table;
+
+        uint getCount() const { return count; }
+        uint getHits() const { return hits; }
+        uint getCollisions() const { return collisions; }
         size_t index(uint64_t key) const { return key & 0x3FFFFFull; }
+    private:
+        // uses the bottom 22 bits of the key to index the table
+        // 2^22 = 4 194 304 entries, 16 bytes each = 64 MB
+        std::unique_ptr<TTEntry[]> table = std::make_unique<TTEntry[]>(4 * 1024 * 1024);
 
         // stats for the transposition table
         uint count = 0;

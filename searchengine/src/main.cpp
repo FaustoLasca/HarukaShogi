@@ -9,20 +9,25 @@
 #include "search.h"
 #include "misc.h"
 #include "perft.h"
-#include "transposition.h"
+#include "ttable.h"
 
 using namespace harukashogi;
 
 
 int main() {
-    
-    TTEntry entry = TTEntry();
+    TTable* tt = new TTable();
 
-    std::cout << sizeof(entry) << std::endl;
+    std::cout << sizeof(*tt) << std::endl;
 
-    TranspositionTable tt;
+    uint64_t key = 0x1234567890abcdef;
+    std::cout << "key: " << key << std::endl;
+    std::cout << "idx: " << tt->index(key) << std::endl;
+    std::tuple<bool, TTEntry*> result = tt->probe(key);
+    bool hit = std::get<0>(result);
+    TTEntry* entry = std::get<1>(result);
 
-    std::cout << sizeof(tt) << std::endl;
+    std::cout << "hit: " << hit << std::endl;
+    std::cout << "entry: " << entry->key << std::endl;
 
     return 0;
 }
