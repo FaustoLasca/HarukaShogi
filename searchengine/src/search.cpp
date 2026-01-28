@@ -16,7 +16,8 @@ namespace harukashogi {
 
 Move Searcher::search(chr::milliseconds timeLimit, int maxDepth) {
     iterative_deepening(timeLimit, maxDepth);
-    return get_best_move();
+    Move move = get_best_move();
+    return move;
 }
 
 std::string Searcher::search(int timeLimit, int maxDepth) {
@@ -34,11 +35,10 @@ int Searcher::iterative_deepening(chr::milliseconds timeLimit, int maxDepth) {
     // initialize the required variables
     int score = 0;
     int depth;
-    bestMove = Move::null();
     // loop through the depths
     for (depth = 1; depth <= maxDepth; depth++) {
         try {
-            score = min_max(depth);
+            score = min_max(depth, 0);
         } catch (const TimeUpException& e) {
             // if the time is up, exit the loop
             break;
@@ -79,21 +79,16 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
     if (ttHit) {
         if (ttEntry->depth >= depth) {
             // case 1: PV_NODE (exact score)
-            if (ttEntry->nodeType == PV_NODE) {
+            // if the ply is 0 we risk making an illegal move with a type 1 collision
+            if (ttEntry->nodeType == PV_NODE && ply != 0) {
                 return ttEntry->score;
             }
             // case 2: CUT_NODE (lower bound)
-            if (ttEntry->nodeType == CUT_NODE) {
-                if (ttEntry->score >= beta) {
-                    return ttEntry->score;
-                }
-            }
+            if (ttEntry->nodeType == CUT_NODE && ttEntry->score >= beta)
+                return ttEntry->score;
             // case 3: ALL_NODE (upper bound)
-            if (ttEntry->nodeType == ALL_NODE) {
-                if (ttEntry->score < alpha) {
-                    return ttEntry->score;
-                }
-            }
+            if (ttEntry->nodeType == ALL_NODE && ttEntry->score < alpha)
+                return ttEntry->score;
         }
     }
     // initialize the node type to ALL_NODE
@@ -130,7 +125,7 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
 
     // loop through children nodes
     int bestScore = -INF_SCORE;
-    Move bestMove = Move::null();
+    Move nodeBestMove = Move::null();
     int score;
     for (ValMove* m = scoredMoves; m < endScored; ++m) {
 
@@ -149,7 +144,7 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
         // update best score and the pv table
         if (score > bestScore) {
             bestScore = score;
-            bestMove = *m;
+            nodeBestMove = *m;
 
             // alpha-beta pruning
             // if the score is greater than alpha, update alpha
@@ -164,7 +159,7 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
                     ttEntry->score = bestScore;
                     ttEntry->depth = depth;
                     ttEntry->nodeType = CUT_NODE;
-                    ttEntry->bestMove = bestMove;
+                    ttEntry->bestMove = nodeBestMove;
                     return bestScore;
                 }
             }
@@ -175,10 +170,10 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
     ttEntry->score = bestScore;
     ttEntry->depth = depth;
     ttEntry->nodeType = nodeType;
-    ttEntry->bestMove = bestMove;
+    ttEntry->bestMove = nodeBestMove;
 
     if (ply == 0)
-        this->bestMove = bestMove;
+        bestMove = nodeBestMove;
 
     return bestScore;
 }
