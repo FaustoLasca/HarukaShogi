@@ -19,9 +19,9 @@ int main() {
     Position::init();
 
     Searcher searcher;
-    searcher.set_position("1r4k1l/1P4gs1/4+Sp3/l1pB3pp/PN1p3n1/2P2P1GP/K2+bP4/SG7/r7L w GNNLPPPPsppp 110");
+    searcher.set_position();
 
-    Move bestMove = searcher.search(chr::milliseconds(600000), 5);
+    Move bestMove = searcher.search(chr::milliseconds(600000), 6);
 
     std::cout << "Best move: " << bestMove << std::endl;
 

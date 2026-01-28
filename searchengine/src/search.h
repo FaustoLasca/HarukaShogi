@@ -30,10 +30,7 @@ class Searcher {
     public:
         Searcher() {
             nodeCount = 0;
-            followingPV = false;
             bestMove = Move::null();
-            pvTable.fill(Move::null());
-            pvLength.fill(0);
 
             tt = TTable();
         };
@@ -58,11 +55,8 @@ class Searcher {
     private:
         Position pos;
 
-        
-        std::array<Move, MAX_DEPTH * MAX_DEPTH> pvTable;
-        std::array<int, MAX_DEPTH> pvLength;
         Move bestMove;
-        bool followingPV;
+        
         int nodeCount;
         
         chr::steady_clock::time_point startTime;

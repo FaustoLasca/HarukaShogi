@@ -34,7 +34,6 @@ int Searcher::iterative_deepening(chr::milliseconds timeLimit, int maxDepth) {
     // initialize the required variables
     int score = 0;
     int depth;
-    followingPV = false;
     bestMove = Move::null();
     // loop through the depths
     for (depth = 1; depth <= maxDepth; depth++) {
@@ -44,8 +43,6 @@ int Searcher::iterative_deepening(chr::milliseconds timeLimit, int maxDepth) {
             // if the time is up, exit the loop
             break;
         }
-        bestMove = pvTable[0];
-        followingPV = true;
     }
 
     chr::milliseconds timeTaken = chr::duration_cast<chr::milliseconds>(chr::steady_clock::now() - startTime);
@@ -72,14 +69,14 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
 
     // probe the transposition table for an entry
     std::tuple<bool, TTEntry*> result = tt.probe(pos.get_key());
-    bool hit = std::get<0>(result);
+    bool ttHit = std::get<0>(result);
     TTEntry* ttEntry = std::get<1>(result);
     // if an entry is found, check if the depth is equal or greater than the current depth
     // if it is, there are 3 possibilities to prune:
     // 1. PV_NODE  (exact score): return the score of the entry
     // 3. CUT_NODE (lower bound): return the score if it is greater than beta (pruned)
     // 2. ALL_NODE (upper bound): return the score if it is lower than alpha (already found better)
-    if (hit) {
+    if (ttHit) {
         if (ttEntry->depth >= depth) {
             // case 1: PV_NODE (exact score)
             if (ttEntry->nodeType == PV_NODE) {
@@ -108,10 +105,6 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
     Move moveList[MAX_MOVES];
     Move* end = generate_moves(pos, moveList);
 
-    // if the ply is greater than the length of the pv, stop following the pv
-    if (ply >= pvLength[0])
-        followingPV = false;
-
     // evaluate all moves and sort them by value in descending order
     ValMove scoredMoves[MAX_MOVES];
     ValMove* endScored = scoredMoves;
@@ -119,7 +112,7 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
         *endScored = *m;
         // if we are following the pv
         // evaluate the pv move with the max value
-        if (followingPV && *m == pvTable[ply])
+        if (ttHit && *m == ttEntry->bestMove)
             endScored->value = INF_SCORE;
         else
             endScored->value = evaluate_move(pos, *m);
@@ -136,7 +129,7 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
         return 0;
 
     // loop through children nodes
-    int best_score = -INF_SCORE;
+    int bestScore = -INF_SCORE;
     Move bestMove = Move::null();
     int score;
     for (ValMove* m = scoredMoves; m < endScored; ++m) {
@@ -154,18 +147,9 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
         pos.unmake_move(*m);
 
         // update best score and the pv table
-        if (score > best_score) {
-            best_score = score;
+        if (score > bestScore) {
+            bestScore = score;
             bestMove = *m;
-
-            // update the pv table for the current ply
-            // the pv starts with the best move for the current ply
-            // then continues with the pv of the next ply
-            pvTable[ply * MAX_DEPTH] = *m;
-            pvLength[ply] = 1 + pvLength[ply + 1];
-            for (int i = 0; i < pvLength[ply + 1]; i++) {
-                pvTable[ply * MAX_DEPTH + i + 1] = pvTable[(ply + 1) * MAX_DEPTH + i];
-            }
 
             // alpha-beta pruning
             // if the score is greater than alpha, update alpha
@@ -177,23 +161,26 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
                 // fail soft
                 if (alpha >= beta) {
                     ttEntry->key = pos.get_key();
-                    ttEntry->score = best_score;
+                    ttEntry->score = bestScore;
                     ttEntry->depth = depth;
                     ttEntry->nodeType = CUT_NODE;
                     ttEntry->bestMove = bestMove;
-                    return best_score;
+                    return bestScore;
                 }
             }
         } 
     }
 
     ttEntry->key = pos.get_key();
-    ttEntry->score = best_score;
+    ttEntry->score = bestScore;
     ttEntry->depth = depth;
     ttEntry->nodeType = nodeType;
     ttEntry->bestMove = bestMove;
 
-    return best_score;
+    if (ply == 0)
+        this->bestMove = bestMove;
+
+    return bestScore;
 }
 
 
@@ -209,8 +196,6 @@ void Searcher::set_position(std::string sfen) {
     pos = Position();
     pos.set(sfen);
     bestMove = Move::null();
-    pvTable.fill(Move::null());
-    pvLength.fill(0);
     nodeCount = 0;
 }
 
