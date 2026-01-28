@@ -93,6 +93,9 @@ class Haruka(Player):
         move_str = self.searcher.search(self.time_limit, self.max_depth)
         return string_to_move(move_str, self.state)
 
+    def close(self):
+        self.searcher.print_stats()
+
 
 
 class GuiPlayer(Player):

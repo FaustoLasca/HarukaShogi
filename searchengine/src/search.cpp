@@ -1,7 +1,6 @@
 #include <iostream>
 #include <algorithm>
 #include <chrono>
-#include <iomanip>
 
 #include "search.h"
 #include "movegen.h"
@@ -193,5 +192,11 @@ void Searcher::set_position(std::string sfen) {
     bestMove = Move::null();
     nodeCount = 0;
 }
+
+
+void Searcher::print_stats() {
+    tt.print_stats();
+}
+
 
 } // namespace harukashogi

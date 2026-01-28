@@ -15,7 +15,8 @@ PYBIND11_MODULE(searchengine, m) {
         .def("search", py::overload_cast<int, int>(&Searcher::search),
             py::arg("time_limit"),
             py::arg("max_depth"),
-            py::call_guard<py::gil_scoped_release>());
+            py::call_guard<py::gil_scoped_release>())
+        .def("print_stats", &Searcher::print_stats),
 
     m.def("perft", py::overload_cast<std::string, int>(&perft));
 

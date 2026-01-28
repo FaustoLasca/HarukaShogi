@@ -36,9 +36,9 @@ if __name__ == "__main__":
     move_request_queue = Queue()
     move_response_queue = Queue()
     players = [
-        MinMaxPlayer(SimpleEvaluator(), time_budget=0.15),
-        Haruka(time_limit=150),
-        # GuiPlayer(move_request_queue, move_response_queue),
+        # MinMaxPlayer(SimpleEvaluator(), time_budget=1),
+        GuiPlayer(move_request_queue, move_response_queue),
+        Haruka(time_limit=3000),
         # GuiPlayer(move_request_queue, move_response_queue),
     ]
 

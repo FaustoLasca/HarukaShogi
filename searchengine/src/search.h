@@ -51,9 +51,13 @@ class Searcher {
         int get_node_count() const { return nodeCount; }
         Move get_best_move() const { return bestMove; }
 
-        TTable tt;
+        // utils
+        void print_stats();
+
     private:
         Position pos;
+
+        TTable tt;
 
         Move bestMove;
         
