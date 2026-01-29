@@ -9,41 +9,23 @@
 #include "search.h"
 #include "misc.h"
 #include "perft.h"
+#include "ttable.h"
 
 using namespace harukashogi;
 
 
 int main() {
+    
     Position::init();
 
-    Position pos;
-    pos.set("1r4k1l/1P4gs1/4+Sp3/l1p4pp/PN1p3n1/1BP2P1GP/K3P4/SG+b6/r7L w GNNLPPPPsppp 112");
+    Searcher searcher;
+    searcher.set_position("ln6l/1r2gkg2/4psnp1/p1pps1p1p/1p3p3/P1P1S1P1P/1PSPP1N2/2G2G3/LNK4RL w BPbp 48");
 
-    std::cout << pos.is_game_over() << " - " << int(pos.get_winner()) << std::endl;
+    Move bestMove = searcher.search(chr::milliseconds(600000), 6);
 
-    // std::printf("Key: %16lx\n", pos.get_key());
+    std::cout << "Best move: " << bestMove << std::endl;
 
-    // Move move = Move(SILVER, SQ_96);
-
-    // pos.make_move(move);
-    
-    // std::cout << pos.is_game_over() << " - " << int(pos.get_winner()) << std::endl;
-
-    // std::cout << pos.sfen() << std::endl;
-
-    // Move move = Move(PAWN, SQ_12);
-
-    // std::cout << move << std::endl;
-    // std::cout << "from: " << move.from() << std::endl;
-    // std::cout << "dropped: " << int(move.dropped()) << std::endl;
-    // std::cout << "to: " << move.to() << std::endl;
-    // std::cout << "promotion: " << move.is_promotion() << std::endl;
-    // std::cout << "drop: " << move.is_drop() << std::endl;
-    // std::printf("Raw: %016b\n", move.raw());
-
-    perft_test(pos, 2);
-
-    std::printf("Key: %16lx\n", pos.get_key());
+    searcher.print_stats();
 
     return 0;
 }

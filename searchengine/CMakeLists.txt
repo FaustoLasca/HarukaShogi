@@ -19,6 +19,7 @@ pybind11_add_module(searchengine
     src/evaluate.cpp
     src/search.cpp
     src/misc.cpp
+    src/ttable.cpp
 )
 
 target_include_directories(searchengine PRIVATE include)
@@ -32,6 +33,7 @@ add_executable(test_types
     src/perft.cpp
     src/evaluate.cpp
     src/search.cpp
+    src/ttable.cpp
 )
 target_include_directories(test_types PRIVATE include)
 

@@ -8,6 +8,7 @@
 
 #include "position.h"
 #include "evaluate.h"
+#include "ttable.h"
 
 namespace chr = std::chrono;
 
@@ -29,13 +30,12 @@ class Searcher {
     public:
         Searcher() {
             nodeCount = 0;
-            followingPV = false;
             bestMove = Move::null();
-            pvTable.fill(Move::null());
-            pvLength.fill(0);
+
+            tt = TTable();
         };
 
-        void set_position(std::string sfen);
+        void set_position(std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1");
 
         Move search(chr::milliseconds timeLimit=chr::milliseconds(600000), int maxDepth = 20);
         std::string search(int timeLimit=600000, int maxDepth = 20);
@@ -51,13 +51,16 @@ class Searcher {
         int get_node_count() const { return nodeCount; }
         Move get_best_move() const { return bestMove; }
 
+        // utils
+        void print_stats();
+
     private:
         Position pos;
-        
-        std::array<Move, MAX_DEPTH * MAX_DEPTH> pvTable;
-        std::array<int, MAX_DEPTH> pvLength;
+
+        TTable tt;
+
         Move bestMove;
-        bool followingPV;
+        
         int nodeCount;
         
         chr::steady_clock::time_point startTime;

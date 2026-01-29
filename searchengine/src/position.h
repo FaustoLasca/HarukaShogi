@@ -58,7 +58,7 @@ class RepetitionTable {
 		int countsNeeded = 0;
 		int repetitions = 0;
 		
-		size_t index(uint64_t key) const { return key >> 50; }
+		size_t index(uint64_t key) const { return key & 0x3FFFull; }
 };
 
 
