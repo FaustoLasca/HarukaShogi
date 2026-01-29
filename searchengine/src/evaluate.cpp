@@ -40,10 +40,6 @@ int evaluate(Position& pos) {
         score -= (pos.hand_count(~sideToMove, pt) * 1200*PieceValues[pt]);
     }
 
-    // add a small penalty for the number of moves
-    // for equivalent outcomes, the direction with less moves is preferred
-    score += (score >= 0) ? -moveCount : moveCount;
-
     return score;
 }
 

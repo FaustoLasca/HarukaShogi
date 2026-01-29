@@ -55,16 +55,20 @@ int Searcher::iterative_deepening(chr::milliseconds timeLimit, int maxDepth) {
 
 
 int Searcher::min_max(int depth, int ply, int alpha, int beta) {
-    // increment node count
-    nodeCount++;
-
     // if the depth is 0, return the evaluation of the position
-    if (depth == 0 || pos.is_game_over())
+    if (pos.is_game_over()) {
+        nodeCount++;
         return evaluate(pos);
+    }
+    else if (depth == 0)
+        return quiescence(alpha, beta);
+        
 
     // if the time is up, throw an exception
     if (is_time_up())
         throw TimeUpException();
+
+    nodeCount++;
 
     // probe the transposition table for an entry
     std::tuple<bool, TTEntry*> result = tt.probe(pos.get_key());
@@ -174,6 +178,74 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
     if (ply == 0)
         bestMove = nodeBestMove;
 
+    return bestScore;
+}
+
+
+int Searcher::quiescence(int alpha, int beta) {
+    nodeCount++;
+
+    // if the time is up, throw an exception
+    if (is_time_up())
+        throw TimeUpException();
+
+    int eval = evaluate(pos);
+
+    if (eval >= beta)
+        return eval;
+    if (pos.is_game_over())
+        return eval;
+
+    int bestScore = eval;
+    if (eval > alpha)
+        alpha = eval;
+
+    // generate all moves from the position
+    // only captures will be considered
+    Move moveList[MAX_MOVES];
+    Move* end = generate_moves(pos, moveList);
+
+    // evaluate all moves and sort them by value in descending order
+    ValMove scoredMoves[MAX_MOVES];
+    ValMove* endScored = scoredMoves;
+    for (Move* m = moveList; m < end; ++m) {
+        *endScored = *m;
+
+        // in case of time up, unmake the move before throwing the exception
+        try {
+            endScored->value = evaluate_move(pos, *m);
+        } catch (const TimeUpException& e) {
+            pos.unmake_move(*m);
+            throw e;
+        }
+        endScored++;
+    }
+
+    std::sort(scoredMoves, endScored, [](const ValMove& a, const ValMove& b) {
+        return a.value > b.value;
+    });
+
+    // search through the scored captures
+    int score;
+    for (ValMove* m = scoredMoves; m < endScored; ++m) {
+        // only consider captures
+        if (pos.is_capture(*m)) {
+
+            pos.make_move(*m);
+            score = -quiescence(-beta, -alpha);
+            pos.unmake_move(*m);
+
+            if (score > bestScore) {
+                bestScore = score;
+
+                if (score > alpha)
+                    alpha = score;
+                if (score >= beta)
+                    return score;
+            }
+        }
+    }
+    
     return bestScore;
 }
 
