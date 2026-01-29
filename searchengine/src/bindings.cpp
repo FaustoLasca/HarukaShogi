@@ -9,7 +9,7 @@ namespace py = pybind11;
 namespace harukashogi {
 
 PYBIND11_MODULE(haruka, m) {
-    py::class_<Searcher>(m, "Searcher")
+    py::class_<Searcher>(m, "Searcher", py::module_local())
         .def(py::init<>())
         .def("set_position", &Searcher::set_position)
         .def("search", py::overload_cast<int, int>(&Searcher::search),
