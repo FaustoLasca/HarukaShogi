@@ -7,18 +7,20 @@ from controller.player import Player
 
 
 class Controller:
-    def __init__(self, players: List[Player], update_ui_queue: Optional[Queue] = None, sfen: str = None):
+    def __init__(self, players: List[Player], update_ui_queue: Optional[Queue] = None, sfen: str = None, max_moves: int = 100000):
         self.state = GameState(sfen)
         self.update_ui_queue = update_ui_queue
         self.players = players
+        self.max_moves = max_moves
 
     def run(self):
         for player in self.players:
             player.update_state(None, self.state.copy())
-        self.update_ui_queue.put((None, self.state.copy()))
+        if self.update_ui_queue is not None:
+            self.update_ui_queue.put((None, self.state.copy()))
 
         n_moves = 0
-        while not self.state.is_game_over():
+        while not self.state.is_game_over() and n_moves < self.max_moves:
             moves = self.state.generate_moves()
             # handle stalemate here (edge case that should never happen)
             if len(moves) == 0:
