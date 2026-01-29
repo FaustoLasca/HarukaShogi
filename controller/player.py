@@ -10,7 +10,7 @@ from old_search.evaluation.evaluator import Evaluator
 from old_search.evaluation.move_ordering import MoveOrderer
 from old_search.alpha_beta.searcher import MinMaxSearcher
 
-import searchengine as haruka
+import haruka
 
 
 class Player:

@@ -11,7 +11,7 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 set(PYBIND11_FINDPYTHON ON)
 find_package(pybind11 CONFIG REQUIRED)
 
-pybind11_add_module(searchengine
+pybind11_add_module(haruka
     src/bindings.cpp
     src/position.cpp
     src/movegen.cpp
@@ -22,7 +22,7 @@ pybind11_add_module(searchengine
     src/ttable.cpp
 )
 
-target_include_directories(searchengine PRIVATE include)
+target_include_directories(haruka PRIVATE include)
 
 # Standalone executable
 add_executable(test_types
@@ -38,6 +38,6 @@ add_executable(test_types
 target_include_directories(test_types PRIVATE include)
 
 # Install targets (install searchengine library in the python environment)
-install(TARGETS searchengine
+install(TARGETS haruka
         LIBRARY DESTINATION .
 )
