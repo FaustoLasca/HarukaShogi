@@ -1,4 +1,4 @@
-from search.evaluation.evaluator import Evaluator
+from old_search.evaluation.evaluator import Evaluator
 
 from game.game_state import GameState
 from game.misc import PieceType, Player, Change

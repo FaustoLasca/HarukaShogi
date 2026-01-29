@@ -4,8 +4,8 @@ import threading
 
 from controller.controller import Controller
 from controller.player import Player, RandomPlayer, MiopicPlayer, MinMaxPlayer, GuiPlayer, Haruka
-from search.evaluation.piece_value import SimpleEvaluator
-from search.evaluation.move_ordering import SimpleMoveOrderer
+from old_search.evaluation.piece_value import SimpleEvaluator
+from old_search.evaluation.move_ordering import SimpleMoveOrderer
 from ui.gui import Gui
 
 

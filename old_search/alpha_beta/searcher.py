@@ -1,7 +1,7 @@
 from game.game_state import GameState
 from game.misc import Player, Change
-from search.evaluation.evaluator import Evaluator
-from search.evaluation.move_ordering import MoveOrderer
+from old_search.evaluation.evaluator import Evaluator
+from old_search.evaluation.move_ordering import MoveOrderer
 
 from typing import List
 import time

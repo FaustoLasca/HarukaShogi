@@ -6,9 +6,9 @@ from queue import Queue
 from game.game_state import GameState
 from game.misc import Change, string_to_move
 from game.misc import Player as PlayerEnum
-from search.evaluation.evaluator import Evaluator
-from search.evaluation.move_ordering import MoveOrderer
-from search.alpha_beta.searcher import MinMaxSearcher
+from old_search.evaluation.evaluator import Evaluator
+from old_search.evaluation.move_ordering import MoveOrderer
+from old_search.alpha_beta.searcher import MinMaxSearcher
 
 import searchengine as haruka
 
