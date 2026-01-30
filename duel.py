@@ -10,6 +10,7 @@ from starting_positions import STARTING_POSITIONS
 
 import haruka
 import haruka_v0_1
+import haruka_v0_2
 
 
 def duel(sfen: str = None) -> tuple[int, int]:
@@ -34,8 +35,8 @@ def duel(sfen: str = None) -> tuple[int, int]:
     return tuple(n_wins)
 
 
-haruka.init()
-searcher1 = haruka.Searcher()
+haruka_v0_2.init()
+searcher1 = haruka_v0_2.Searcher()
 PLAYER1 = Haruka(time_limit=500, searcher=searcher1)
 
 haruka_v0_1.init()
