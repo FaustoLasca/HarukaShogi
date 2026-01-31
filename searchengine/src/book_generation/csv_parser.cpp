@@ -93,14 +93,23 @@ void write_book(const std::map<uint64_t, std::unordered_map<uint16_t, int>>& boo
         std::sort(sorted_moves.begin(), sorted_moves.end(),
                   [](const auto& a, const auto& b) { return a.second > b.second; });
 
+        // max count
+        int max_count = sorted_moves[0].second;
+
         // Pack up to 3 moves into data
         // Bits 0-15: move 1, bits 16-31: move 2, bits 32-47: move 3
         // Bits 48-52: count 1 (5 bits, max 31), bits 53-57: count 2, bits 58-62: count 3
         uint64_t data = 0;
         
         for (size_t i = 0; i < std::min(sorted_moves.size(), size_t(3)); i++) {
+            // get the move and count
             uint16_t move_raw = sorted_moves[i].first;
-            int count = std::min(sorted_moves[i].second, 31);  // cap at 5 bits
+            int count = sorted_moves[i].second;
+
+            // scale the count to 5 bits
+            if (max_count > 31) {
+                count = (count * 31) / max_count;
+            }
             
             data |= uint64_t(move_raw) << (i * 16);           // move in bits 0-47
             data |= uint64_t(count) << (48 + i * 5);          // count in bits 48-62
