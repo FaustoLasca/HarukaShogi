@@ -14,6 +14,7 @@
 #include "../types.h"
 #include "../misc.h"
 #include "../position.h"
+#include "../movegen.h"
 
 using namespace harukashogi;
 
@@ -68,9 +69,9 @@ void write_book(const std::map<uint64_t, std::unordered_map<uint16_t, int>>& boo
 
     // Write header
     out << "// Auto-generated opening book - DO NOT EDIT\n";
-    out << "#include \"opening_book.h\"\n\n";
+    out << "#include \"book_data.h\"\n\n";
     out << "namespace harukashogi {\n\n";
-    out << "const OBEntry OPENING_BOOK[] = {\n";
+    out << "const OBEntry BookData[] = {\n";
 
     size_t entry_count = 0;
     size_t skipped_positions = 0;
@@ -130,7 +131,9 @@ Move parse_move(const std::string& move_str) {
     
     size_t i = 0;
     bool promotion = (move_str.back() == '+');
-    if (promotion) i++;
+
+    // move the index forward if the moving piece is promoted (starts with +)
+    if (move_str[i] == '+') i++;
     
     // Piece character (P, L, N, S, G, B, R, K)
     char pieceChar = move_str[i++];
@@ -146,8 +149,10 @@ Move parse_move(const std::string& move_str) {
         File file = File(move_str[i++] - '1');  // '1'-'9'
         Rank rank = Rank(move_str[i++] - 'a');  // 'a'-'i'
         Square to_sq = make_square(file, rank);
+
+        Move move = Move(pieceType, to_sq);
         
-        return Move(pieceType, to_sq);
+        return move;
     } else {
         // Regular move: e.g., "7g-7f" or "7g-7f+" (with promotion)
         File from_file = File(move_str[i++] - '1');
@@ -158,7 +163,9 @@ Move parse_move(const std::string& move_str) {
         Rank to_rank = Rank(move_str[i++] - 'a');
         Square to_sq = make_square(to_file, to_rank);
 
-        return Move(from_sq, to_sq, promotion);
+        Move move = Move(from_sq, to_sq, promotion);
+
+        return move;
     }
 }
 
@@ -194,23 +201,39 @@ int main() {
         
         std::string game_id = fields[0];
         std::string result = fields[10];  // "1-0", "0-1", etc.
-        std::string moves = fields[20];
+        // std::cout << "num fields: " << fields.size() << "\n";
+        std::string moves = fields[fields.size() - 2];
         
-        std::cout << "=== Game: " << game_id << " === Game count: " << game_count << "\n";
-        std::cout << "Result: " << result << "\n";
+        // std::cout << "=== Game: " << game_id << " === Game count: " << game_count << "\n";
+        // std::cout << "Result: " << result << "\n";
         
         // Parse individual moves (whitespace-separated)
-        auto move_list = split_whitespace(moves);
+        auto moveStrings = split_whitespace(moves);
 
         // initialize the position
         pos.set();
         
         // store the first 30 moves in the book
-        for (size_t i = 0; i < std::min(move_list.size(), size_t(30)); i++) {
-            Move move = parse_move(move_list[i]);
+        for (size_t i = 0; i < std::min(moveStrings.size(), size_t(30)); i++) {
+            Move move = parse_move(moveStrings[i]);
 
             if (move.is_null())
                 break;
+
+            // check that the move is valid
+            Move moveList[MAX_MOVES];
+            Move* end = generate_moves(pos, moveList);
+            if (std::find(moveList, end, move) == end) {
+                std::cout << "Position: " << pos.sfen() << "\n";
+                std::cout << "Move string: " << moveStrings[i] << "\n";
+                std::cout << "Parsed move: " << move << "\n";
+                std::cout << "Game moves: " << moves << "\n";
+                std::cout << "Move number: " << i << "\n";
+                std::cout << "Game ID: " << game_id << "\n";
+                std::cout << "Game count: " << game_count << "\n";
+                
+                break;
+            }
             
             // if the position is not in the book, add it
             if (book.count(pos.get_key()) == 0)
@@ -244,7 +267,7 @@ int main() {
     file.close();
 
     // Write the book to a .cpp file
-    write_book(book, "../opening_book.cpp");
+    write_book(book, "../book_data.cpp");
 
     return 0;
 }

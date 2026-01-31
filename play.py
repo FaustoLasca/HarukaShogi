@@ -8,6 +8,8 @@ from old_search.evaluation.piece_value import SimpleEvaluator
 from old_search.evaluation.move_ordering import SimpleMoveOrderer
 from ui.gui import Gui
 
+import haruka
+
 
 SFEN_STRING = None
 
@@ -36,10 +38,14 @@ if __name__ == "__main__":
     update_ui_queue = Queue()
     move_request_queue = Queue()
     move_response_queue = Queue()
+
+    haruka.init()
+    searcher1 = haruka.Searcher()
+    searcher2 = haruka.Searcher()
     players = [
         # MinMaxPlayer(SimpleEvaluator(), time_budget=1),
-        Haruka(time_limit=1000),
-        GuiPlayer(move_request_queue, move_response_queue),
+        Haruka(time_limit=500),
+        Haruka(time_limit=500),
         # GuiPlayer(move_request_queue, move_response_queue),
     ]
 

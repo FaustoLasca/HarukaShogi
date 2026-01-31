@@ -4,11 +4,11 @@
 #include <array>
 #include <chrono>
 #include <exception>
-#include <thread>
 
 #include "position.h"
 #include "evaluate.h"
 #include "ttable.h"
+#include "opening_book.h"
 
 namespace chr = std::chrono;
 
@@ -33,6 +33,7 @@ class Searcher {
             bestMove = Move::null();
 
             tt = TTable();
+            openingBook = OpeningBook();
         };
 
         void set_position(std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1");
@@ -58,6 +59,7 @@ class Searcher {
     private:
         Position pos;
 
+        OpeningBook openingBook;
         TTable tt;
 
         Move bestMove;
