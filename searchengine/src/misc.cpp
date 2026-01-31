@@ -8,7 +8,6 @@ namespace harukashogi {
 
 void init() {
     Position::init();
-    srand(time(NULL));
 }
 
 

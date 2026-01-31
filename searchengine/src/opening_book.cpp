@@ -4,6 +4,7 @@
 
 #include "opening_book.h"
 #include "book_data.h"
+#include "misc.h"
 
 namespace harukashogi {
 
@@ -22,26 +23,22 @@ Move OpeningBook::sample_move(uint64_t key) const {
         return Move::null();
     }
 
-    return it->sample_move();
-}
-
-
-Move OBEntry::sample_move() const {
+    // sample a move from the entry
     uint8_t counts[3];
-    uint8_t max_count = get_count(0);
+    uint8_t max_count = it->get_count(0);
     int total_count = 0;
 
     for (int i = 0; i < 3; i++) {
-        counts[i] = get_count(i);
+        counts[i] = it->get_count(i);
         std::cout << "count " << i << ": " << (int)counts[i] << std::endl;
         total_count += counts[i];
     }
 
-    int rn = rand() % total_count;
+    int rn = rng() % total_count;
     std::cout << "rn: " << rn << std::endl;
     for (int i = 0; i < 3; i++) {
         if (rn < counts[i]) {
-            return Move(get_move_data(i));
+            return Move(it->get_move_data(i));
         }
         rn -= counts[i];
     }
