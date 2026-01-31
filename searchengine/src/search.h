@@ -28,12 +28,15 @@ class TimeUpException : public std::exception {
 
 class Searcher {
     public:
-        Searcher() {
+        Searcher(bool useOpeningBook = true) {
             nodeCount = 0;
             bestMove = Move::null();
 
             tt = TTable();
-            openingBook = OpeningBook();
+            useOpeningBook = useOpeningBook;
+            if (useOpeningBook) {
+                openingBook = OpeningBook();
+            }
         };
 
         void set_position(std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1");
@@ -59,6 +62,7 @@ class Searcher {
     private:
         Position pos;
 
+        bool useOpeningBook;
         OpeningBook openingBook;
         TTable tt;
 

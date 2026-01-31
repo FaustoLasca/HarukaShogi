@@ -77,12 +77,12 @@ class MinMaxPlayer(Player):
 
 # Haruka uses the searchengine library to search for the best move
 class Haruka(Player):
-    def __init__(self, time_limit: int = 600000, max_depth: int = 20, module = haruka):
+    def __init__(self, time_limit: int = 600000, max_depth: int = 20, module = haruka, useOpeningBook = True):
         self.time_limit = time_limit
         self.max_depth = max_depth
 
         module.init()
-        self.searcher = module.Searcher()
+        self.searcher = module.Searcher(useOpeningBook)
 
         self.state = GameState()
     

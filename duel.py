@@ -15,8 +15,8 @@ import haruka_v0_2
 
 def duel(sfen: str = None) -> tuple[int, int]:
 
-    player1 = Haruka(time_limit=500, module=haruka)
-    player2 = Haruka(time_limit=500, module=haruka)
+    player1 = Haruka(time_limit=500, useOpeningBook=False, module=haruka)
+    player2 = Haruka(time_limit=500, useOpeningBook=False, module=haruka)
 
     n_wins = [0, 0]
 
@@ -47,7 +47,7 @@ if __name__ == "__main__":
     n = len(STARTING_POSITIONS)
 
     pool = mp.Pool(processes=NUM_PROCESSES)
-    results = pool.map(duel, [None] * n)
+    results = pool.map(duel, STARTING_POSITIONS)
     pool.close()
 
     n_wins = [0, 0]
