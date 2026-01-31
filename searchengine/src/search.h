@@ -33,7 +33,7 @@ class Searcher {
             bestMove = Move::null();
 
             tt = TTable();
-            useOpeningBook = useOpeningBook;
+            this->useOpeningBook = useOpeningBook;
             if (useOpeningBook) {
                 openingBook = OpeningBook();
             }
