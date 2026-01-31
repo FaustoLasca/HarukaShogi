@@ -106,8 +106,8 @@ void write_book(const std::map<uint64_t, std::unordered_map<uint16_t, int>>& boo
         }
 
         out << "    {0x" << std::hex << std::uppercase << std::setfill('0') 
-            << std::setw(16) << key << "ULL, 0x" 
-            << std::setw(16) << data << std::dec << "ULL},\n";
+            << std::setw(16) << key << "ull, 0x" 
+            << std::setw(16) << data << std::dec << "ull},\n";
         entry_count++;
     }
     
