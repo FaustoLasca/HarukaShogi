@@ -20,6 +20,8 @@ pybind11_add_module(haruka
     src/search.cpp
     src/misc.cpp
     src/ttable.cpp
+    src/opening_book.cpp
+    src/book_data.cpp
 )
 
 target_include_directories(haruka PRIVATE include)
@@ -34,6 +36,8 @@ add_executable(test_types
     src/evaluate.cpp
     src/search.cpp
     src/ttable.cpp
+    src/opening_book.cpp
+    src/book_data.cpp
 )
 target_include_directories(test_types PRIVATE include)
 

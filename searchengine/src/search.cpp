@@ -14,6 +14,15 @@ namespace harukashogi {
 
 
 Move Searcher::search(chr::milliseconds timeLimit, int maxDepth) {
+    if (useOpeningBook) {
+        Move bookMove = openingBook.sample_move(pos.get_key());
+        if (!bookMove.is_null()) {
+            std::cout << "Using opening book move: " << bookMove.to_string() << std::endl;
+            return bookMove;
+        }
+    }
+        
+
     iterative_deepening(timeLimit, maxDepth);
     Move move = get_best_move();
     return move;

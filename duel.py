@@ -10,13 +10,18 @@ from starting_positions import STARTING_POSITIONS
 
 import haruka
 import haruka_v0_1
+import haruka_v0_2
 
 
 def duel(sfen: str = None) -> tuple[int, int]:
+
+    player1 = Haruka(time_limit=500, useOpeningBook=False, module=haruka)
+    player2 = Haruka(time_limit=500, useOpeningBook=False, module=haruka)
+
     n_wins = [0, 0]
 
     # play a game with player1 as black and player2 as white
-    controller = Controller([PLAYER1, PLAYER2], None, sfen, max_moves=1000)
+    controller = Controller([player1, player2], None, sfen, max_moves=1000)
     winner = controller.run()
     if winner == 0:
         n_wins[0] += 1
@@ -24,7 +29,7 @@ def duel(sfen: str = None) -> tuple[int, int]:
         n_wins[1] += 1
     
     # play a game with player2 as black and player1 as white
-    controller = Controller([PLAYER2, PLAYER1], None, sfen, max_moves=1000)
+    controller = Controller([player2, player1], None, sfen, max_moves=1000)
     winner = controller.run()
     if winner == 0:
         n_wins[1] += 1
@@ -34,13 +39,6 @@ def duel(sfen: str = None) -> tuple[int, int]:
     return tuple(n_wins)
 
 
-haruka.init()
-searcher1 = haruka.Searcher()
-PLAYER1 = Haruka(time_limit=500, searcher=searcher1)
-
-haruka_v0_1.init()
-searcher2 = haruka_v0_1.Searcher()
-PLAYER2 = Haruka(time_limit=500, searcher=searcher2)
 
 NUM_PROCESSES = 30
 

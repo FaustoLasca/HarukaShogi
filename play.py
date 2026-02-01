@@ -8,8 +8,11 @@ from old_search.evaluation.piece_value import SimpleEvaluator
 from old_search.evaluation.move_ordering import SimpleMoveOrderer
 from ui.gui import Gui
 
+import haruka
+
 
 SFEN_STRING = None
+
 # SFEN_STRING = "7nl/7k1/6Ppp/9/9/9/+p+p+p6/2+p6/K1+p6 b GG 1" # mate in 3
 # SFEN_STRING = "7nl/7k1/5+Pppp/9/9/9/+p+p+p6/2+p6/K1+p6 b brppSG 1" # mate in 3
 # SFEN_STRING = "5b1nl/4g1sk1/4ppppp/9/4B4/9/+p+p+p6/2+p6/K1+p6 b GN 1" # mate in 3
@@ -35,11 +38,15 @@ if __name__ == "__main__":
     update_ui_queue = Queue()
     move_request_queue = Queue()
     move_response_queue = Queue()
+
+    # haruka.init()
+    # searcher1 = haruka.Searcher()
+    # searcher2 = haruka.Searcher()
     players = [
-        MinMaxPlayer(SimpleEvaluator(), time_budget=1),
-        # GuiPlayer(move_request_queue, move_response_queue),
-        Haruka(time_limit=1000),
-        # GuiPlayer(move_request_queue, move_response_queue),
+        # MinMaxPlayer(SimpleEvaluator(), time_budget=1),
+        # Haruka(time_limit=500),
+        GuiPlayer(move_request_queue, move_response_queue),
+        Haruka(time_limit=500),
     ]
 
     controller_thread = threading.Thread(target=start_controller, args=(update_ui_queue, players), kwargs={'sfen': SFEN_STRING})

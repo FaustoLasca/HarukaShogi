@@ -16,10 +16,10 @@ using namespace harukashogi;
 
 int main() {
     
-    Position::init();
+    init();
 
     Searcher searcher;
-    searcher.set_position("ln6l/1r2gkg2/4psnp1/p1pps1p1p/1p3p3/P1P1S1P1P/1PSPP1N2/2G2G3/LNK4RL w BPbp 48");
+    searcher.set_position();
 
     Move bestMove = searcher.search(chr::milliseconds(600000), 4);
 
