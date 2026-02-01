@@ -39,14 +39,11 @@ if __name__ == "__main__":
     move_request_queue = Queue()
     move_response_queue = Queue()
 
-    # haruka.init()
-    # searcher1 = haruka.Searcher()
-    # searcher2 = haruka.Searcher()
     players = [
         # MinMaxPlayer(SimpleEvaluator(), time_budget=1),
         # Haruka(time_limit=500),
         GuiPlayer(move_request_queue, move_response_queue),
-        Haruka(time_limit=500),
+        Haruka(time_limit=2000),
     ]
 
     controller_thread = threading.Thread(target=start_controller, args=(update_ui_queue, players), kwargs={'sfen': SFEN_STRING})

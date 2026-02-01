@@ -106,26 +106,39 @@ enum Rank : uint8_t {
     NUM_RANKS = 9,
 };
 
-struct Direction {
+enum Direction : int8_t {
+    S_DIR = 9,
+    W_DIR = 1,
+
+    N_DIR = -S_DIR,
+    E_DIR = -W_DIR,
+
+    NE_DIR = N_DIR + E_DIR,
+    NW_DIR = N_DIR + W_DIR,
+    SE_DIR = S_DIR + E_DIR,
+    SW_DIR = S_DIR + W_DIR,
+};
+
+struct DirectionStruct {
     int8_t df;
     int8_t dr;
 
-    constexpr Direction(int8_t df, int8_t dr) : df(df), dr(dr) {}
-    constexpr Direction() : Direction(0, 0) {}
+    constexpr DirectionStruct(int8_t df, int8_t dr) : df(df), dr(dr) {}
+    constexpr DirectionStruct() : DirectionStruct(0, 0) {}
 
     constexpr int8_t d_index() const { return dr*9 + df; }
 
-    constexpr bool operator==(const Direction& other) const { return df == other.df && dr == other.dr; }
+    constexpr bool operator==(const DirectionStruct& other) const { return df == other.df && dr == other.dr; }
 };
-constexpr Direction NO_DIR = Direction(0, 0);
-constexpr Direction NORTH_EAST = Direction(-1, -1);
-constexpr Direction NORTH = Direction(0, -1);
-constexpr Direction NORTH_WEST = Direction(1, -1);
-constexpr Direction WEST = Direction(1, 0);
-constexpr Direction SOUTH_WEST = Direction(1, 1);
-constexpr Direction SOUTH = Direction(0, 1);
-constexpr Direction SOUTH_EAST = Direction(-1, 1);
-constexpr Direction EAST = Direction(-1, 0);
+constexpr DirectionStruct NO_DIR = DirectionStruct(0, 0);
+constexpr DirectionStruct NORTH_EAST = DirectionStruct(-1, -1);
+constexpr DirectionStruct NORTH = DirectionStruct(0, -1);
+constexpr DirectionStruct NORTH_WEST = DirectionStruct(1, -1);
+constexpr DirectionStruct WEST = DirectionStruct(1, 0);
+constexpr DirectionStruct SOUTH_WEST = DirectionStruct(1, 1);
+constexpr DirectionStruct SOUTH = DirectionStruct(0, 1);
+constexpr DirectionStruct SOUTH_EAST = DirectionStruct(-1, 1);
+constexpr DirectionStruct EAST = DirectionStruct(-1, 0);
 
 constexpr uint8_t NUM_DIRECTIONS = 8;
 constexpr uint8_t MAX_SLIDING_DIRECTIONS = 4;
@@ -135,14 +148,14 @@ constexpr uint8_t MAX_SLIDING_DIRECTIONS = 4;
 constexpr uint8_t MAX_ATTACKERS = 10;
 
 // operators to add/subtract direction from square
-constexpr Square operator+(Square sq, Direction d) { return Square(int(sq) + d.d_index()); }
-constexpr Square operator-(Square sq, Direction d) { return Square(int(sq) - d.d_index()); }
-constexpr Square& operator+=(Square& sq, Direction d) { return sq = sq + d; }
-constexpr Square& operator-=(Square& sq, Direction d) { return sq = sq - d; }
+constexpr Square operator+(Square sq, DirectionStruct d) { return Square(int(sq) + d.d_index()); }
+constexpr Square operator-(Square sq, DirectionStruct d) { return Square(int(sq) - d.d_index()); }
+constexpr Square& operator+=(Square& sq, DirectionStruct d) { return sq = sq + d; }
+constexpr Square& operator-=(Square& sq, DirectionStruct d) { return sq = sq - d; }
 
-constexpr Direction operator*(int n, Direction d) { return Direction(n * d.df, n * d.dr); }
-constexpr Direction operator+(Direction d1, Direction d2) { return Direction(d1.df + d2.df, d1.dr + d2.dr); }
-constexpr Direction operator-(Direction d1, Direction d2) { return Direction(d1.df - d2.df, d1.dr - d2.dr); }
+constexpr DirectionStruct operator*(int n, DirectionStruct d) { return DirectionStruct(n * d.df, n * d.dr); }
+constexpr DirectionStruct operator+(DirectionStruct d1, DirectionStruct d2) { return DirectionStruct(d1.df + d2.df, d1.dr + d2.dr); }
+constexpr DirectionStruct operator-(DirectionStruct d1, DirectionStruct d2) { return DirectionStruct(d1.df - d2.df, d1.dr - d2.dr); }
 
 // functions to convert between square, file and rank
 constexpr Square make_square(File f, Rank r) { return Square(r*9 + f); };
@@ -154,7 +167,7 @@ constexpr bool promotion_zone(Square sq, Color c) {
 };
 
 // safe way to add a direction to a square
-constexpr Square add_direction(Square square, Direction d) {
+constexpr Square add_direction(Square square, DirectionStruct d) {
     uint8_t f = file_of(square) + d.df;
     uint8_t r = rank_of(square) + d.dr;
     if (f > F_9 || r > R_9)

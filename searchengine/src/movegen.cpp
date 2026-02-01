@@ -10,7 +10,7 @@ bool is_attacked(const Position& pos, Square square, Color by) {
     // this is used to invert the direction of the move,
     // since we look starting from the destination square
     int colorFactor = (by == BLACK) ? -1 : 1;
-    Direction d;
+    DirectionStruct d;
     Square to = square;
     Piece p;
 
@@ -65,7 +65,7 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
     bool forced_promotion = false;
     Rank lastRank = (color == BLACK) ? R_1 : R_9;
     Rank secondLastRank = (color == BLACK) ? R_2 : R_8;
-    Direction d;
+    DirectionStruct d;
     Square to = from;
 
     // standard moves

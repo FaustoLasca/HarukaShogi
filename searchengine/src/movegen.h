@@ -22,7 +22,7 @@ bool is_attacked(const Position& pos, Square square, Color by);
 // data structures for move generation
 // directions each piece type can move to (black perspective)
 // sliding directions are excluded
-constexpr std::array<Direction, NUM_PIECE_TYPES * NUM_DIRECTIONS> StandardMoveDirections = {
+constexpr std::array<DirectionStruct, NUM_PIECE_TYPES * NUM_DIRECTIONS> StandardMoveDirections = {
     NORTH_EAST, NORTH,  NORTH_WEST, WEST,   SOUTH_WEST, SOUTH,  SOUTH_EAST, EAST, // KING
     NORTH_EAST, NORTH, NORTH_WEST, WEST,    SOUTH,  EAST,   NO_DIR, NO_DIR, // GOLD
     NORTH_EAST, NORTH, NORTH_WEST, SOUTH_WEST, SOUTH_EAST, NO_DIR, NO_DIR, NO_DIR, // SILVER
@@ -41,7 +41,7 @@ constexpr std::array<Direction, NUM_PIECE_TYPES * NUM_DIRECTIONS> StandardMoveDi
 };
 
 // separate data structure for sliding directions
-constexpr std::array<Direction, NUM_SLIDING_TYPES * MAX_SLIDING_DIRECTIONS> SlidingMoveDirections = {
+constexpr std::array<DirectionStruct, NUM_SLIDING_TYPES * MAX_SLIDING_DIRECTIONS> SlidingMoveDirections = {
     NORTH_EAST, NORTH_WEST, SOUTH_WEST, SOUTH_EAST, // BISHOP
     NORTH, WEST,    SOUTH,  EAST,   // ROOK
     NORTH, NO_DIR, NO_DIR, NO_DIR // LANCE

@@ -1,31 +1,21 @@
 #include <iostream>
-#include <random>
-#include <iomanip>
 #include <bitset>
 
-#include "movegen.h"
-#include "types.h"
-#include "position.h"
-#include "search.h"
+#include "bitboard.h"
 #include "misc.h"
-#include "perft.h"
-#include "ttable.h"
 
 using namespace harukashogi;
 
 
 int main() {
     
-    init();
+    Bitboard bb = square_bb(SQ_94) |
+                  square_bb(SQ_35) |
+                  square_bb(SQ_19);
+    std::cout << bb << popcount(bb) << std::endl;
 
-    Searcher searcher;
-    searcher.set_position();
-
-    Move bestMove = searcher.search(chr::milliseconds(600000), 4);
-
-    std::cout << "Best move: " << bestMove << std::endl;
-
-    searcher.print_stats();
+    Bitboard attacks = dir_attacks_bb<SE_DIR>(bb);
+    std::cout << attacks << popcount(attacks) << std::endl;
 
     return 0;
 }

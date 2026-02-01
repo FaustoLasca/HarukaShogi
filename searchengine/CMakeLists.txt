@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.15)
 project(HarukaShogi LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Generate compile_commands.json for clangd
@@ -22,6 +22,7 @@ pybind11_add_module(haruka
     src/ttable.cpp
     src/opening_book.cpp
     src/book_data.cpp
+    src/bitboard.cpp
 )
 
 target_include_directories(haruka PRIVATE include)
@@ -38,6 +39,7 @@ add_executable(test_types
     src/ttable.cpp
     src/opening_book.cpp
     src/book_data.cpp
+    src/bitboard.cpp
 )
 target_include_directories(test_types PRIVATE include)
 
