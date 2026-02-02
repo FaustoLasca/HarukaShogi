@@ -48,19 +48,19 @@ inline Bitboard dir_attacks_bb(Bitboard bb) {
     Bitboard attacks = 0;
 
     // shift the bitboard in the direction
-    if constexpr (d > 0) {
-        attacks = bb << d;
+    if constexpr (dir_delta(d) > 0) {
+        attacks = bb << dir_delta(d);
         attacks &= FullBoard;
     } else {
-        attacks = bb >> -d;
+        attacks = bb >> -dir_delta(d);
     }
 
     // if the direction moves to the side, remove 'warp moves'
     // (going off the board to the right or left)
-    if constexpr (d == E_DIR || d == NE_DIR || d == SE_DIR) {
+    if constexpr (d == E_DIR || d == NE_DIR || d == NNE_DIR || d == SE_DIR || d == SSE_DIR) {
         attacks &= ~File9BB;
     }
-    else if constexpr (d == W_DIR || d == NW_DIR || d == SW_DIR) {
+    else if constexpr (d == W_DIR || d == NW_DIR || d == NNW_DIR || d == SW_DIR || d == SSW_DIR) {
         attacks &= ~File1BB;
     }
 

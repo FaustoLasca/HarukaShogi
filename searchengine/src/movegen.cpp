@@ -18,8 +18,8 @@ bool is_attacked(const Position& pos, Square square, Color by) {
     for (PieceType pt = KING; pt < NUM_PIECE_TYPES; ++pt) {
         p = make_piece(by, pt);
 
-        for (int i = 0; i < NUM_DIRECTIONS; ++i) {
-            d = colorFactor * StandardMoveDirections[pt * NUM_DIRECTIONS + i];
+        for (int i = 0; i < NUM_1DIR; ++i) {
+            d = colorFactor * StandardMoveDirections[pt * NUM_1DIR + i];
             if (d == NO_DIR)
                 break;
 
@@ -69,8 +69,8 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
     Square to = from;
 
     // standard moves
-    for (int i = 0; i < NUM_DIRECTIONS; ++i) {
-        d = colorFactor * StandardMoveDirections[pt * NUM_DIRECTIONS + i];
+    for (int i = 0; i < NUM_1DIR; ++i) {
+        d = colorFactor * StandardMoveDirections[pt * NUM_1DIR + i];
         if (d == NO_DIR)
             break;
 

@@ -3,11 +3,11 @@
 
 #include <string>
 #include <array>
-#include <vector>
 #include <forward_list>
 #include <iostream>
 
 #include "types.h"
+#include "bitboard.h"
 
 namespace harukashogi {
 
@@ -64,6 +64,7 @@ class RepetitionTable {
 
 constexpr uint8_t MAX_HAND_COUNT = 18;
 
+
 class Position {
     public:
 		// constructor
@@ -97,6 +98,8 @@ class Position {
 		int get_move_count() const { return gamePly; }
 		uint64_t get_key() const { return si.front().key; }
 
+		Bitboard dir_pieces(Color color, Direction dir) const { return dirPieces[color][dir]; }
+
 		// temporary method to debug the repetition table
 		void print_repetition_values() const {
 			std::cout << "counts needed: " << repetitionTable.get_counts_needed() << std::endl;
@@ -105,6 +108,15 @@ class Position {
 
 		
 		private:
+
+		// methods to update all the affected information when a piece moves
+		void add_piece(Piece p, Square sq);
+		void remove_piece(Square sq);
+		void move_piece(Square from, Square to);
+		void add_hand_piece(Color color, PieceType pt);
+		void remove_hand_piece(Color color, PieceType pt);
+		
+
 		// compute the zobrist hash code
 		void compute_key();
 		
@@ -114,6 +126,11 @@ class Position {
 		// data members
 		std::array<Piece, NUM_SQUARES> board;
 		std::array<uint8_t, NUM_COLORS * NUM_UNPROMOTED_PIECE_TYPES> hands;
+
+		// bitboards
+		// the dirPieces bitboards contain the pieces that can attack a given direction
+		Bitboard dirPieces[NUM_COLORS][NUM_DIRECTIONS] = {};
+
 		std::array<Square, NUM_COLORS> kingSq;
 		std::array<bool, NUM_COLORS * NUM_FILES> pawnFiles;
 		Color sideToMove;

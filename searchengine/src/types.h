@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <cassert>
+#include <stdexcept>
 
 namespace harukashogi {
 
@@ -107,17 +108,54 @@ enum Rank : uint8_t {
 };
 
 enum Direction : int8_t {
-    S_DIR = 9,
-    W_DIR = 1,
+    N_DIR,
+    NE_DIR,
+    E_DIR,
+    SE_DIR,
+    S_DIR,
+    SW_DIR,
+    W_DIR,
+    NW_DIR,
+    // knight directions
+    NNE_DIR,
+    NNW_DIR,
+    SSE_DIR,
+    SSW_DIR,
 
-    N_DIR = -S_DIR,
-    E_DIR = -W_DIR,
-
-    NE_DIR = N_DIR + E_DIR,
-    NW_DIR = N_DIR + W_DIR,
-    SE_DIR = S_DIR + E_DIR,
-    SW_DIR = S_DIR + W_DIR,
+    NULL_DIR,
+    NUM_DIRECTIONS = 12,
 };
+
+constexpr int dir_delta(Direction dir) {
+    switch (dir) {
+        case N_DIR:
+            return -9;
+        case NE_DIR:
+            return -10;
+        case E_DIR:
+            return -1;
+        case SE_DIR:
+            return 8;
+        case S_DIR:
+            return 9;
+        case SW_DIR:
+            return 10;
+        case W_DIR:
+            return 1;
+        case NW_DIR:
+            return -8;
+        case NNE_DIR:
+            return -19;
+        case NNW_DIR:
+            return -17;
+        case SSE_DIR:
+            return 17;
+        case SSW_DIR:
+            return 19;
+        default:
+            throw std::invalid_argument("Invalid direction");
+    }
+}
 
 struct DirectionStruct {
     int8_t df;
@@ -140,7 +178,7 @@ constexpr DirectionStruct SOUTH = DirectionStruct(0, 1);
 constexpr DirectionStruct SOUTH_EAST = DirectionStruct(-1, 1);
 constexpr DirectionStruct EAST = DirectionStruct(-1, 0);
 
-constexpr uint8_t NUM_DIRECTIONS = 8;
+constexpr uint8_t NUM_1DIR = 8;
 constexpr uint8_t MAX_SLIDING_DIRECTIONS = 4;
 
 // max number of squares that can attack a given square

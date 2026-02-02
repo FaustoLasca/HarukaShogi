@@ -22,7 +22,7 @@ bool is_attacked(const Position& pos, Square square, Color by);
 // data structures for move generation
 // directions each piece type can move to (black perspective)
 // sliding directions are excluded
-constexpr std::array<DirectionStruct, NUM_PIECE_TYPES * NUM_DIRECTIONS> StandardMoveDirections = {
+constexpr std::array<DirectionStruct, NUM_PIECE_TYPES * NUM_1DIR> StandardMoveDirections = {
     NORTH_EAST, NORTH,  NORTH_WEST, WEST,   SOUTH_WEST, SOUTH,  SOUTH_EAST, EAST, // KING
     NORTH_EAST, NORTH, NORTH_WEST, WEST,    SOUTH,  EAST,   NO_DIR, NO_DIR, // GOLD
     NORTH_EAST, NORTH, NORTH_WEST, SOUTH_WEST, SOUTH_EAST, NO_DIR, NO_DIR, NO_DIR, // SILVER
@@ -38,6 +38,40 @@ constexpr std::array<DirectionStruct, NUM_PIECE_TYPES * NUM_DIRECTIONS> Standard
     NORTH, WEST,    SOUTH,  EAST,   NO_DIR, NO_DIR, NO_DIR, NO_DIR, // P_BISHOP
     NORTH_EAST, NORTH_WEST, SOUTH_WEST, SOUTH_EAST, NO_DIR, NO_DIR, NO_DIR, NO_DIR, // P_ROOK
     NORTH_EAST, NORTH, NORTH_WEST, WEST,    SOUTH,  EAST,   NO_DIR, NO_DIR, // P_PAWN
+};
+
+constexpr Direction PTDirections[NUM_PIECES][8] = {
+    // black pieces
+    {N_DIR,    NE_DIR,   E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NW_DIR  }, // KING
+    {N_DIR,    NE_DIR,   E_DIR,    S_DIR,    W_DIR,    NW_DIR,   NULL_DIR, NULL_DIR}, // GOLD
+    {N_DIR,    NE_DIR,   SE_DIR,   SW_DIR,   NW_DIR,   NULL_DIR, NULL_DIR, NULL_DIR}, // SILVER
+    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // LANCE
+    {NNE_DIR,  NNW_DIR,  NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // KNIGHT
+    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // BISHOP
+    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // ROOK
+    {N_DIR,    NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // PAWN
+    {N_DIR,    NE_DIR,   E_DIR,    S_DIR,    W_DIR,    NW_DIR,   NULL_DIR, NULL_DIR}, // P_SILVER
+    {N_DIR,    NE_DIR,   E_DIR,    S_DIR,    W_DIR,    NW_DIR,   NULL_DIR, NULL_DIR}, // P_LANCE
+    {N_DIR,    NE_DIR,   E_DIR,    S_DIR,    W_DIR,    NW_DIR,   NULL_DIR, NULL_DIR}, // P_KNIGHT
+    {N_DIR,    E_DIR,    S_DIR,    W_DIR,    NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // P_BISHOP
+    {NE_DIR,   SE_DIR,   SW_DIR,   NW_DIR,   NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // P_ROOK
+    {N_DIR,    NE_DIR,   E_DIR,    S_DIR,    W_DIR,    NW_DIR,   NULL_DIR, NULL_DIR}, // P_PAWN
+
+    // white pieces
+    {N_DIR,    NE_DIR,   E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NW_DIR  }, // KING
+    {N_DIR,    E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NULL_DIR, NULL_DIR}, // GOLD
+    {NE_DIR,   SE_DIR,   S_DIR,    SW_DIR,   NW_DIR,   NULL_DIR, NULL_DIR, NULL_DIR}, // SILVER
+    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // LANCE
+    {SSE_DIR,  SSW_DIR,  NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // KNIGHT
+    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // BISHOP
+    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // ROOK
+    {S_DIR,    NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // PAWN
+    {N_DIR,    E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NULL_DIR, NULL_DIR}, // P_SILVER
+    {N_DIR,    E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NULL_DIR, NULL_DIR}, // P_LANCE
+    {N_DIR,    E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NULL_DIR, NULL_DIR}, // P_KNIGHT
+    {N_DIR,    E_DIR,    S_DIR,    W_DIR,    NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // P_BISHOP
+    {NE_DIR,   SE_DIR,   SW_DIR,   NW_DIR,   NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // P_ROOK
+    {N_DIR,    E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NULL_DIR, NULL_DIR}, // P_PAWN
 };
 
 // separate data structure for sliding directions
