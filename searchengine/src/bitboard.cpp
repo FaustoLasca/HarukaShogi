@@ -11,6 +11,12 @@ int popcount(Bitboard bb) {
     return std::popcount(bb);
 }
 
+Square pop_lsb(Bitboard& bb) {
+    Square sq = Square(std::countr_zero(bb));
+    bb &= bb - 1;
+    return sq;
+}
+
 
 std::ostream& operator<<(std::ostream& os, const Bitboard& bb) {
     std::bitset<9> row;

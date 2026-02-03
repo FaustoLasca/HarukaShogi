@@ -9,7 +9,7 @@ namespace harukashogi {
 
 // generate all legal moves
 // moves are added to the move list and the first free slot is returned
-Move* generate_moves(Position& pos, Move* moveList);
+Move* legacy_generate_moves(Position& pos, Move* moveList);
 
 // generate all legal moves from the piece in the given square
 // moves are added to the move list and the first free slot is returned
@@ -17,6 +17,17 @@ Move* piece_moves(Position& pos, Move* moveList, Square from);
 
 // returns the squares a piece attacks
 bool is_attacked(const Position& pos, Square square, Color by);
+
+
+enum GenType {
+    EVASIONS,
+    NON_EVASIONS,
+    QUIET,
+    CAPTURES,
+};
+
+template<GenType gt, Color c>
+Move* generate_direction_moves(Position& pos, Move* moveList);
 
 
 // data structures for move generation

@@ -374,7 +374,7 @@ bool Position::is_legal(Move m) {
         // for the opponent. If not it's checkmate.
         if ((m.to() + pawnAttack) == kingSq[sideToMove]) {
             Move moveList[MAX_MOVES];
-            generate_moves(*this, moveList);
+            legacy_generate_moves(*this, moveList);
             if (moveList[0].is_null())
                 is_legal = false;   
         }
@@ -401,7 +401,7 @@ bool Position::is_checkmate() {
 
         // if the king has no legal move, generate all moves
         if (end == moveList) {
-            end = generate_moves(*this, moveList);
+            end = legacy_generate_moves(*this, moveList);
             if (end == moveList) {
                 gameStatus = GAME_OVER;
                 winner = ~color;
@@ -442,9 +442,13 @@ void Position::add_piece(Piece p, Square sq) {
     // update the board
     board[sq] = p;
 
-    // update the dirPieces bitboards
-    for (int i = 0; i < 8 && PTDirections[p-1][i] != NULL_DIR; ++i) {
-        dirPieces[color_of(p)][PTDirections[p-1][i]] |= square_bb(sq);
+    // update the bitboards
+    allPiecesBB[color_of(p)] |= square_bb(sq);
+    // king is excluded from dirPieces as the moves are handled separately
+    if (type_of(p) != KING) {
+        for (int i = 0; i < 8 && PTDirections[p-1][i] != NULL_DIR; ++i) {
+            dirPieces[color_of(p)][PTDirections[p-1][i]] |= square_bb(sq);
+        }
     }
 }
 
@@ -455,9 +459,13 @@ void Position::remove_piece(Square sq) {
     // update the board
     board[sq] = NO_PIECE;
 
-    // update the dirPieces bitboards
-    for (int i = 0; i < 8 && PTDirections[p-1][i] != NULL_DIR; ++i) {
-        dirPieces[color_of(p)][PTDirections[p-1][i]] ^= square_bb(sq);
+    // update the bitboards
+    allPiecesBB[color_of(p)] ^= square_bb(sq);
+    // king is excluded from dirPieces as the moves are handled separately
+    if (type_of(p) != KING) {
+        for (int i = 0; i < 8 && PTDirections[p-1][i] != NULL_DIR; ++i) {
+            dirPieces[color_of(p)][PTDirections[p-1][i]] ^= square_bb(sq);
+        }
     }
 }
 
@@ -469,9 +477,13 @@ void Position::move_piece(Square from, Square to) {
     board[from] = NO_PIECE;
     board[to] = p;
 
-    // update the dirPieces bitboards
-    for (int i = 0; i < 8 && PTDirections[p-1][i] != NULL_DIR; ++i) {
-        dirPieces[color_of(p)][PTDirections[p-1][i]] ^= square_bb(from) | square_bb(to);
+    // update the bitboards
+    allPiecesBB[color_of(p)] ^= square_bb(from) | square_bb(to);
+    // king is excluded from dirPieces as the moves are handled separately
+    if (type_of(p) != KING) {
+        for (int i = 0; i < 8 && PTDirections[p-1][i] != NULL_DIR; ++i) {
+            dirPieces[color_of(p)][PTDirections[p-1][i]] ^= square_bb(from) | square_bb(to);
+        }
     }
 }
 

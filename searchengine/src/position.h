@@ -98,6 +98,8 @@ class Position {
 		int get_move_count() const { return gamePly; }
 		uint64_t get_key() const { return si.front().key; }
 
+		Bitboard all_pieces(Color color) const { return allPiecesBB[color]; }
+		Bitboard all_pieces() const { return allPiecesBB[BLACK] | allPiecesBB[WHITE]; }
 		Bitboard dir_pieces(Color color, Direction dir) const { return dirPieces[color][dir]; }
 
 		// temporary method to debug the repetition table
@@ -128,6 +130,7 @@ class Position {
 		std::array<uint8_t, NUM_COLORS * NUM_UNPROMOTED_PIECE_TYPES> hands;
 
 		// bitboards
+		Bitboard allPiecesBB[NUM_COLORS] = {};
 		// the dirPieces bitboards contain the pieces that can attack a given direction
 		Bitboard dirPieces[NUM_COLORS][NUM_DIRECTIONS] = {};
 

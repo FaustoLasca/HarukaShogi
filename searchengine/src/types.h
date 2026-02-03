@@ -157,6 +157,11 @@ constexpr int dir_delta(Direction dir) {
     }
 }
 
+constexpr Square operator+(Square sq, int delta) { return Square(int(sq) + delta); }
+constexpr Square operator-(Square sq, int delta) { return Square(int(sq) - delta); }
+constexpr Square& operator+=(Square& sq, int delta) { return sq = sq + delta; }
+constexpr Square& operator-=(Square& sq, int delta) { return sq = sq - delta; }
+
 struct DirectionStruct {
     int8_t df;
     int8_t dr;

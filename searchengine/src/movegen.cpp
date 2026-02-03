@@ -1,6 +1,7 @@
 #include "movegen.h"
 #include "types.h"
 #include "position.h"
+#include "bitboard.h"
 
 namespace harukashogi {
 
@@ -229,7 +230,7 @@ Move* drop_moves(Position& pos, Move* moveList) {
 }
 
 
-Move* generate_moves(Position& pos, Move* moveList) {
+Move* legacy_generate_moves(Position& pos, Move* moveList) {
     // generate drop moves
     moveList = drop_moves(pos, moveList);
 
@@ -241,6 +242,65 @@ Move* generate_moves(Position& pos, Move* moveList) {
 
     return moveList;
 }
+
+
+// generates pseudo-legal moves for a given color and direction
+// (non king and non sliding pieces)
+template<Color c, Direction d>
+Move* generate(Position& pos, Move* moveList, Bitboard target) {
+    Bitboard attacks = dir_attacks_bb<d>(pos.dir_pieces(c, d));
+    attacks &= target;
+
+    while (attacks) {
+        Square to = pop_lsb(attacks);
+        Square from = to - dir_delta(d);
+        if (can_promote(type_of(pos.piece(from))))
+            if (promotion_zone(to, c) || promotion_zone(from, c))
+                *moveList++ = Move(from, to, true);
+        *moveList++ = Move(from, to);
+    }
+
+    return moveList;
+}
+
+
+// generates pseudo-legal direction moves of the given type for a given color
+// (non king and non sliding pieces)
+template<GenType gt, Color c>
+Move* generate_direction_moves(Position& pos, Move* moveList) {
+    // TODO: missing EVASIONS implementation yet
+    Bitboard target = gt == NON_EVASIONS ? ~pos.all_pieces(c)
+                    : gt == CAPTURES     ? pos.all_pieces(~c)
+                                         : ~pos.all_pieces(); // QUIETS
+
+    
+    moveList = generate<c, N_DIR>(pos, moveList, target);
+    moveList = generate<c, NE_DIR>(pos, moveList, target);
+    moveList = generate<c, E_DIR>(pos, moveList, target);
+    moveList = generate<c, SE_DIR>(pos, moveList, target);
+    moveList = generate<c, S_DIR>(pos, moveList, target);
+    moveList = generate<c, SW_DIR>(pos, moveList, target);
+    moveList = generate<c, W_DIR>(pos, moveList, target);
+    moveList = generate<c, NW_DIR>(pos, moveList, target);
+    if constexpr (c == BLACK) {
+        moveList = generate<c, NNE_DIR>(pos, moveList, target);
+        moveList = generate<c, NNW_DIR>(pos, moveList, target);
+    }
+    else {
+        moveList = generate<c, SSE_DIR>(pos, moveList, target);
+        moveList = generate<c, SSW_DIR>(pos, moveList, target);
+    }
+
+    return moveList;
+}
+
+template Move* generate_direction_moves<QUIET, BLACK>(Position& pos, Move* moveList);
+template Move* generate_direction_moves<CAPTURES, BLACK>(Position& pos, Move* moveList);
+template Move* generate_direction_moves<NON_EVASIONS, BLACK>(Position& pos, Move* moveList);
+template Move* generate_direction_moves<QUIET, WHITE>(Position& pos, Move* moveList);
+template Move* generate_direction_moves<CAPTURES, WHITE>(Position& pos, Move* moveList);
+template Move* generate_direction_moves<NON_EVASIONS, WHITE>(Position& pos, Move* moveList);
+
 
 
 } // namespace harukashogi
