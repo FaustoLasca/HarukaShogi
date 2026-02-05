@@ -33,7 +33,8 @@ bool is_attacked(const Position& pos, Square square, Color by) {
         // check sliding moves if necessary
         if (sliding_type_index(pt) != -1) {
             for (int i = 0; i < MAX_SLIDING_DIRECTIONS; ++i) {
-                d = colorFactor * SlidingMoveDirections[sliding_type_index(pt) * MAX_SLIDING_DIRECTIONS + i];
+                d = colorFactor * SlidingMoveDirections[
+                    sliding_type_index(pt) * MAX_SLIDING_DIRECTIONS + i];
                 if (d == NO_DIR)
                     break;
 
@@ -82,7 +83,8 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
                 move = Move(from, to);
 
             // check if promotion is available
-            if ((promotion_zone(to, color) || promotion_zone(from, color)) && !is_promoted(pt) && can_promote(pt)) {
+            if ((promotion_zone(to, color) || promotion_zone(from, color))
+                    && !is_promoted(pt) && can_promote(pt)) {
                 promotion = true;
                 // check if promotion is forced
                 // applies to pawns and knights for standard moves
@@ -140,7 +142,7 @@ Move* piece_moves(Position& pos, Move* moveList, Square from) {
                 }
 
                 // check if promotion is available
-                if ((promotion_zone(to, color) || promotion_zone(from, color)) && !is_promoted(pt)) {
+                if ((promotion_zone(to,color) || promotion_zone(from, color)) && !is_promoted(pt)) {
                     promotion = true;
                     // check if promotion is forced
                     // only applies to lance for sliding moves

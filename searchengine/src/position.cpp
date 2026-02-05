@@ -527,7 +527,11 @@ void Position::compute_key() {
 }
 
 
-bool RepetitionTable::reached_repetitions(uint64_t key, std::forward_list<StateInfo>& si, uint8_t nRepetitions) {
+bool RepetitionTable::reached_repetitions(
+        uint64_t key,
+        std::forward_list<StateInfo>& si,
+        uint8_t nRepetitions
+    ) {
     // if the count is less than the draw repetition limit, return the count
     // even if it's wrong, it doesn't matter
     if (table[index(key)] < nRepetitions) {
@@ -552,7 +556,8 @@ bool RepetitionTable::reached_repetitions(uint64_t key, std::forward_list<StateI
                 }
                 else
                     wrongHits++;
-                // if the remaining hits are less than the repetitions limit, exit early and return false
+                // if the remaining hits are less than the repetitions limit, exit early and
+                // return false
                 if (table[index(st.key)] - wrongHits < nRepetitions)
                     return false;
             }

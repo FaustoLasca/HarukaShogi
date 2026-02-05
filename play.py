@@ -46,7 +46,11 @@ if __name__ == "__main__":
         Haruka(time_limit=2000),
     ]
 
-    controller_thread = threading.Thread(target=start_controller, args=(update_ui_queue, players), kwargs={'sfen': SFEN_STRING})
+    controller_thread = threading.Thread(
+        target=start_controller,
+        args=(update_ui_queue, players),
+        kwargs={'sfen': SFEN_STRING}
+    )
     controller_thread.start()
 
     ui = Gui(update_ui_queue, move_request_queue, move_response_queue)

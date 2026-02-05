@@ -65,7 +65,9 @@ constexpr bool is_promoted( Piece p ) { return is_promoted(type_of(p)); };
 constexpr bool can_promote( PieceType pt ) { return pt>=SILVER && pt<=PAWN; };
 constexpr Piece promote_piece( Piece p ) { return is_promoted(p) ? p : Piece(p + 6); };
 constexpr Piece unpromote_piece( Piece p ) { return is_promoted(p) ? Piece(p - 6) : p; };
-constexpr PieceType unpromoted_type( PieceType pt ) { return is_promoted(pt) ? PieceType(pt - 6) : pt; };
+constexpr PieceType unpromoted_type( PieceType pt ) {
+    return is_promoted(pt) ? PieceType(pt - 6) : pt;
+}
 // used to index the sliding move directions array
 constexpr std::size_t sliding_type_index( PieceType pt ) { 
     switch (pt) {
@@ -171,7 +173,9 @@ struct DirectionStruct {
 
     constexpr int8_t d_index() const { return dr*9 + df; }
 
-    constexpr bool operator==(const DirectionStruct& other) const { return df == other.df && dr == other.dr; }
+    constexpr bool operator==(const DirectionStruct& other) const {
+        return df == other.df && dr == other.dr;
+    }
 };
 constexpr DirectionStruct NO_DIR = DirectionStruct(0, 0);
 constexpr DirectionStruct NORTH_EAST = DirectionStruct(-1, -1);
@@ -196,9 +200,15 @@ constexpr Square operator-(Square sq, DirectionStruct d) { return Square(int(sq)
 constexpr Square& operator+=(Square& sq, DirectionStruct d) { return sq = sq + d; }
 constexpr Square& operator-=(Square& sq, DirectionStruct d) { return sq = sq - d; }
 
-constexpr DirectionStruct operator*(int n, DirectionStruct d) { return DirectionStruct(n * d.df, n * d.dr); }
-constexpr DirectionStruct operator+(DirectionStruct d1, DirectionStruct d2) { return DirectionStruct(d1.df + d2.df, d1.dr + d2.dr); }
-constexpr DirectionStruct operator-(DirectionStruct d1, DirectionStruct d2) { return DirectionStruct(d1.df - d2.df, d1.dr - d2.dr); }
+constexpr DirectionStruct operator*(int n, DirectionStruct d) {
+    return DirectionStruct(n * d.df, n * d.dr);
+}
+constexpr DirectionStruct operator+(DirectionStruct d1, DirectionStruct d2) {
+    return DirectionStruct(d1.df + d2.df, d1.dr + d2.dr);
+}
+constexpr DirectionStruct operator-(DirectionStruct d1, DirectionStruct d2) {
+    return DirectionStruct(d1.df - d2.df, d1.dr - d2.dr);
+}
 
 // functions to convert between square, file and rank
 constexpr Square make_square(File f, Rank r) { return Square(r*9 + f); };

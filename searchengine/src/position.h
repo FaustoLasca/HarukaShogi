@@ -27,7 +27,9 @@ enum CheckStatus {
 
 
 struct StateInfo {
-	StateInfo() : capturedPT(NO_PIECE_TYPE), checkStatus{CHECK_UNRESOLVED, CHECK_UNRESOLVED}, key(0) {}
+	StateInfo() : capturedPT(NO_PIECE_TYPE), 
+				  checkStatus{CHECK_UNRESOLVED, CHECK_UNRESOLVED},
+				  key(0) {}
 
 	PieceType capturedPT;
 
@@ -46,7 +48,10 @@ class RepetitionTable {
 		void add(uint64_t key) { table[index(key)]++;}
 		void remove(uint64_t key) { table[index(key)]--;}
 
-		bool reached_repetitions(uint64_t key, std::forward_list<StateInfo>& si, uint8_t nRepetitions = MAX_REPETITIONS);
+		bool reached_repetitions(
+			uint64_t key,
+			std::forward_list<StateInfo>& si,
+			uint8_t nRepetitions = MAX_REPETITIONS);
 
 		int get_counts_needed() const { return countsNeeded; }
 		int get_repetitions() const { return repetitions; }
@@ -74,7 +79,9 @@ class Position {
 		static void init();
 
 		// SFEN string methods
-		void set(const std::string& sfenStr = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1");
+		void set(const std::string& 
+			sfenStr = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
+		);
 		std::string sfen() const;
 
 		// move methods
@@ -91,9 +98,13 @@ class Position {
 
 		// getters
 		Piece piece(Square sq) const { return board[sq]; }
-		int hand_count(Color color, PieceType pt) const { return hands[color * NUM_UNPROMOTED_PIECE_TYPES + pt]; }
+		int hand_count(Color color, PieceType pt) const {
+			return hands[color * NUM_UNPROMOTED_PIECE_TYPES + pt];
+		}
 		Color side_to_move() const { return sideToMove; }
-		bool pawn_on_file(Color color, File file) const { return pawnFiles[color * NUM_FILES + file]; }
+		bool pawn_on_file(Color color, File file) const { 
+			return pawnFiles[color * NUM_FILES + file];
+		}
 		Color get_winner() const;
 		int get_move_count() const { return gamePly; }
 		uint64_t get_key() const { return si.front().key; }

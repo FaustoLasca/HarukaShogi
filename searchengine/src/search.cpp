@@ -53,7 +53,9 @@ int Searcher::iterative_deepening(chr::milliseconds timeLimit, int maxDepth) {
         }
     }
 
-    chr::milliseconds timeTaken = chr::duration_cast<chr::milliseconds>(chr::steady_clock::now() - startTime);
+    chr::milliseconds timeTaken = chr::duration_cast<chr::milliseconds>(
+        chr::steady_clock::now() - startTime
+    );
     int nodesPS = nodeCount / (timeTaken.count() / 1000.0);
 
     std::cout << "Evaluation: " << score << "\t Depth: " << depth - 1 << "\t Nodes: " << nodeCount

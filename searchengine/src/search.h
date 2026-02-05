@@ -39,13 +39,18 @@ class Searcher {
             }
         };
 
-        void set_position(std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1");
+        void set_position(std::string
+            sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
+        );
 
         Move search(chr::milliseconds timeLimit=chr::milliseconds(600000), int maxDepth = 20);
         std::string search(int timeLimit=600000, int maxDepth = 20);
 
         // search functions
-        int iterative_deepening(chr::milliseconds timeLimit=chr::milliseconds(600000), int maxDepth = 20);
+        int iterative_deepening(
+            chr::milliseconds timeLimit=chr::milliseconds(600000),
+            int maxDepth = 20
+        );
         int min_max(int depth, int ply = 0, int alpha = -INF_SCORE, int beta = INF_SCORE);
         int quiescence(int alpha, int beta);
 
