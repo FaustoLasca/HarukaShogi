@@ -269,7 +269,7 @@ Move* generate(Position& pos, Move* moveList, Bitboard target) {
 // generates pseudo-legal direction moves of the given type for a given color
 // (non king and non sliding pieces)
 template<GenType gt, Color c>
-Move* generate_direction_moves(Position& pos, Move* moveList) {
+Move* generate_all_direction(Position& pos, Move* moveList) {
     // TODO: missing EVASIONS implementation yet
     Bitboard target = gt == NON_EVASIONS ? ~pos.all_pieces(c)
                     : gt == CAPTURES     ? pos.all_pieces(~c)
@@ -296,13 +296,95 @@ Move* generate_direction_moves(Position& pos, Move* moveList) {
     return moveList;
 }
 
-template Move* generate_direction_moves<QUIET, BLACK>(Position& pos, Move* moveList);
-template Move* generate_direction_moves<CAPTURES, BLACK>(Position& pos, Move* moveList);
-template Move* generate_direction_moves<NON_EVASIONS, BLACK>(Position& pos, Move* moveList);
-template Move* generate_direction_moves<QUIET, WHITE>(Position& pos, Move* moveList);
-template Move* generate_direction_moves<CAPTURES, WHITE>(Position& pos, Move* moveList);
-template Move* generate_direction_moves<NON_EVASIONS, WHITE>(Position& pos, Move* moveList);
+// FOR TESTING
+template Move* generate_all_direction<QUIET, BLACK>(Position& pos, Move* moveList);
+template Move* generate_all_direction<CAPTURES, BLACK>(Position& pos, Move* moveList);
+template Move* generate_all_direction<NON_EVASIONS, BLACK>(Position& pos, Move* moveList);
+template Move* generate_all_direction<QUIET, WHITE>(Position& pos, Move* moveList);
+template Move* generate_all_direction<CAPTURES, WHITE>(Position& pos, Move* moveList);
+template Move* generate_all_direction<NON_EVASIONS, WHITE>(Position& pos, Move* moveList);
 
+
+template<Color c, PieceType pt>
+Bitboard sliding_attacks_bb(Square from, Bitboard occupied) {
+    Bitboard bb;
+    Direction d;
+    Bitboard attacks = 0;
+
+    constexpr size_t index = sl_dir_index(make_piece(c, pt));
+
+    for (size_t i=0; i<4 && PSlidingDirections[index][i] != NULL_DIR; ++i) {
+        d = PSlidingDirections[index][i];
+        bb = square_bb(from);
+
+        while (bb) {
+            // TODO: THIS IS HORRIFYING, CHECK FOR A BETTER COMPILE TIME SOLUTION
+            switch (d) {
+                case N_DIR:
+                    bb = dir_attacks_bb<N_DIR>(bb);
+                    break;
+                case NE_DIR:
+                    bb = dir_attacks_bb<NE_DIR>(bb);
+                    break;
+                case E_DIR:
+                    bb = dir_attacks_bb<E_DIR>(bb);
+                    break;
+                case SE_DIR:
+                    bb = dir_attacks_bb<SE_DIR>(bb);
+                    break;
+                case S_DIR:
+                    bb = dir_attacks_bb<S_DIR>(bb);
+                    break;
+                case SW_DIR:
+                    bb = dir_attacks_bb<SW_DIR>(bb);
+                    break;
+                case W_DIR:
+                    bb = dir_attacks_bb<W_DIR>(bb);
+                    break;
+                case NW_DIR:
+                    bb = dir_attacks_bb<NW_DIR>(bb);
+                default:
+                    break;
+            }
+            
+            attacks |= bb;
+            bb &= ~occupied;
+        }
+    }
+
+    return attacks;
+}
+
+
+template <Color c, PieceType pt>
+Move* generate_sliding(Position& pos, Move* moveList, Bitboard target) {
+    Bitboard bb = pos.sld_pieces(c, pt);
+    Square from, to;
+    Bitboard attacks;
+
+    while (bb) {
+        from = pop_lsb(bb);
+        attacks = sliding_attacks_bb<c, pt>(from, pos.all_pieces());
+        attacks &= target;
+
+        while (attacks) {
+            to = pop_lsb(attacks);
+            if (promotion_zone(to, c) || promotion_zone(from, c))
+                *moveList++ = Move(from, to, true);
+            *moveList++ = Move(from, to);
+        }
+    }
+
+    return moveList;
+}
+
+
+template Move* generate_sliding<BLACK, LANCE>(Position& pos, Move* moveList, Bitboard target);
+template Move* generate_sliding<WHITE, LANCE>(Position& pos, Move* moveList, Bitboard target);
+template Move* generate_sliding<BLACK, BISHOP>(Position& pos, Move* moveList, Bitboard target);
+template Move* generate_sliding<WHITE, BISHOP>(Position& pos, Move* moveList, Bitboard target);
+template Move* generate_sliding<BLACK, ROOK>(Position& pos, Move* moveList, Bitboard target);
+template Move* generate_sliding<WHITE, ROOK>(Position& pos, Move* moveList, Bitboard target);
 
 
 } // namespace harukashogi

@@ -71,6 +71,7 @@ inline Bitboard dir_attacks_bb(Bitboard bb) {
 template<Piece p>
 Bitboard piece_attacks_bb(Bitboard bb);
 
+
 // prints a bitboard as a board of bit values
 std::ostream& operator<<(std::ostream& os, const Bitboard& bb);
 

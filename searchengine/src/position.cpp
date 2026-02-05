@@ -450,6 +450,11 @@ void Position::add_piece(Piece p, Square sq) {
             dirPieces[color_of(p)][PTDirections[p-1][i]] |= square_bb(sq);
         }
     }
+
+    int sl_idx = sliding_type_index(type_of(p));
+    if (sl_idx >= 0) {
+        slPieces[color_of(p)][sl_idx] |= square_bb(sq);
+    }
 }
 
 
@@ -466,6 +471,11 @@ void Position::remove_piece(Square sq) {
         for (int i = 0; i < 8 && PTDirections[p-1][i] != NULL_DIR; ++i) {
             dirPieces[color_of(p)][PTDirections[p-1][i]] ^= square_bb(sq);
         }
+    }
+
+    int sl_idx = sliding_type_index(type_of(p));
+    if (sl_idx >= 0) {
+        slPieces[color_of(p)][sl_idx] ^= square_bb(sq);
     }
 }
 
@@ -484,6 +494,11 @@ void Position::move_piece(Square from, Square to) {
         for (int i = 0; i < 8 && PTDirections[p-1][i] != NULL_DIR; ++i) {
             dirPieces[color_of(p)][PTDirections[p-1][i]] ^= square_bb(from) | square_bb(to);
         }
+    }
+
+    int sl_idx = sliding_type_index(type_of(p));
+    if (sl_idx >= 0) {
+        slPieces[color_of(p)][sl_idx] ^= square_bb(from) | square_bb(to);
     }
 }
 

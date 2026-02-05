@@ -27,8 +27,11 @@ enum GenType {
 };
 
 template<GenType gt, Color c>
-Move* generate_direction_moves(Position& pos, Move* moveList);
+Move* generate_all_direction(Position& pos, Move* moveList);
 
+
+template<Color c, PieceType pt>
+Move* generate_sliding(Position& pos, Move* moveList, Bitboard target);
 
 // data structures for move generation
 // directions each piece type can move to (black perspective)
@@ -85,12 +88,48 @@ constexpr Direction PTDirections[NUM_PIECES][8] = {
     {N_DIR,    E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NULL_DIR, NULL_DIR}, // P_PAWN
 };
 
+
 // separate data structure for sliding directions
 constexpr std::array<DirectionStruct, NUM_SLIDING_TYPES * MAX_SLIDING_DIRECTIONS> SlidingMoveDirections = {
     NORTH_EAST, NORTH_WEST, SOUTH_WEST, SOUTH_EAST, // BISHOP
     NORTH, WEST,    SOUTH,  EAST,   // ROOK
     NORTH, NO_DIR, NO_DIR, NO_DIR // LANCE
 };
+
+constexpr Direction PSlidingDirections[4][4] = {
+    // black pieces
+    {NE_DIR,   SE_DIR,   SW_DIR,   NW_DIR  }, // BISHOP
+    {N_DIR,    E_DIR,    S_DIR,    W_DIR   }, // ROOK
+    {N_DIR,    NULL_DIR, NULL_DIR, NULL_DIR}, // B_LANCE
+    {S_DIR,    NULL_DIR, NULL_DIR, NULL_DIR}  // W_LANCE
+};
+
+// returns the index to the PSlidingDirections structure
+constexpr size_t sl_dir_index(Piece p) {
+    switch (p) {
+        case B_BISHOP:
+        case P_B_BISHOP:
+        case W_BISHOP:
+        case P_W_BISHOP:
+            return 0;
+
+        case B_ROOK:
+        case P_B_ROOK:
+        case W_ROOK:
+        case P_W_ROOK:
+            return 1;
+
+        case B_LANCE:
+            return 2;
+
+        case W_LANCE:
+            return 3;
+
+        default:
+            throw std::invalid_argument("Invalid piece");
+    }
+}
+
 
 constexpr size_t MAX_MOVES = 593;
 

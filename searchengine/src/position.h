@@ -112,6 +112,9 @@ class Position {
 		Bitboard all_pieces(Color color) const { return allPiecesBB[color]; }
 		Bitboard all_pieces() const { return allPiecesBB[BLACK] | allPiecesBB[WHITE]; }
 		Bitboard dir_pieces(Color color, Direction dir) const { return dirPieces[color][dir]; }
+		Bitboard sld_pieces(Color color, PieceType pt) const {
+			return slPieces[color][sliding_type_index(pt)];
+		}
 
 		// temporary method to debug the repetition table
 		void print_repetition_values() const {
@@ -142,8 +145,8 @@ class Position {
 
 		// bitboards
 		Bitboard allPiecesBB[NUM_COLORS] = {};
-		// the dirPieces bitboards contain the pieces that can attack a given direction
 		Bitboard dirPieces[NUM_COLORS][NUM_DIRECTIONS] = {};
+		Bitboard slPieces[NUM_COLORS][NUM_SLIDING_TYPES] = {};
 
 		std::array<Square, NUM_COLORS> kingSq;
 		std::array<bool, NUM_COLORS * NUM_FILES> pawnFiles;
