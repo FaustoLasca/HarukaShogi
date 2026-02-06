@@ -56,7 +56,7 @@ void perft_test(Position& pos, int depth) {
 
     std::cout << "Perft test for each move" << std::endl;
     Move moveList[MAX_MOVES];
-    Move* end = legacy_generate_moves(pos, moveList);
+    Move* end = generate<LEGAL>(pos, moveList);
     for (Move* m = moveList; m < end; ++m) {
         pos.make_move(*m);
         count = perft(pos, depth - 1);

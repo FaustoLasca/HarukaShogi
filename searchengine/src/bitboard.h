@@ -43,6 +43,16 @@ constexpr Bitboard Rank9BB = Rank8BB << 9;
 constexpr Bitboard BlackPromZoneBB = Rank1BB | Rank2BB | Rank3BB;
 constexpr Bitboard WhitePromZoneBB = Rank7BB | Rank8BB | Rank9BB;
 
+constexpr Bitboard WLastRankBB = Rank9BB;
+constexpr Bitboard WSecondLastRankBB = Rank8BB;
+constexpr Bitboard BLastRankBB = Rank1BB;
+constexpr Bitboard BSecondLastRankBB = Rank2BB;
+
+
+constexpr Bitboard invert(Bitboard bb) {
+    return ~bb & FullBoard;
+}
+
 
 // functions used to manipulate a bitboard
 Square pop_lsb(Bitboard& bb);

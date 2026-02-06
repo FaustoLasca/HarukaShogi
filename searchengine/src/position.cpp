@@ -221,6 +221,9 @@ void Position::make_move(Move m) {
 
             // update the captured piece type in the state info
             si.front().capturedPT = capturedPT;
+
+            // remove the captured piece from the board
+            remove_piece(m.to());
         }
 
         // promote the piece if it's a promotion

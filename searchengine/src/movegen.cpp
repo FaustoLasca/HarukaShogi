@@ -343,6 +343,54 @@ Move* generate_all_sliding(Position& pos, Move* moveList, Bitboard target) {
 }
 
 
+// adds a drop move to the move list if the move is pseudo-legal
+template<Color c, PieceType pt>
+Move* add_drop(Position& pos, Move* moveList, Square sq) {
+    if (pos.hand_count(c, pt) > 0) {
+
+        if constexpr (pt == PAWN || pt == LANCE || pt == KNIGHT) {
+            // pawns, knights and lances cannot be dropped on the last rank
+            if (rank_of(sq) == (c == BLACK ? R_1 : R_9))
+                return moveList;
+            // knights cannot be dropped on the second last rank
+            else if (pt == KNIGHT && rank_of(sq) == (c == BLACK ? R_2 : R_8))
+                return moveList;
+        }
+
+        // pawns cannot be dropped on the same file as other pawns
+        if constexpr (pt == PAWN)
+            if (pos.pawn_on_file(c, file_of(sq)))
+                return moveList;
+
+        *moveList++ = Move(pt, sq);
+        return moveList;
+    }
+
+    return moveList;
+}
+
+
+template<Color c>
+Move* generate_drops(Position& pos, Move* moveList) {
+    Bitboard target = invert(pos.all_pieces());
+    
+    while (target) {
+        // get the next free square
+        Square sq = pop_lsb(target);
+        // add the drop moves for all piece types
+        moveList = add_drop<c, GOLD>(pos, moveList, sq);
+        moveList = add_drop<c, SILVER>(pos, moveList, sq);
+        moveList = add_drop<c, LANCE>(pos, moveList, sq);
+        moveList = add_drop<c, KNIGHT>(pos, moveList, sq);
+        moveList = add_drop<c, BISHOP>(pos, moveList, sq);
+        moveList = add_drop<c, ROOK>(pos, moveList, sq);
+        moveList = add_drop<c, PAWN>(pos, moveList, sq);
+    }
+
+    return moveList;
+}
+
+
 template <GenType gt, Color c>
 Move* generate_all(Position& pos, Move* moveList) {
     Bitboard target = gt == NON_EVASIONS ? ~pos.all_pieces(c)
@@ -351,6 +399,10 @@ Move* generate_all(Position& pos, Move* moveList) {
 
     moveList = generate_all_sliding<c>(pos, moveList, target);
     moveList = generate_all_direction<c>(pos, moveList, target);
+
+    if constexpr (gt != CAPTURES) {
+        moveList = generate_drops<c>(pos, moveList);
+    }
 
     // treat king moves separately, as the logic is different for EVASION
     Bitboard kingBb = dir_attacks_bb<c, KING>(pos.king_square(c));
