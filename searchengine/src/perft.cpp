@@ -14,7 +14,7 @@ int perft(Position& pos, int depth) {
     }
 
     Move moveList[MAX_MOVES];
-    Move* end = legacy_generate_moves(pos, moveList);
+    Move* end = generate<LEGAL>(pos, moveList);
 
     // in case of stalemate
     // extremely rare but possible

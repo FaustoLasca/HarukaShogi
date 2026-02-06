@@ -7,8 +7,15 @@
 
 namespace harukashogi {
 
-
+// 128-bit bitboard type
 using Bitboard = __uint128_t;
+
+
+namespace Bitboards {
+// initializes the precomputed data structures for bitboards
+void init();
+}
+
 
 constexpr Bitboard square_bb(Square sq) {
     return static_cast<Bitboard>(1) << sq;
@@ -68,8 +75,72 @@ inline Bitboard dir_attacks_bb(Bitboard bb) {
 }
 
 
-template<Piece p>
-Bitboard piece_attacks_bb(Bitboard bb);
+Bitboard dir_attacks_bb(Square from, Color c, PieceType pt);
+template<Color c, PieceType pt>
+inline Bitboard dir_attacks_bb(Square from) {
+    return dir_attacks_bb(from, c, pt);
+}
+
+
+template<Color c, PieceType pt>
+inline Bitboard sliding_attacks_bb(Square from, Bitboard occupied) {
+    Bitboard bb;
+    Direction d;
+    Bitboard attacks = 0;
+
+    constexpr size_t index = sl_dir_index(make_piece(c, pt));
+
+    for (size_t i=0; i<4 && PSlidingDirections[index][i] != NULL_DIR; ++i) {
+        d = PSlidingDirections[index][i];
+        bb = square_bb(from);
+
+        while (bb) {
+            // TODO: THIS IS HORRIFYING, CHECK FOR A BETTER COMPILE TIME SOLUTION
+            switch (d) {
+                case N_DIR:
+                    bb = dir_attacks_bb<N_DIR>(bb);
+                    break;
+                case NE_DIR:
+                    bb = dir_attacks_bb<NE_DIR>(bb);
+                    break;
+                case E_DIR:
+                    bb = dir_attacks_bb<E_DIR>(bb);
+                    break;
+                case SE_DIR:
+                    bb = dir_attacks_bb<SE_DIR>(bb);
+                    break;
+                case S_DIR:
+                    bb = dir_attacks_bb<S_DIR>(bb);
+                    break;
+                case SW_DIR:
+                    bb = dir_attacks_bb<SW_DIR>(bb);
+                    break;
+                case W_DIR:
+                    bb = dir_attacks_bb<W_DIR>(bb);
+                    break;
+                case NW_DIR:
+                    bb = dir_attacks_bb<NW_DIR>(bb);
+                default:
+                    break;
+            }
+            
+            attacks |= bb;
+            bb &= ~occupied;
+        }
+    }
+
+    return attacks;
+}
+
+
+template<Color c, PieceType pt>
+inline Bitboard attacks_bb(Square from, Bitboard occupied = 0) {
+    Bitboard attacks = dir_attacks_bb<c, pt>(from);
+    if constexpr (sliding_type_index(pt) != -1) {
+        attacks |= sliding_attacks_bb<c, pt>(from, occupied);
+    }
+    return attacks;
+}
 
 
 // prints a bitboard as a board of bit values

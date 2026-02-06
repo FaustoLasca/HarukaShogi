@@ -98,6 +98,7 @@ class Position {
 
 		// getters
 		Piece piece(Square sq) const { return board[sq]; }
+		Square king_square(Color color) const { return kingSq[color]; }
 		int hand_count(Color color, PieceType pt) const {
 			return hands[color * NUM_UNPROMOTED_PIECE_TYPES + pt];
 		}
@@ -147,8 +148,8 @@ class Position {
 		Bitboard allPiecesBB[NUM_COLORS] = {};
 		Bitboard dirPieces[NUM_COLORS][NUM_DIRECTIONS] = {};
 		Bitboard slPieces[NUM_COLORS][NUM_SLIDING_TYPES] = {};
-
 		std::array<Square, NUM_COLORS> kingSq;
+
 		std::array<bool, NUM_COLORS * NUM_FILES> pawnFiles;
 		Color sideToMove;
 		int gamePly;

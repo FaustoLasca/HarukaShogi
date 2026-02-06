@@ -1,5 +1,6 @@
 #include <iostream>
 #include <bitset>
+#include <chrono>
 
 #include "bitboard.h"
 #include "misc.h"
@@ -12,19 +13,27 @@ using namespace harukashogi;
 
 
 int main() {
-    Position::init();
+    init();
 
     Position pos;
     pos.set();
+    int depth = 4;
 
-    Move moveList[MAX_MOVES];
-    //Move* end = generate_all_direction<QUIET, BLACK>(pos, moveList);
-    //for (Move* move = moveList; move < end; ++move)
-    //    std::cout << *move << std::endl;
+    // Move moveList[MAX_MOVES];
+    // Move* moveEnd = generate<LEGAL>(pos, moveList);
+    // for (Move* move = moveList; move < moveEnd; ++move)
+    //     std::cout << *move << std::endl;
+    // std::cout << "Number of moves: " << moveEnd - moveList << std::endl;
+    
 
-    Move*end = generate_sliding<BLACK, LANCE>(pos, moveList, ~pos.all_pieces(BLACK));
-    for (Move* move = moveList; move < end; ++move)
-        std::cout << *move << std::endl;
+    auto start = std::chrono::high_resolution_clock::now();
+
+    perft_test(pos, depth);
+
+    auto end = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+
+    std::cout << "Time taken: " << duration.count() << " milliseconds" << std::endl;
 
     return 0;
 }
