@@ -18,8 +18,8 @@ def count_nodes(game_state: GameState, depth: int) -> int:
 DEPTH = 3
 # SFEN = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
 # SFEN = "ln6l/1r2gkg2/4psnp1/p1pps1p1p/1p3p3/P1P1S1P1P/1PSPP1N2/2G2G3/LNK4RL w BPbp 48"
-# SFEN = "ln1g5/1r3kg2/p2pppn+P1/2ps2p2/1p6l/2P6/PPSPPPPLN/2G2K1pP/LN4G1b w BSSPr 56"
-SFEN = "8l/lpsg1b3/3k5/pP2PpPrp/1Np4n1/P5G2/3PGS2P/4K2P1/L6RL b GSNNPPsbpppp 113"
+SFEN = "ln1g5/1r3kg2/p2pppn+P1/2ps2p2/1p6l/2P6/PPSPPPPLN/2G2K1pP/LN4G1b w BSSPr 56"
+# SFEN = "8l/lpsg1b3/3k5/pP2PpPrp/1Np4n1/P5G2/3PGS2P/4K2P1/L6RL b GSNNPPsbpppp 113"
 # SFEN = "l3+B2Sl/1+r2k4/p2g2+Bpp/2p1ppN2/1l1pPP3/2Pn5/P1S5P/1P1G5/LKN5+r w GSPgsnpppp 124"
 # SFEN = "3gk2nl/4g1+P2/+L3p3p/2ps1rNb1/4NpP2/pS1PP4/1PP1SP2P/K6+b1/3G3NL w GSLPPPPrp 84"
 # SFEN = "1r4k1l/1P4gs1/4+Sp3/l1pB3pp/PN1p3n1/2P2P1GP/K2+bP4/SG7/r7L w GNNLPPPPsppp 110"

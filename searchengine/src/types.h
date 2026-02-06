@@ -40,7 +40,7 @@ enum PieceType : uint8_t {
 
     NO_PIECE_TYPE,
 };
-constexpr uint8_t NUM_SLIDING_TYPES = 3;
+constexpr uint8_t NUM_SLIDING_TYPES = 5;
 constexpr uint8_t NUM_UNPROMOTED_PIECE_TYPES = 8;
 
 enum Piece : uint8_t {
@@ -68,17 +68,19 @@ constexpr Piece unpromote_piece( Piece p ) { return is_promoted(p) ? Piece(p - 6
 constexpr PieceType unpromoted_type( PieceType pt ) {
     return is_promoted(pt) ? PieceType(pt - 6) : pt;
 }
-// used to index the sliding move directions array
+// used to index the sliding pieces bitboard array
 constexpr std::size_t sliding_type_index( PieceType pt ) { 
     switch (pt) {
         case BISHOP:
-        case P_BISHOP:
             return 0;
-        case ROOK:
-        case P_ROOK:
+        case P_BISHOP:
             return 1;
-        case LANCE:
+        case ROOK:
             return 2;
+        case P_ROOK:
+            return 3;
+        case LANCE:
+            return 4;
         default:
             return -1;
     }

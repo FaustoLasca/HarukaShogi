@@ -337,7 +337,9 @@ template<Color c>
 Move* generate_all_sliding(Position& pos, Move* moveList, Bitboard target) {
     moveList = generate_sliding<c, LANCE>(pos, moveList, target);
     moveList = generate_sliding<c, BISHOP>(pos, moveList, target);
+    moveList = generate_sliding<c, P_BISHOP>(pos, moveList, target);
     moveList = generate_sliding<c, ROOK>(pos, moveList, target);
+    moveList = generate_sliding<c, P_ROOK>(pos, moveList, target);
 
     return moveList;
 }

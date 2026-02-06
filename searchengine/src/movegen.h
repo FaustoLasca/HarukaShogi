@@ -59,9 +59,12 @@ constexpr std::array<DirectionStruct, NUM_PIECE_TYPES * NUM_1DIR> StandardMoveDi
 
 
 // separate data structure for sliding directions
+// indexed by sliding_type_index(pt) * MAX_SLIDING_DIRECTIONS
 constexpr std::array<DirectionStruct, NUM_SLIDING_TYPES * MAX_SLIDING_DIRECTIONS> SlidingMoveDirections = {
     NORTH_EAST, NORTH_WEST, SOUTH_WEST, SOUTH_EAST, // BISHOP
+    NORTH_EAST, NORTH_WEST, SOUTH_WEST, SOUTH_EAST, // P_BISHOP (same as BISHOP)
     NORTH, WEST,    SOUTH,  EAST,   // ROOK
+    NORTH, WEST,    SOUTH,  EAST,   // P_ROOK (same as ROOK)
     NORTH, NO_DIR, NO_DIR, NO_DIR // LANCE
 };
 

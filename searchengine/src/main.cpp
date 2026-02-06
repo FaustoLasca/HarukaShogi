@@ -16,8 +16,8 @@ int main() {
     init();
 
     Position pos;
-    pos.set("ln1g5/1r3kg2/p2pppn+P1/2ps2p2/1p6l/2P6/PPSPPPPLN/2G2K1pP/LN4G1b w BSSPr 56");
-    int depth = 1;
+    pos.set("l3+B2Sl/1+r2k4/p2g2+Bpp/2p1ppN2/1l1pPP3/2Pn5/P1S5P/1P1G5/LKN5+r w GSPgsnpppp 124");
+    int depth = 2;
 
     // Move moveList[MAX_MOVES];
     // Move* moveEnd = generate<LEGAL>(pos, moveList);

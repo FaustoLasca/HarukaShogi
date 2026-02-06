@@ -60,10 +60,13 @@ void Position::set(const std::string& sfenStr) {
 
     ss >> std::noskipws;
 
-    // empty board and hands
+    // empty board, hands, and bitboards
     board.fill(NO_PIECE);
     hands.fill(0);
     pawnFiles.fill(false);
+    std::fill(std::begin(allPiecesBB), std::end(allPiecesBB), Bitboard(0));
+    std::fill(&dirPieces[0][0], &dirPieces[0][0] + NUM_COLORS * NUM_DIRECTIONS, Bitboard(0));
+    std::fill(&slPieces[0][0], &slPieces[0][0] + NUM_COLORS * NUM_SLIDING_TYPES, Bitboard(0));
     gameStatus = NO_STATUS;
     winner = NO_COLOR;
 
