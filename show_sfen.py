@@ -4,7 +4,8 @@ from ui.gui import Gui
 from game.game_state import GameState
 
 
-SFEN_STRING = "1r4k1l/1P4gs1/4+Sp3/l1p4pp/PN1p3n1/1BP2P1GP/K3P4/SG+b6/r7L w GNNLPPPPsppp 112"
+SFEN_STRING = "ln1g5/1r3kg2/p2pppn+P1/2ps2p2/1p6l/2P6/PPSPPPPLN/2G2K1pP/LN4G1b w BSSPr 56"
+
 
 state = GameState(SFEN_STRING)
 ui_queue = Queue()

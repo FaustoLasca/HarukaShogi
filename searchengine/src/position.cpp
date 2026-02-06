@@ -364,6 +364,18 @@ bool Position::is_legal(Move m) {
     if (m.is_null())
         return false;
 
+    // pawns, lances and knights cannot move to the last ranks without promotion
+    if (!m.is_drop() && !m.is_promotion()) {
+        PieceType pt = type_of(board[m.from()]);
+        if (pt == PAWN || pt == LANCE || pt == KNIGHT) {
+            if (rank_of(m.to()) == (sideToMove == BLACK ? R_1 : R_9))
+                return false;
+            // knights cannot move to the second last rank without promotion
+            if (pt == KNIGHT && rank_of(m.to()) == (sideToMove == BLACK ? R_2 : R_8))
+                return false;
+        }
+    }
+
     // TODO: this is unoptimized, needs to be optimized
     make_move(m);
     bool is_legal = !is_in_check(~sideToMove);
