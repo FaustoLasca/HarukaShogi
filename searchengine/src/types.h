@@ -59,7 +59,7 @@ enum Piece : uint8_t {
 // functions on pieces and piece types
 constexpr PieceType type_of(Piece p) { return PieceType( (p-1) % NUM_PIECE_TYPES ); };
 constexpr Color color_of(Piece p) { return Color( (p-1) / NUM_PIECE_TYPES ); };
-constexpr Piece make_piece(Color c, PieceType pt) { return Piece(c * NUM_PIECE_TYPES + pt + 1); };
+constexpr Piece make_piece(Color c, PieceType pt) { return Piece(int(c) * int(NUM_PIECE_TYPES) + int(pt) + 1); };
 constexpr bool is_promoted( PieceType pt ) { return pt >= P_SILVER; };
 constexpr bool is_promoted( Piece p ) { return is_promoted(type_of(p)); };
 constexpr bool can_promote( PieceType pt ) { return pt>=SILVER && pt<=PAWN; };
