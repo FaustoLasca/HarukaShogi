@@ -57,6 +57,7 @@ constexpr Bitboard invert(Bitboard bb) {
 // returns the bitboard of all the squares between two squares
 // used for check evasions and pins
 Bitboard between_bb(Square from, Square to);
+Bitboard line_bb(Square from, Square to);
 
 
 // functions used to manipulate a bitboard
@@ -101,7 +102,7 @@ inline Bitboard dir_attacks_bb(Square from) {
 
 
 template<Color c, PieceType pt>
-inline Bitboard sliding_attacks_bb(Square from, Bitboard occupied) {
+inline Bitboard sliding_attacks_bb(Square from, Bitboard occupied = 0) {
     Bitboard bb;
     Direction d;
     Bitboard attacks = 0;

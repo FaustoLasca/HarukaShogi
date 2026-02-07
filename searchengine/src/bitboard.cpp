@@ -29,6 +29,7 @@ Square pop_lsb(Bitboard& bb) {
 // data structures for precomputed bitboards
 Bitboard PieceDirAttacksBB[NUM_COLORS][NUM_PIECE_TYPES][NUM_SQUARES];
 Bitboard BetweenBB[NUM_SQUARES][NUM_SQUARES];
+Bitboard LineBB[NUM_SQUARES][NUM_SQUARES];
 
 
 void init_piece_dir_attacks() {
@@ -103,8 +104,10 @@ void init_between_bb() {
         for (Square to = SQ_11; to < NUM_SQUARES; ++to) {
 
             BetweenBB[from][to] = 0;
+            LineBB[from][to] = 0;
 
-            for (Direction d : dirs) {
+            for (int i = 0; i < 8; ++i) {
+                Direction d = dirs[i];
                 Bitboard from_bb = square_bb(from);
                 Bitboard to_bb = square_bb(to);
 
@@ -117,6 +120,26 @@ void init_between_bb() {
 
                 if (between & to_bb) {
                     BetweenBB[from][to] = between ^ to_bb;
+
+                    // LineBB: the full line through both squares
+                    Direction opp = dirs[(i + 4) % 8];
+                    Bitboard line = square_bb(from) | square_bb(to) | BetweenBB[from][to];
+
+                    // extend from 'from' in the opposite direction
+                    Bitboard walker = square_bb(from);
+                    while (walker) {
+                        walker = dir_attacks_bb(walker, opp);
+                        line |= walker;
+                    }
+
+                    // extend from 'to' in the original direction
+                    walker = square_bb(to);
+                    while (walker) {
+                        walker = dir_attacks_bb(walker, d);
+                        line |= walker;
+                    }
+
+                    LineBB[from][to] = line;
                     break;
                 }
             }
@@ -164,6 +187,11 @@ Bitboard dir_attacks_bb(Square from, Color c, PieceType pt) {
 
 Bitboard between_bb(Square from, Square to) {
     return BetweenBB[from][to];
+}
+
+
+Bitboard line_bb(Square from, Square to) {
+    return LineBB[from][to];
 }
 
 

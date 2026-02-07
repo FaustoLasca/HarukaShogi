@@ -28,10 +28,13 @@ enum CheckStatus {
 
 struct StateInfo {
 	StateInfo() : capturedPT(NO_PIECE_TYPE),
+				  checkersBB(0),
 				  key(0) {}
 
-	PieceType capturedPT;
+	Bitboard checkersBB;
+	Bitboard blockers[NUM_COLORS];
 
+	PieceType capturedPT;
 	uint64_t key;
 };
 
@@ -86,7 +89,7 @@ class Position {
 		void unmake_move(Move m);
 
 		Bitboard attackers_to(Square sq, Bitboard occupied) const;
-		Bitboard checkers() const;
+		Bitboard checkers() const { return si.front().checkersBB; }
 		
 		bool is_checkmate();
 		bool is_game_over();
@@ -130,7 +133,8 @@ class Position {
 		void move_piece(Square from, Square to);
 		void add_hand_piece(Color color, PieceType pt);
 		void remove_hand_piece(Color color, PieceType pt);
-		
+
+		void update_blocker_info(Color c);
 
 		// compute the zobrist hash code
 		void compute_key();
