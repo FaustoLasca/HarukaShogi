@@ -356,9 +356,10 @@ void Position::unmake_move(Move m) {
 
 bool Position::is_in_check(Color color) {
     CheckStatus& checkStatus = si.front().checkStatus[color];
-    // CheckStatus checkStatus = CHECK_UNRESOLVED;
     if (checkStatus == CHECK_UNRESOLVED) {
-        checkStatus = is_attacked(*this, kingSq[color], ~color) ? CHECK : NOT_CHECK;
+        bool is_check = color == BLACK ? attackers_to<WHITE>(kingSq[BLACK]) 
+                                       : attackers_to<BLACK>(kingSq[WHITE]);
+        checkStatus = is_check ? CHECK : NOT_CHECK;
     }
     return checkStatus == CHECK;
 }
@@ -407,6 +408,39 @@ bool Position::is_legal(Move m) {
 
 bool Position::is_capture(Move m) const {
     return board[m.to()] != NO_PIECE;
+}
+
+
+template<Color c>
+Bitboard Position::attackers_to(Square sq) const {
+    Bitboard attackers = 0;
+    // generate each direction and check if there's an attacker
+    attackers |= dir_attacks_bb<N_DIR>(square_bb(sq)) & dirPieces[c][S_DIR];
+    attackers |= dir_attacks_bb<NE_DIR>(square_bb(sq)) & dirPieces[c][SW_DIR];
+    attackers |= dir_attacks_bb<E_DIR>(square_bb(sq)) & dirPieces[c][W_DIR];
+    attackers |= dir_attacks_bb<SE_DIR>(square_bb(sq)) & dirPieces[c][NW_DIR];
+    attackers |= dir_attacks_bb<S_DIR>(square_bb(sq)) & dirPieces[c][N_DIR];
+    attackers |= dir_attacks_bb<SW_DIR>(square_bb(sq)) & dirPieces[c][NE_DIR];
+    attackers |= dir_attacks_bb<W_DIR>(square_bb(sq)) & dirPieces[c][E_DIR];
+    attackers |= dir_attacks_bb<NW_DIR>(square_bb(sq)) & dirPieces[c][SE_DIR];
+    attackers |= dir_attacks_bb<NNE_DIR>(square_bb(sq)) & dirPieces[c][SSW_DIR];
+    attackers |= dir_attacks_bb<NNW_DIR>(square_bb(sq)) & dirPieces[c][SSE_DIR];
+    attackers |= dir_attacks_bb<SSE_DIR>(square_bb(sq)) & dirPieces[c][NNW_DIR];
+    attackers |= dir_attacks_bb<SSW_DIR>(square_bb(sq)) & dirPieces[c][NNE_DIR];
+
+    // generate sliding moves and check if there's an attacker
+    attackers |= sliding_attacks_bb<~c, LANCE>(sq, all_pieces()) & 
+                 slPieces[c][sliding_type_index(LANCE)];
+    attackers |= sliding_attacks_bb<~c, BISHOP>(sq, all_pieces()) & 
+                 slPieces[c][sliding_type_index(BISHOP)];
+    attackers |= sliding_attacks_bb<~c, P_BISHOP>(sq, all_pieces()) & 
+                 slPieces[c][sliding_type_index(P_BISHOP)];
+    attackers |= sliding_attacks_bb<~c, ROOK>(sq, all_pieces()) & 
+                 slPieces[c][sliding_type_index(ROOK)];
+    attackers |= sliding_attacks_bb<~c, P_ROOK>(sq, all_pieces()) & 
+                 slPieces[c][sliding_type_index(P_ROOK)];
+
+    return attackers;
 }
 
 

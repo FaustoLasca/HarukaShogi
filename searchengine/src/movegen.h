@@ -7,18 +7,6 @@
 namespace harukashogi {
 
 
-// generate all legal moves
-// moves are added to the move list and the first free slot is returned
-Move* legacy_generate_moves(Position& pos, Move* moveList);
-
-// generate all legal moves from the piece in the given square
-// moves are added to the move list and the first free slot is returned
-Move* piece_moves(Position& pos, Move* moveList, Square from);
-
-// returns the squares a piece attacks
-bool is_attacked(const Position& pos, Square square, Color by);
-
-
 // initializes the precomputed data structures for move generation
 void init_movegen();
 

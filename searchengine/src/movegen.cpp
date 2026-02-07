@@ -7,57 +7,6 @@
 namespace harukashogi {
 
 
-bool is_attacked(const Position& pos, Square square, Color by) {
-    // -1 for black, 1 for white
-    // this is used to invert the direction of the move,
-    // since we look starting from the destination square
-    int colorFactor = (by == BLACK) ? -1 : 1;
-    DirectionStruct d;
-    Square to = square;
-    Piece p;
-
-    // for every piece type, generate inverse move and check if piece is there
-    for (PieceType pt = KING; pt < NUM_PIECE_TYPES; ++pt) {
-        p = make_piece(by, pt);
-
-        for (int i = 0; i < NUM_1DIR; ++i) {
-            d = colorFactor * StandardMoveDirections[pt * NUM_1DIR + i];
-            if (d == NO_DIR)
-                break;
-
-            to = add_direction(square, d);
-            if (to != NO_SQUARE)
-                if (pos.piece(to) == p )
-                    return true;
-        }
-
-        // check sliding moves if necessary
-        if (sliding_type_index(pt) != -1) {
-            for (int i = 0; i < MAX_SLIDING_DIRECTIONS; ++i) {
-                d = colorFactor * SlidingMoveDirections[
-                    sliding_type_index(pt) * MAX_SLIDING_DIRECTIONS + i];
-                if (d == NO_DIR)
-                    break;
-
-                to = add_direction(square, d);
-                // loop until out of bounds or piece is found
-                while (to != NO_SQUARE) {
-                    if (pos.piece(to) == p)
-                        return true;
-                    // stop if we hit a piece
-                    else if (pos.piece(to) != NO_PIECE)
-                        break;
-
-                    to = add_direction(to, d);
-                }
-            }
-        }
-    }
-
-    return false;
-}
-
-
 template<Color c, Direction d>
 Move* splat_dir_moves(Position& pos, Move* moveList, Bitboard attacks) {
     while (attacks) {

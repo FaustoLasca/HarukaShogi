@@ -232,7 +232,7 @@ constexpr size_t sl_dir_index(Piece p) {
             return 3;
 
         default:
-            throw std::invalid_argument("Invalid piece");
+            return -1;
     }
 }
 

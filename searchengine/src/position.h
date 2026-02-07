@@ -88,6 +88,10 @@ class Position {
 		void make_move(Move m);
 		void unmake_move(Move m);
 
+
+		template<Color c>
+		Bitboard attackers_to(Square sq) const;
+
 		
 		bool is_in_check(Color color);
 		bool is_checkmate();
