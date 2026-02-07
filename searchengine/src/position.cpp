@@ -393,7 +393,7 @@ bool Position::is_legal(Move m) {
         // for the opponent. If not it's checkmate.
         if ((m.to() + pawnAttack) == kingSq[sideToMove]) {
             Move moveList[MAX_MOVES];
-            legacy_generate_moves(*this, moveList);
+            generate<LEGAL>(*this, moveList);
             if (moveList[0].is_null())
                 is_legal = false;   
         }
@@ -416,16 +416,11 @@ bool Position::is_checkmate() {
     if (is_in_check(color)) {
         // first check if the king has any legal moves
         Move moveList[MAX_MOVES];
-        Move* end = piece_moves(*this, moveList, kingSq[color]);
-
-        // if the king has no legal move, generate all moves
+        Move* end = generate<LEGAL>(*this, moveList);
         if (end == moveList) {
-            end = legacy_generate_moves(*this, moveList);
-            if (end == moveList) {
-                gameStatus = GAME_OVER;
-                winner = ~color;
-                return true;
-            }
+            gameStatus = GAME_OVER;
+            winner = ~color;
+            return true;
         }
     }
 
