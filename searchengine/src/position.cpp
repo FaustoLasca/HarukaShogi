@@ -198,7 +198,6 @@ void Position::make_move(Move m) {
     // add a new state info to the list
     // copy the current state info to the new one
     si.push_front(StateInfo(si.front()));
-    si.front().checkStatus.fill(CHECK_UNRESOLVED);
     si.front().capturedPT = NO_PIECE_TYPE;
 
     // move is not a drop
@@ -268,7 +267,6 @@ void Position::make_move(Move m) {
     }
 
     // update side to move and game ply
-    si.front().checkStatus.fill(CHECK_UNRESOLVED);
     gameStatus = NO_STATUS;
     sideToMove = ~sideToMove;
     gamePly++;
@@ -354,55 +352,53 @@ void Position::unmake_move(Move m) {
 }
 
 
-bool Position::is_in_check(Color color) {
-    CheckStatus& checkStatus = si.front().checkStatus[color];
-    if (checkStatus == CHECK_UNRESOLVED) {
-        bool is_check = color == BLACK ? attackers_to<WHITE>(kingSq[BLACK]) 
-                                       : attackers_to<BLACK>(kingSq[WHITE]);
-        checkStatus = is_check ? CHECK : NOT_CHECK;
-    }
-    return checkStatus == CHECK;
-}
-
-
 bool Position::is_legal(Move m) {
-    if (m.is_null())
-        return false;
+    if (m.is_drop()) {
 
-    // pawns, lances and knights cannot move to the last ranks without promotion
-    if (!m.is_drop() && !m.is_promotion()) {
-        PieceType pt = type_of(board[m.from()]);
-        if (pt == PAWN || pt == LANCE || pt == KNIGHT) {
-            if (rank_of(m.to()) == (sideToMove == BLACK ? R_1 : R_9))
-                return false;
-            // knights cannot move to the second last rank without promotion
-            if (pt == KNIGHT && rank_of(m.to()) == (sideToMove == BLACK ? R_2 : R_8))
-                return false;
+        // pawn drops can't checkmate
+        if (m.dropped() == PAWN) {
+            // if the pawn drop puts the king in check, control if it's checkmate
+            if ((m.to() + (sideToMove == BLACK ? dir_delta(N_DIR) : dir_delta(S_DIR))) == kingSq[~sideToMove]) {
+                bool checkmate = false;
+                make_move(m);
+                checkmate = is_checkmate();
+                unmake_move(m);
+                return !checkmate;
+            }
         }
+
+    }
+    else {
+
+        // pawns, lances and knights cannot move to the last ranks without promotion
+        if (!m.is_drop() && !m.is_promotion()) {
+            PieceType pt = type_of(board[m.from()]);
+            if (pt == PAWN || pt == LANCE || pt == KNIGHT) {
+                if (rank_of(m.to()) == (sideToMove == BLACK ? R_1 : R_9))
+                    return false;
+                // knights cannot move to the second last rank without promotion
+                if (pt == KNIGHT && rank_of(m.to()) == (sideToMove == BLACK ? R_2 : R_8))
+                    return false;
+            }
+        }
+
+        // the KING can move in check from move genetation
+        if (type_of(board[m.from()]) == KING) {
+            if (attackers_to(m.to(), all_pieces() ^ square_bb(m.from())) & all_pieces(~sideToMove))
+                return false;
+            else
+                return true;
+        }
+
+        // TODO: this is unoptimized, needs to be optimized
+        make_move(m);
+        bool is_legal = !(attackers_to(kingSq[~sideToMove], all_pieces()) & all_pieces(sideToMove));
+        unmake_move(m);
+
+        return is_legal;
     }
 
-    // TODO: this is unoptimized, needs to be optimized
-    make_move(m);
-    bool is_legal = !is_in_check(~sideToMove);
-
-    // pawn drop can't checkmate
-    // TODO: this works but is very inefficient
-    // generate pawn move and check for checkmate
-    if (is_legal && m.is_drop() && m.dropped() == PAWN) {
-        DirectionStruct pawnAttack = (sideToMove == BLACK) ? SOUTH : NORTH;
-        // if the pawn drop eats the king, check if there are any legal moves
-        // for the opponent. If not it's checkmate.
-        if ((m.to() + pawnAttack) == kingSq[sideToMove]) {
-            Move moveList[MAX_MOVES];
-            generate<LEGAL>(*this, moveList);
-            if (moveList[0].is_null())
-                is_legal = false;   
-        }
-    }
-
-    unmake_move(m);
-
-    return is_legal;
+    return true;
 }
 
 
@@ -411,49 +407,64 @@ bool Position::is_capture(Move m) const {
 }
 
 
-template<Color c>
-Bitboard Position::attackers_to(Square sq) const {
+Bitboard Position::attackers_to(Square sq, Bitboard occupied) const {
     Bitboard attackers = 0;
     // generate each direction and check if there's an attacker
-    attackers |= dir_attacks_bb<N_DIR>(square_bb(sq)) & dirPieces[c][S_DIR];
-    attackers |= dir_attacks_bb<NE_DIR>(square_bb(sq)) & dirPieces[c][SW_DIR];
-    attackers |= dir_attacks_bb<E_DIR>(square_bb(sq)) & dirPieces[c][W_DIR];
-    attackers |= dir_attacks_bb<SE_DIR>(square_bb(sq)) & dirPieces[c][NW_DIR];
-    attackers |= dir_attacks_bb<S_DIR>(square_bb(sq)) & dirPieces[c][N_DIR];
-    attackers |= dir_attacks_bb<SW_DIR>(square_bb(sq)) & dirPieces[c][NE_DIR];
-    attackers |= dir_attacks_bb<W_DIR>(square_bb(sq)) & dirPieces[c][E_DIR];
-    attackers |= dir_attacks_bb<NW_DIR>(square_bb(sq)) & dirPieces[c][SE_DIR];
-    attackers |= dir_attacks_bb<NNE_DIR>(square_bb(sq)) & dirPieces[c][SSW_DIR];
-    attackers |= dir_attacks_bb<NNW_DIR>(square_bb(sq)) & dirPieces[c][SSE_DIR];
-    attackers |= dir_attacks_bb<SSE_DIR>(square_bb(sq)) & dirPieces[c][NNW_DIR];
-    attackers |= dir_attacks_bb<SSW_DIR>(square_bb(sq)) & dirPieces[c][NNE_DIR];
+    attackers |= dir_attacks_bb<N_DIR>(square_bb(sq)) & 
+                 (dir_pieces(WHITE, S_DIR) | dir_pieces(BLACK, S_DIR));
+    attackers |= dir_attacks_bb<NE_DIR>(square_bb(sq)) & 
+                 (dir_pieces(WHITE, SW_DIR) | dir_pieces(BLACK, SW_DIR));
+    attackers |= dir_attacks_bb<E_DIR>(square_bb(sq)) & 
+                 (dir_pieces(WHITE, W_DIR) | dir_pieces(BLACK, W_DIR));
+    attackers |= dir_attacks_bb<SE_DIR>(square_bb(sq)) & 
+                 (dir_pieces(WHITE, NW_DIR) | dir_pieces(BLACK, NW_DIR));
+    attackers |= dir_attacks_bb<S_DIR>(square_bb(sq)) & 
+                 (dir_pieces(WHITE, N_DIR) | dir_pieces(BLACK, N_DIR));
+    attackers |= dir_attacks_bb<SW_DIR>(square_bb(sq)) & 
+                 (dir_pieces(WHITE, NE_DIR) | dir_pieces(BLACK, NE_DIR));
+    attackers |= dir_attacks_bb<W_DIR>(square_bb(sq)) & 
+                 (dir_pieces(WHITE, E_DIR) | dir_pieces(BLACK, E_DIR));
+    attackers |= dir_attacks_bb<NW_DIR>(square_bb(sq)) & 
+                 (dir_pieces(WHITE, SE_DIR) | dir_pieces(BLACK, SE_DIR));
+    attackers |= dir_attacks_bb<NNE_DIR>(square_bb(sq)) & 
+                 (dir_pieces(WHITE, SSW_DIR) | dir_pieces(BLACK, SSW_DIR));
+    attackers |= dir_attacks_bb<NNW_DIR>(square_bb(sq)) & 
+                 (dir_pieces(WHITE, SSE_DIR) | dir_pieces(BLACK, SSE_DIR));
+    attackers |= dir_attacks_bb<SSE_DIR>(square_bb(sq)) & 
+                 (dir_pieces(WHITE, NNW_DIR) | dir_pieces(BLACK, NNW_DIR));
+    attackers |= dir_attacks_bb<SSW_DIR>(square_bb(sq)) & 
+                 (dir_pieces(WHITE, NNE_DIR) | dir_pieces(BLACK, NNE_DIR));
 
     // generate sliding moves and check if there's an attacker
-    attackers |= sliding_attacks_bb<~c, LANCE>(sq, all_pieces()) & 
-                 slPieces[c][sliding_type_index(LANCE)];
-    attackers |= sliding_attacks_bb<~c, BISHOP>(sq, all_pieces()) & 
-                 slPieces[c][sliding_type_index(BISHOP)];
-    attackers |= sliding_attacks_bb<~c, P_BISHOP>(sq, all_pieces()) & 
-                 slPieces[c][sliding_type_index(P_BISHOP)];
-    attackers |= sliding_attacks_bb<~c, ROOK>(sq, all_pieces()) & 
-                 slPieces[c][sliding_type_index(ROOK)];
-    attackers |= sliding_attacks_bb<~c, P_ROOK>(sq, all_pieces()) & 
-                 slPieces[c][sliding_type_index(P_ROOK)];
+    attackers |= sliding_attacks_bb<BLACK, LANCE>(sq, occupied) & 
+                 sld_pieces(WHITE, LANCE);
+    attackers |= sliding_attacks_bb<WHITE, LANCE>(sq, occupied) & 
+                 sld_pieces(BLACK, LANCE);
+    attackers |= sliding_attacks_bb<BLACK, BISHOP>(sq, occupied) & 
+                 (sld_pieces(WHITE, BISHOP) | sld_pieces(WHITE, P_BISHOP) |
+                 sld_pieces(BLACK, BISHOP) | sld_pieces(BLACK, P_BISHOP));
+    attackers |= sliding_attacks_bb<BLACK, ROOK>(sq, occupied) & 
+                 (sld_pieces(WHITE, ROOK) | sld_pieces(WHITE, P_ROOK) |
+                 sld_pieces(BLACK, ROOK) | sld_pieces(BLACK, P_ROOK));
 
     return attackers;
 }
 
 
+Bitboard Position::checkers() const {
+    return attackers_to(kingSq[sideToMove], all_pieces()) & all_pieces(~sideToMove);
+}
+
+
 bool Position::is_checkmate() {
-    Color color = sideToMove;
     // only go forward if the king is in check
-    if (is_in_check(color)) {
+    if (checkers()) {
         // first check if the king has any legal moves
         Move moveList[MAX_MOVES];
         Move* end = generate<LEGAL>(*this, moveList);
         if (end == moveList) {
             gameStatus = GAME_OVER;
-            winner = ~color;
+            winner = ~sideToMove;
             return true;
         }
     }

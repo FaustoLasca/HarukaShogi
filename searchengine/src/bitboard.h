@@ -54,9 +54,16 @@ constexpr Bitboard invert(Bitboard bb) {
 }
 
 
+// returns the bitboard of all the squares between two squares
+// used for check evasions and pins
+Bitboard between_bb(Square from, Square to);
+
+
 // functions used to manipulate a bitboard
+Square lsb(Bitboard bb);
 Square pop_lsb(Bitboard& bb);
 int popcount(Bitboard bb);
+bool one_bit(Bitboard bb);
 
 
 // functions for move generation
@@ -83,6 +90,7 @@ inline Bitboard dir_attacks_bb(Bitboard bb) {
 
     return attacks;
 }
+Bitboard dir_attacks_bb(Bitboard from, Direction d);
 
 
 Bitboard dir_attacks_bb(Square from, Color c, PieceType pt);

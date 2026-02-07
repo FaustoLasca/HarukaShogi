@@ -133,12 +133,12 @@ Move* add_drop(Position& pos, Move* moveList, Square sq) {
 
 
 template<Color c>
-Move* generate_drops(Position& pos, Move* moveList) {
-    Bitboard target = invert(pos.all_pieces());
+Move* generate_drops(Position& pos, Move* moveList, Bitboard target) {
+    Bitboard bb = invert(pos.all_pieces()) & target;
     
-    while (target) {
+    while (bb) {
         // get the next free square
-        Square sq = pop_lsb(target);
+        Square sq = pop_lsb(bb);
         // add the drop moves for all piece types
         moveList = add_drop<c, GOLD>(pos, moveList, sq);
         moveList = add_drop<c, SILVER>(pos, moveList, sq);
@@ -155,20 +155,30 @@ Move* generate_drops(Position& pos, Move* moveList) {
 
 template <GenType gt, Color c>
 Move* generate_all(Position& pos, Move* moveList) {
-    Bitboard target = gt == NON_EVASIONS ? ~pos.all_pieces(c)
-                    : gt == CAPTURES     ? pos.all_pieces(~c)
-                                         : ~pos.all_pieces(); // QUIETS
+    Bitboard checkers = pos.checkers();
+    Bitboard target;
+    Square ksq = pos.king_square(c);
+    
+    // if there is more than one checker, there can only be king moves
+    if (!( gt == EVASIONS && !one_bit(checkers))) {
 
-    moveList = generate_all_sliding<c>(pos, moveList, target);
-    moveList = generate_all_direction<c>(pos, moveList, target);
+        target = gt == EVASIONS     ? checkers | between_bb(ksq, lsb(checkers))
+               : gt == NON_EVASIONS ? ~pos.all_pieces(c)
+               : gt == CAPTURES     ? pos.all_pieces(~c)
+                                    : ~pos.all_pieces(); // QUIETS
 
-    if constexpr (gt != CAPTURES) {
-        moveList = generate_drops<c>(pos, moveList);
+        moveList = generate_all_sliding<c>(pos, moveList, target);
+        moveList = generate_all_direction<c>(pos, moveList, target);
+
+        if constexpr (gt != CAPTURES) {
+            moveList = generate_drops<c>(pos, moveList, target);
+        }
+
     }
 
     // treat king moves separately, as the logic is different for EVASION
     Bitboard kingBb = dir_attacks_bb<c, KING>(pos.king_square(c));
-    kingBb &= target;
+    kingBb &= gt == EVASIONS ? ~pos.all_pieces(c) : target; 
     moveList = splat_piece_Moves<c, KING>(pos, moveList, kingBb, pos.king_square(c));
 
     return moveList;
@@ -186,6 +196,7 @@ Move* generate(Position& pos, Move* moveList) {
 }
 
 
+template Move* generate<EVASIONS>(Position& pos, Move* moveList);
 template Move* generate<NON_EVASIONS>(Position& pos, Move* moveList);
 template Move* generate<QUIET>(Position& pos, Move* moveList);
 template Move* generate<CAPTURES>(Position& pos, Move* moveList);
@@ -193,8 +204,11 @@ template Move* generate<CAPTURES>(Position& pos, Move* moveList);
 
 template <>
 Move* generate<LEGAL>(Position& pos, Move* moveList) {
+
     Move pseudoLegalMoves[MAX_MOVES];
-    Move* end = generate<NON_EVASIONS>(pos, pseudoLegalMoves);
+    Move* end = pos.checkers() ? generate<EVASIONS>(pos, pseudoLegalMoves) 
+                               : generate<NON_EVASIONS>(pos, pseudoLegalMoves);
+
     for (Move* m = pseudoLegalMoves; m < end; ++m) {
         if (pos.is_legal(*m))
             *moveList++ = *m;

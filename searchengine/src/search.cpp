@@ -240,7 +240,7 @@ int Searcher::quiescence(int alpha, int beta) {
     int score;
     for (ValMove* m = scoredMoves; m < endScored; ++m) {
         // only consider captures
-        if (pos.is_capture(*m)) {
+        if (pos.is_capture(*m) && pos.is_legal(*m)) {
 
             pos.make_move(*m);
             score = -quiescence(-beta, -alpha);

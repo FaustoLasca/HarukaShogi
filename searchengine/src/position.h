@@ -27,13 +27,10 @@ enum CheckStatus {
 
 
 struct StateInfo {
-	StateInfo() : capturedPT(NO_PIECE_TYPE), 
-				  checkStatus{CHECK_UNRESOLVED, CHECK_UNRESOLVED},
+	StateInfo() : capturedPT(NO_PIECE_TYPE),
 				  key(0) {}
 
 	PieceType capturedPT;
-
-	std::array<CheckStatus, NUM_COLORS> checkStatus;
 
 	uint64_t key;
 };
@@ -88,12 +85,9 @@ class Position {
 		void make_move(Move m);
 		void unmake_move(Move m);
 
-
-		template<Color c>
-		Bitboard attackers_to(Square sq) const;
-
+		Bitboard attackers_to(Square sq, Bitboard occupied) const;
+		Bitboard checkers() const;
 		
-		bool is_in_check(Color color);
 		bool is_checkmate();
 		bool is_game_over();
 		
