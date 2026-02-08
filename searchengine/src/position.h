@@ -96,6 +96,7 @@ class Position {
 		
 		bool is_legal(Move m);
 		bool is_capture(Move m) const;
+		bool gives_check(Move m) const;
 
 		// getters
 		Piece piece(Square sq) const { return board[sq]; }

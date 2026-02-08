@@ -91,7 +91,36 @@ inline Bitboard dir_attacks_bb(Bitboard bb) {
 
     return attacks;
 }
-Bitboard dir_attacks_bb(Bitboard from, Direction d);
+inline Bitboard dir_attacks_bb(Bitboard from, Direction d) {
+    switch (d) {
+        case N_DIR:
+            return dir_attacks_bb<N_DIR>(from);
+        case NE_DIR:
+            return dir_attacks_bb<NE_DIR>(from);
+        case E_DIR:
+            return dir_attacks_bb<E_DIR>(from);
+        case SE_DIR:
+            return dir_attacks_bb<SE_DIR>(from);
+        case S_DIR:
+            return dir_attacks_bb<S_DIR>(from);
+        case SW_DIR:
+            return dir_attacks_bb<SW_DIR>(from);
+        case W_DIR:
+            return dir_attacks_bb<W_DIR>(from);
+        case NW_DIR:
+            return dir_attacks_bb<NW_DIR>(from);
+        case NNE_DIR:
+            return dir_attacks_bb<NNE_DIR>(from);
+        case NNW_DIR:
+            return dir_attacks_bb<NNW_DIR>(from);
+        case SSE_DIR:
+            return dir_attacks_bb<SSE_DIR>(from);
+        case SSW_DIR:
+            return dir_attacks_bb<SSW_DIR>(from);
+        default:
+            return 0;
+    }
+}
 
 
 Bitboard dir_attacks_bb(Square from, Color c, PieceType pt);
@@ -102,7 +131,7 @@ inline Bitboard dir_attacks_bb(Square from) {
 
 
 template<Color c, PieceType pt>
-inline Bitboard sliding_attacks_bb(Square from, Bitboard occupied = 0) {
+inline Bitboard gen_sld_attacks(Square from, Bitboard occupied = 0) {
     Bitboard bb;
     Direction d;
     Bitboard attacks = 0;
@@ -153,10 +182,16 @@ inline Bitboard sliding_attacks_bb(Square from, Bitboard occupied = 0) {
 
 
 template<Color c, PieceType pt>
+inline Bitboard sld_attacks_bb(Square from, Bitboard occupied = 0) {
+    return gen_sld_attacks<c, pt>(from, occupied);
+}
+
+
+template<Color c, PieceType pt>
 inline Bitboard attacks_bb(Square from, Bitboard occupied = 0) {
     Bitboard attacks = dir_attacks_bb<c, pt>(from);
     if constexpr (sliding_type_index(pt) != -1) {
-        attacks |= sliding_attacks_bb<c, pt>(from, occupied);
+        attacks |= sld_attacks_bb<c, pt>(from, occupied);
     }
     return attacks;
 }

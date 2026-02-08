@@ -1,8 +1,11 @@
 #include <bitset>
 #include <bit>
+#include <unordered_map>
+#include <vector>
 
 #include "bitboard.h"
 #include "types.h"
+#include "misc.h"
 
 namespace harukashogi {
 
@@ -28,6 +31,7 @@ Square pop_lsb(Bitboard& bb) {
 
 // data structures for precomputed bitboards
 Bitboard PieceDirAttacksBB[NUM_COLORS][NUM_PIECE_TYPES][NUM_SQUARES];
+std::unordered_map<Bitboard, Bitboard> PieceSldAttacksBB[4][NUM_SQUARES];
 Bitboard BetweenBB[NUM_SQUARES][NUM_SQUARES];
 Bitboard LineBB[NUM_SQUARES][NUM_SQUARES];
 
@@ -97,6 +101,79 @@ void init_piece_dir_attacks() {
 }
 
 
+std::vector<Bitboard> gen_occupied(Bitboard attacks) {
+    std::vector<Bitboard> occupied;
+    Bitboard bb = 0;
+    Square sq;
+
+    occupied.reserve(1 << popcount(attacks));
+    occupied.push_back(bb);
+
+    while (attacks) {
+        sq = pop_lsb(attacks);
+
+        size_t current_size = occupied.size();
+        for (size_t i = 0; i < current_size; ++i) {
+            occupied.push_back(occupied[i] | square_bb(sq));
+        }
+    }
+
+    return occupied;
+}
+
+
+Bitboard trim_xray(Square sq, Bitboard xray) {
+    if (rank_of(sq) != R_9) {
+        xray &= ~Rank9BB;
+    }
+    if (rank_of(sq) != R_1) {
+        xray &= ~Rank1BB;
+    }
+    if (file_of(sq) != F_1) {
+        xray &= ~File1BB;
+    }
+    if (file_of(sq) != F_9) {
+        xray &= ~File9BB;
+    }
+
+    return xray;
+}
+
+
+void init_piece_sld_attacks() {
+    for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
+        Bitboard xray;
+
+        xray = gen_sld_attacks<BLACK, BISHOP>(sq, 0);
+        xray = trim_xray(sq, xray);
+        auto occupied = gen_occupied(xray);
+        for (auto occ : occupied) {
+            PieceSldAttacksBB[0][sq][occ] = gen_sld_attacks<BLACK, BISHOP>(sq, occ);
+        }
+
+        xray = gen_sld_attacks<BLACK, ROOK>(sq, 0);
+        xray = trim_xray(sq, xray);
+        occupied = gen_occupied(xray);
+        for (auto occ : occupied) {
+            PieceSldAttacksBB[1][sq][occ] = gen_sld_attacks<BLACK, ROOK>(sq, occ);
+        }
+
+        xray = gen_sld_attacks<BLACK, LANCE>(sq, 0);
+        xray = trim_xray(sq, xray);
+        occupied = gen_occupied(xray);
+        for (auto occ : occupied) {
+            PieceSldAttacksBB[2][sq][occ] = gen_sld_attacks<BLACK, LANCE>(sq, occ);
+        }
+
+        xray = gen_sld_attacks<WHITE, LANCE>(sq, 0);
+        xray = trim_xray(sq, xray);
+        occupied = gen_occupied(xray);
+        for (auto occ : occupied) {
+            PieceSldAttacksBB[3][sq][occ] = gen_sld_attacks<WHITE, LANCE>(sq, occ);
+        }
+    }
+}
+
 void init_between_bb() {
     Direction dirs[] = {N_DIR, NE_DIR, E_DIR, SE_DIR, S_DIR, SW_DIR, W_DIR, NW_DIR};
     // loop through all combinations of squares and store the associated bitboard
@@ -148,41 +225,17 @@ void init_between_bb() {
 }
 
 
-Bitboard dir_attacks_bb(Bitboard from, Direction d) {
-    switch (d) {
-        case N_DIR:
-            return dir_attacks_bb<N_DIR>(from);
-        case NE_DIR:
-            return dir_attacks_bb<NE_DIR>(from);
-        case E_DIR:
-            return dir_attacks_bb<E_DIR>(from);
-        case SE_DIR:
-            return dir_attacks_bb<SE_DIR>(from);
-        case S_DIR:
-            return dir_attacks_bb<S_DIR>(from);
-        case SW_DIR:
-            return dir_attacks_bb<SW_DIR>(from);
-        case W_DIR:
-            return dir_attacks_bb<W_DIR>(from);
-        case NW_DIR:
-            return dir_attacks_bb<NW_DIR>(from);
-        case NNE_DIR:
-            return dir_attacks_bb<NNE_DIR>(from);
-        case NNW_DIR:
-            return dir_attacks_bb<NNW_DIR>(from);
-        case SSE_DIR:
-            return dir_attacks_bb<SSE_DIR>(from);
-        case SSW_DIR:
-            return dir_attacks_bb<SSW_DIR>(from);
-        default:
-            return 0;
-    }
-}
-
-
 Bitboard dir_attacks_bb(Square from, Color c, PieceType pt) {
     return PieceDirAttacksBB[c][pt][from];
 }
+
+
+// Bitboard sld_attacks_bb(Square from, Color c, PieceType pt, Bitboard occupied) {
+//     size_t index = sl_dir_index(make_piece(c, pt));
+//     Bitboard xray = PieceSldAttacksBB[index][from][0];
+//     xray = trim_xray(from, xray);
+//     return PieceSldAttacksBB[index][from][occupied & xray];
+// }
 
 
 Bitboard between_bb(Square from, Square to) {
@@ -198,6 +251,7 @@ Bitboard line_bb(Square from, Square to) {
 // initializes the precomputed data structures for bitboards
 void Bitboards::init() {
     init_piece_dir_attacks();
+    init_piece_sld_attacks();
     init_between_bb();
 }
 

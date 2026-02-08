@@ -83,7 +83,7 @@ Move* generate_sliding(Position& pos, Move* moveList, Bitboard target) {
 
     while (bb) {
         from = pop_lsb(bb);
-        attacks = sliding_attacks_bb<c, pt>(from, pos.all_pieces());
+        attacks = sld_attacks_bb<c, pt>(from, pos.all_pieces());
         attacks &= target;
 
         moveList = splat_piece_Moves<c, pt>(pos, moveList, attacks, from);

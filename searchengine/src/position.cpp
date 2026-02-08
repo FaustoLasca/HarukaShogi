@@ -451,14 +451,14 @@ Bitboard Position::attackers_to(Square sq, Bitboard occupied) const {
                  (dir_pieces(WHITE, NNE_DIR) | dir_pieces(BLACK, NNE_DIR));
 
     // generate sliding moves and check if there's an attacker
-    attackers |= sliding_attacks_bb<BLACK, LANCE>(sq, occupied) & 
+    attackers |= gen_sld_attacks<BLACK, LANCE>(sq, occupied) & 
                  sld_pieces(WHITE, LANCE);
-    attackers |= sliding_attacks_bb<WHITE, LANCE>(sq, occupied) & 
+    attackers |= gen_sld_attacks<WHITE, LANCE>(sq, occupied) & 
                  sld_pieces(BLACK, LANCE);
-    attackers |= sliding_attacks_bb<BLACK, BISHOP>(sq, occupied) & 
+    attackers |= gen_sld_attacks<BLACK, BISHOP>(sq, occupied) & 
                  (sld_pieces(WHITE, BISHOP) | sld_pieces(WHITE, P_BISHOP) |
                  sld_pieces(BLACK, BISHOP) | sld_pieces(BLACK, P_BISHOP));
-    attackers |= sliding_attacks_bb<BLACK, ROOK>(sq, occupied) & 
+    attackers |= gen_sld_attacks<BLACK, ROOK>(sq, occupied) & 
                  (sld_pieces(WHITE, ROOK) | sld_pieces(WHITE, P_ROOK) |
                  sld_pieces(BLACK, ROOK) | sld_pieces(BLACK, P_ROOK));
 
@@ -588,12 +588,12 @@ void Position::update_blocker_info(Color c) {
     si.blockers[c] = 0;
 
     Bitboard attackers = 0;
-    attackers |= sliding_attacks_bb<BLACK, BISHOP>(ksq) & 
+    attackers |= gen_sld_attacks<BLACK, BISHOP>(ksq, 0) & 
                  (sld_pieces(~c, BISHOP) | sld_pieces(~c, P_BISHOP));
-    attackers |= sliding_attacks_bb<BLACK, ROOK>(ksq) & 
+    attackers |= gen_sld_attacks<BLACK, ROOK>(ksq, 0) & 
                  (sld_pieces(~c, ROOK) | sld_pieces(~c, P_ROOK));
-    attackers |= c == BLACK ? sliding_attacks_bb<BLACK, LANCE>(ksq) & sld_pieces(WHITE, LANCE)
-                            : sliding_attacks_bb<WHITE, LANCE>(ksq) & sld_pieces(BLACK, LANCE);
+    attackers |= c == BLACK ? gen_sld_attacks<BLACK, LANCE>(ksq, 0) & sld_pieces(WHITE, LANCE)
+                            : gen_sld_attacks<WHITE, LANCE>(ksq, 0) & sld_pieces(BLACK, LANCE);
     
     while (attackers) {
         Square attacker = pop_lsb(attackers);
