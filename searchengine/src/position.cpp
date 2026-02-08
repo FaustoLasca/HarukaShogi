@@ -303,9 +303,17 @@ void Position::make_move(Move m) {
             update_line_of_sight(sideToMove);
         }
 
-        // TODO: I MISSED A CASE SOMEWHERE ABOVE, THIS SHOULDN'T BE NECESSARY
-        sideToMove == BLACK ? compute_check_squares<WHITE>() 
-                            : compute_check_squares<BLACK>();
+        // if a piece moves in/out of a sliding check square, they need to be recomputed
+        if ((square_bb(m.from()) | square_bb(m.to())) & 
+            (newSI->checkSquares[sideToMove][BISHOP] | newSI->checkSquares[sideToMove][ROOK])) {
+            sideToMove == BLACK ? compute_sld_check_squares<BLACK>() 
+                                : compute_sld_check_squares<WHITE>();
+        }
+        if ((square_bb(m.from()) | square_bb(m.to())) & 
+            (newSI->checkSquares[~sideToMove][BISHOP] | newSI->checkSquares[~sideToMove][ROOK])) {
+            sideToMove == BLACK ? compute_sld_check_squares<WHITE>() 
+                                : compute_sld_check_squares<BLACK>();
+        }
     }
     // drop
     else {
@@ -333,6 +341,16 @@ void Position::make_move(Move m) {
             sideToMove == BLACK ? compute_sld_check_squares<BLACK>() 
                                 : compute_sld_check_squares<WHITE>();
             update_line_of_sight(sideToMove);
+        }
+        if (square_bb(m.to()) & 
+            (newSI->checkSquares[sideToMove][BISHOP] | newSI->checkSquares[sideToMove][ROOK])) {
+            sideToMove == BLACK ? compute_sld_check_squares<BLACK>() 
+                                : compute_sld_check_squares<WHITE>();
+        }
+        if (square_bb(m.to()) & 
+            (newSI->checkSquares[~sideToMove][BISHOP] | newSI->checkSquares[~sideToMove][ROOK])) {
+            sideToMove == BLACK ? compute_sld_check_squares<WHITE>() 
+                                : compute_sld_check_squares<BLACK>();
         }
     }
 
