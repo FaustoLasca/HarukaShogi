@@ -67,8 +67,7 @@ void Position::set(const std::string& sfenStr) {
     std::memset(hands, 0, sizeof(hands));
     std::memset(pawnFiles, 0, sizeof(pawnFiles));
     std::fill(std::begin(allPiecesBB), std::end(allPiecesBB), Bitboard(0));
-    std::memset(dirPieces, 0, sizeof(dirPieces));
-    std::memset(slPieces, 0, sizeof(slPieces));
+    std::memset(piecesBB, 0, sizeof(piecesBB));
     gameStatus = NO_STATUS;
     winner = NO_COLOR;
 
@@ -424,43 +423,48 @@ bool Position::is_capture(Move m) const {
 
 Bitboard Position::attackers_to(Square sq, Bitboard occupied) const {
     Bitboard attackers = 0;
-    // generate each direction and check if there's an attacker
-    attackers |= dir_attacks_bb<N_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, S_DIR) | dir_pieces(BLACK, S_DIR));
-    attackers |= dir_attacks_bb<NE_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, SW_DIR) | dir_pieces(BLACK, SW_DIR));
-    attackers |= dir_attacks_bb<E_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, W_DIR) | dir_pieces(BLACK, W_DIR));
-    attackers |= dir_attacks_bb<SE_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, NW_DIR) | dir_pieces(BLACK, NW_DIR));
-    attackers |= dir_attacks_bb<S_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, N_DIR) | dir_pieces(BLACK, N_DIR));
-    attackers |= dir_attacks_bb<SW_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, NE_DIR) | dir_pieces(BLACK, NE_DIR));
-    attackers |= dir_attacks_bb<W_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, E_DIR) | dir_pieces(BLACK, E_DIR));
-    attackers |= dir_attacks_bb<NW_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, SE_DIR) | dir_pieces(BLACK, SE_DIR));
-    attackers |= dir_attacks_bb<NNE_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, SSW_DIR) | dir_pieces(BLACK, SSW_DIR));
-    attackers |= dir_attacks_bb<NNW_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, SSE_DIR) | dir_pieces(BLACK, SSE_DIR));
-    attackers |= dir_attacks_bb<SSE_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, NNW_DIR) | dir_pieces(BLACK, NNW_DIR));
-    attackers |= dir_attacks_bb<SSW_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, NNE_DIR) | dir_pieces(BLACK, NNE_DIR));
+    // generate attacks for each piece and check if there's an attacker
+    // 
+    // the color of the move generation and the pieces are swapped, as the attacks are
+    // generated starting from the target square
+    // 
+    // pieces that share the same movement type are grouped together
 
-    // generate sliding moves and check if there's an attacker
-    attackers |= gen_sld_attacks<BLACK, LANCE>(sq, occupied) & 
-                 sld_pieces(WHITE, LANCE);
-    attackers |= gen_sld_attacks<WHITE, LANCE>(sq, occupied) & 
-                 sld_pieces(BLACK, LANCE);
-    attackers |= gen_sld_attacks<BLACK, BISHOP>(sq, occupied) & 
-                 (sld_pieces(WHITE, BISHOP) | sld_pieces(WHITE, P_BISHOP) |
-                 sld_pieces(BLACK, BISHOP) | sld_pieces(BLACK, P_BISHOP));
-    attackers |= gen_sld_attacks<BLACK, ROOK>(sq, occupied) & 
-                 (sld_pieces(WHITE, ROOK) | sld_pieces(WHITE, P_ROOK) |
-                 sld_pieces(BLACK, ROOK) | sld_pieces(BLACK, P_ROOK));
+    // kings and promoted rooks and bishops are grouped together
+    attackers |= attacks_bb<BLACK, KING>(sq) & (pieces(BLACK, KING)     | pieces(WHITE, KING)   |
+                                                pieces(BLACK, P_BISHOP) | pieces(BLACK, P_ROOK) |
+                                                pieces(WHITE, P_BISHOP) | pieces(WHITE, P_ROOK));
+    // golds and promoted pieces of the same color are grouped together
+    attackers |= attacks_bb<WHITE, GOLD>(sq) & (pieces(BLACK, GOLD)    | pieces(BLACK, P_SILVER) |
+                                                pieces(BLACK, P_LANCE) | pieces(BLACK, P_KNIGHT) |
+                                                pieces(BLACK, P_PAWN));
+    attackers |= attacks_bb<BLACK, GOLD>(sq) & (pieces(WHITE, GOLD)    | pieces(WHITE, P_SILVER) |
+                                                pieces(WHITE, P_LANCE) | pieces(WHITE, P_KNIGHT) |
+                                                pieces(WHITE, P_PAWN));
+    attackers |= attacks_bb<WHITE, SILVER>(sq) & pieces(BLACK, SILVER);
+    attackers |= attacks_bb<BLACK, SILVER>(sq) & pieces(WHITE, SILVER);
+    // lances only have sliding attacks, so we can generate them directly
+    attackers |= sld_attacks_bb<WHITE, LANCE>(sq, occupied) & pieces(BLACK, LANCE);
+    attackers |= sld_attacks_bb<BLACK, LANCE>(sq, occupied) & pieces(WHITE, LANCE);
+    attackers |= attacks_bb<WHITE, KNIGHT>(sq) & pieces(BLACK, KNIGHT);
+    attackers |= attacks_bb<BLACK, KNIGHT>(sq) & pieces(WHITE, KNIGHT);
+    // the dir attacks for promoted bishops and rooks are generated with the king
+    // there is no need to generate them here
+    // bishops of both colors, promoted and unpromoted are grouped together
+    attackers |= sld_attacks_bb<BLACK, BISHOP>(sq, occupied) & (pieces(BLACK, BISHOP)   | 
+                                                                pieces(BLACK, P_BISHOP) |
+                                                                pieces(WHITE, BISHOP)   | 
+                                                                pieces(WHITE, P_BISHOP));
+    // rooks of both colors, promoted and unpromoted are grouped together
+    attackers |= sld_attacks_bb<BLACK, ROOK>(sq, occupied) & (pieces(BLACK, ROOK)   | 
+                                                              pieces(BLACK, P_ROOK) |
+                                                              pieces(WHITE, ROOK)   | 
+                                                              pieces(WHITE, P_ROOK));
+    // pawns only attack forward, so we can generate them directly from the direction
+    attackers |= dir_attacks_bb<S_DIR>(square_bb(sq)) & pieces(BLACK, PAWN);
+    attackers |= dir_attacks_bb<N_DIR>(square_bb(sq)) & pieces(WHITE, PAWN);
+
+    attackers &= occupied;
 
     return attackers;
 }
@@ -513,17 +517,7 @@ void Position::add_piece(Piece p, Square sq) {
 
     // update the bitboards
     allPiecesBB[color_of(p)] |= square_bb(sq);
-    // king is excluded from dirPieces as the moves are handled separately
-    if (type_of(p) != KING) {
-        for (int i = 0; i < 8 && PTDirections[p-1][i] != NULL_DIR; ++i) {
-            dirPieces[color_of(p)][PTDirections[p-1][i]] |= square_bb(sq);
-        }
-    }
-
-    int sl_idx = sliding_type_index(type_of(p));
-    if (sl_idx >= 0) {
-        slPieces[color_of(p)][sl_idx] |= square_bb(sq);
-    }
+    piecesBB[color_of(p)][type_of(p)] |= square_bb(sq);
 }
 
 
@@ -535,17 +529,7 @@ void Position::remove_piece(Square sq) {
 
     // update the bitboards
     allPiecesBB[color_of(p)] ^= square_bb(sq);
-    // king is excluded from dirPieces as the moves are handled separately
-    if (type_of(p) != KING) {
-        for (int i = 0; i < 8 && PTDirections[p-1][i] != NULL_DIR; ++i) {
-            dirPieces[color_of(p)][PTDirections[p-1][i]] ^= square_bb(sq);
-        }
-    }
-
-    int sl_idx = sliding_type_index(type_of(p));
-    if (sl_idx >= 0) {
-        slPieces[color_of(p)][sl_idx] ^= square_bb(sq);
-    }
+    piecesBB[color_of(p)][type_of(p)] ^= square_bb(sq);
 }
 
 
@@ -558,17 +542,7 @@ void Position::move_piece(Square from, Square to) {
 
     // update the bitboards
     allPiecesBB[color_of(p)] ^= square_bb(from) | square_bb(to);
-    // king is excluded from dirPieces as the moves are handled separately
-    if (type_of(p) != KING) {
-        for (int i = 0; i < 8 && PTDirections[p-1][i] != NULL_DIR; ++i) {
-            dirPieces[color_of(p)][PTDirections[p-1][i]] ^= square_bb(from) | square_bb(to);
-        }
-    }
-
-    int sl_idx = sliding_type_index(type_of(p));
-    if (sl_idx >= 0) {
-        slPieces[color_of(p)][sl_idx] ^= square_bb(from) | square_bb(to);
-    }
+    piecesBB[color_of(p)][type_of(p)] ^= square_bb(from) | square_bb(to);
 }
 
 
@@ -589,11 +563,11 @@ void Position::update_blocker_info(Color c) {
 
     Bitboard attackers = 0;
     attackers |= gen_sld_attacks<BLACK, BISHOP>(ksq, 0) & 
-                 (sld_pieces(~c, BISHOP) | sld_pieces(~c, P_BISHOP));
+                 (pieces(~c, BISHOP) | pieces(~c, P_BISHOP));
     attackers |= gen_sld_attacks<BLACK, ROOK>(ksq, 0) & 
-                 (sld_pieces(~c, ROOK) | sld_pieces(~c, P_ROOK));
-    attackers |= c == BLACK ? gen_sld_attacks<BLACK, LANCE>(ksq, 0) & sld_pieces(WHITE, LANCE)
-                            : gen_sld_attacks<WHITE, LANCE>(ksq, 0) & sld_pieces(BLACK, LANCE);
+                 (pieces(~c, ROOK) | pieces(~c, P_ROOK));
+    attackers |= c == BLACK ? gen_sld_attacks<BLACK, LANCE>(ksq, 0) & pieces(WHITE, LANCE)
+                            : gen_sld_attacks<WHITE, LANCE>(ksq, 0) & pieces(BLACK, LANCE);
     
     while (attackers) {
         Square attacker = pop_lsb(attackers);
