@@ -4,7 +4,7 @@ from ui.gui import Gui
 from game.game_state import GameState
 
 
-SFEN_STRING = "ln6l/1r2gkg2/4ps1p1/p1pps1p1p/1p3N1n1/P1P1S1P1P/1PSPP4/2G2G3/LNK4RL w BPPbp 50"
+SFEN_STRING = "4k2nl/2g1g1+P2/+L3p3p/2ps1rNb1/4NpP2/pS1PP4/1PP1SP2P/K6+b1/3G3NL b GSLPPPPrp 85"
 
 
 state = GameState(SFEN_STRING)

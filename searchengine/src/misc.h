@@ -9,7 +9,7 @@
 namespace harukashogi {
 
 
-constexpr std::string_view PieceToChar(" KGSLNBRP      kgslnbrp");
+constexpr std::string_view PieceToChar(" KGBRSLNP      kgbrslnp");
 
 
 // operators to convert between types and strings

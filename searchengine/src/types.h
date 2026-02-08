@@ -22,21 +22,22 @@ constexpr Color operator~(Color c) { return Color(1 - int(c)); };
 enum PieceType : uint8_t {
     KING,
     GOLD,
+    BISHOP,
+    ROOK,
     SILVER,
     LANCE,
     KNIGHT,
-    BISHOP,
-    ROOK,
     PAWN,
 
+    P_BISHOP,
+    P_ROOK,
     P_SILVER,
     P_LANCE,
     P_KNIGHT,
-    P_BISHOP,
-    P_ROOK,
     P_PAWN,
 
     NUM_PIECE_TYPES = 14,
+    NUM_MOV_TYPES = 10,
 
     NO_PIECE_TYPE,
 };
@@ -46,11 +47,11 @@ constexpr uint8_t NUM_UNPROMOTED_PIECE_TYPES = 8;
 enum Piece : uint8_t {
     NO_PIECE,
 
-    B_KING, B_GOLD, B_SILVER, B_LANCE, B_KNIGHT, B_BISHOP, B_ROOK, B_PAWN,
-    P_B_SILVER, P_B_LANCE, P_B_KNIGHT, P_B_BISHOP, P_B_ROOK, P_B_PAWN,
+    B_KING, B_GOLD, B_BISHOP, B_ROOK, B_SILVER, B_LANCE, B_KNIGHT, B_PAWN,
+    P_B_BISHOP, P_B_ROOK, P_B_SILVER, P_B_LANCE, P_B_KNIGHT, P_B_PAWN,
 
-    W_KING, W_GOLD, W_SILVER, W_LANCE, W_KNIGHT, W_BISHOP, W_ROOK, W_PAWN,
-    P_W_SILVER, P_W_LANCE, P_W_KNIGHT, P_W_BISHOP, P_W_ROOK, P_W_PAWN,
+    W_KING, W_GOLD, W_BISHOP, W_ROOK, W_SILVER, W_LANCE, W_KNIGHT, W_PAWN,
+    P_W_BISHOP, P_W_ROOK, P_W_SILVER, P_W_LANCE, P_W_KNIGHT, P_W_PAWN,
 
     NUM_PIECES = 28,
     NUM_TOT_PIECES = 40,
@@ -60,31 +61,14 @@ enum Piece : uint8_t {
 constexpr PieceType type_of(Piece p) { return PieceType( (p-1) % NUM_PIECE_TYPES ); };
 constexpr Color color_of(Piece p) { return Color( (p-1) / NUM_PIECE_TYPES ); };
 constexpr Piece make_piece(Color c, PieceType pt) { return Piece(int(c) * int(NUM_PIECE_TYPES) + int(pt) + 1); };
-constexpr bool is_promoted( PieceType pt ) { return pt >= P_SILVER; };
+constexpr bool is_promoted( PieceType pt ) { return pt > PAWN; };
 constexpr bool is_promoted( Piece p ) { return is_promoted(type_of(p)); };
-constexpr bool can_promote( PieceType pt ) { return pt>=SILVER && pt<=PAWN; };
+constexpr bool can_promote( PieceType pt ) { return pt>GOLD && pt<=PAWN; };
 constexpr Piece promote_piece( Piece p ) { return is_promoted(p) ? p : Piece(p + 6); };
 constexpr Piece unpromote_piece( Piece p ) { return is_promoted(p) ? Piece(p - 6) : p; };
 constexpr PieceType unpromoted_type( PieceType pt ) {
     return is_promoted(pt) ? PieceType(pt - 6) : pt;
 }
-// used to index the sliding pieces bitboard array
-constexpr std::size_t sliding_type_index( PieceType pt ) { 
-    switch (pt) {
-        case BISHOP:
-            return 0;
-        case P_BISHOP:
-            return 1;
-        case ROOK:
-            return 2;
-        case P_ROOK:
-            return 3;
-        case LANCE:
-            return 4;
-        default:
-            return -1;
-    }
- };
 
 enum Square : uint8_t {
     SQ_11, SQ_21, SQ_31, SQ_41, SQ_51, SQ_61, SQ_71, SQ_81, SQ_91,
@@ -172,46 +156,47 @@ constexpr Direction PTDirections[NUM_PIECES][8] = {
     // black pieces
     {N_DIR,    NE_DIR,   E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NW_DIR  }, // KING
     {N_DIR,    NE_DIR,   E_DIR,    S_DIR,    W_DIR,    NW_DIR,   NULL_DIR, NULL_DIR}, // GOLD
+    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // BISHOP
+    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // ROOK
     {N_DIR,    NE_DIR,   SE_DIR,   SW_DIR,   NW_DIR,   NULL_DIR, NULL_DIR, NULL_DIR}, // SILVER
     {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // LANCE
     {NNE_DIR,  NNW_DIR,  NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // KNIGHT
-    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // BISHOP
-    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // ROOK
     {N_DIR,    NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // PAWN
+    {N_DIR,    E_DIR,    S_DIR,    W_DIR,    NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // P_BISHOP
+    {NE_DIR,   SE_DIR,   SW_DIR,   NW_DIR,   NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // P_ROOK
     {N_DIR,    NE_DIR,   E_DIR,    S_DIR,    W_DIR,    NW_DIR,   NULL_DIR, NULL_DIR}, // P_SILVER
     {N_DIR,    NE_DIR,   E_DIR,    S_DIR,    W_DIR,    NW_DIR,   NULL_DIR, NULL_DIR}, // P_LANCE
     {N_DIR,    NE_DIR,   E_DIR,    S_DIR,    W_DIR,    NW_DIR,   NULL_DIR, NULL_DIR}, // P_KNIGHT
-    {N_DIR,    E_DIR,    S_DIR,    W_DIR,    NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // P_BISHOP
-    {NE_DIR,   SE_DIR,   SW_DIR,   NW_DIR,   NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // P_ROOK
     {N_DIR,    NE_DIR,   E_DIR,    S_DIR,    W_DIR,    NW_DIR,   NULL_DIR, NULL_DIR}, // P_PAWN
 
     // white pieces
     {N_DIR,    NE_DIR,   E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NW_DIR  }, // KING
     {N_DIR,    E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NULL_DIR, NULL_DIR}, // GOLD
+    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // BISHOP
+    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // ROOK
     {NE_DIR,   SE_DIR,   S_DIR,    SW_DIR,   NW_DIR,   NULL_DIR, NULL_DIR, NULL_DIR}, // SILVER
     {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // LANCE
     {SSE_DIR,  SSW_DIR,  NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // KNIGHT
-    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // BISHOP
-    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // ROOK
     {S_DIR,    NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // PAWN
+    {N_DIR,    E_DIR,    S_DIR,    W_DIR,    NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // P_BISHOP
+    {NE_DIR,   SE_DIR,   SW_DIR,   NW_DIR,   NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // P_ROOK
     {N_DIR,    E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NULL_DIR, NULL_DIR}, // P_SILVER
     {N_DIR,    E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NULL_DIR, NULL_DIR}, // P_LANCE
     {N_DIR,    E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NULL_DIR, NULL_DIR}, // P_KNIGHT
-    {N_DIR,    E_DIR,    S_DIR,    W_DIR,    NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // P_BISHOP
-    {NE_DIR,   SE_DIR,   SW_DIR,   NW_DIR,   NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // P_ROOK
-    {N_DIR,    E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NULL_DIR, NULL_DIR}, // P_PAWN
+    {N_DIR,    E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NULL_DIR, NULL_DIR}  // P_PAWN
 };
 
 // array containing the sliding directions each piece type can move to
-constexpr Direction PSlidingDirections[NUM_PIECES][4] = {
+constexpr Direction PSlidingDirections[4][4] = {
     {NE_DIR,   SE_DIR,   SW_DIR,   NW_DIR  }, // BISHOP
     {N_DIR,    E_DIR,    S_DIR,    W_DIR   }, // ROOK
     {N_DIR,    NULL_DIR, NULL_DIR, NULL_DIR}, // B_LANCE
     {S_DIR,    NULL_DIR, NULL_DIR, NULL_DIR}  // W_LANCE
 };
 
-// returns the index to the PSlidingDirections structure
-constexpr size_t sl_dir_index(Piece p) {
+
+// returns the indexes used to get the movement types
+constexpr size_t sld_mov_idx(Piece p) {
     switch (p) {
         case B_BISHOP:
         case P_B_BISHOP:
@@ -233,6 +218,19 @@ constexpr size_t sl_dir_index(Piece p) {
 
         default:
             return -1;
+    }
+}
+
+constexpr size_t mov_idx(PieceType pt) {
+    switch (pt) {
+        case P_SILVER:
+        case P_LANCE:
+        case P_KNIGHT:
+        case P_PAWN:
+            return GOLD;
+
+        default:
+            return pt;
     }
 }
 
