@@ -283,11 +283,6 @@ void Position::make_move(Move m) {
                                 : compute_check_squares<BLACK>();
 
             update_line_of_sight(sideToMove);
-
-            // compute_check_squares<BLACK>();
-            // compute_check_squares<WHITE>();
-            // update_line_of_sight(BLACK);
-            // update_line_of_sight(WHITE);
         }
         // case 2&3 - a sliding piece moves or a move is made that moves in/out of the line of 
         // sight of the opposite player
@@ -309,8 +304,8 @@ void Position::make_move(Move m) {
         }
 
         // TODO: I MISSED A CASE SOMEWHERE ABOVE, THIS SHOULDN'T BE NECESSARY
-        // sideToMove == BLACK ? compute_check_squares<WHITE>() 
-        //                     : compute_check_squares<BLACK>();
+        sideToMove == BLACK ? compute_check_squares<WHITE>() 
+                            : compute_check_squares<BLACK>();
     }
     // drop
     else {
