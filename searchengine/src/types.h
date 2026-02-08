@@ -64,6 +64,7 @@ constexpr bool is_promoted( PieceType pt ) { return pt >= P_SILVER; };
 constexpr bool is_promoted( Piece p ) { return is_promoted(type_of(p)); };
 constexpr bool can_promote( PieceType pt ) { return pt>=SILVER && pt<=PAWN; };
 constexpr Piece promote_piece( Piece p ) { return is_promoted(p) ? p : Piece(p + 6); };
+constexpr PieceType promote( PieceType pt ) { return is_promoted(pt) ? pt : PieceType(pt + 6); };
 constexpr Piece unpromote_piece( Piece p ) { return is_promoted(p) ? Piece(p - 6) : p; };
 constexpr PieceType unpromoted_type( PieceType pt ) {
     return is_promoted(pt) ? PieceType(pt - 6) : pt;

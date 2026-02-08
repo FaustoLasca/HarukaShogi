@@ -32,6 +32,7 @@ struct StateInfo {
 				  key(0) {}
 
 	Bitboard checkersBB;
+	Bitboard checkSquares[NUM_COLORS][NUM_PIECE_TYPES];
 	Bitboard blockers[NUM_COLORS];
 
 	PieceType capturedPT;
@@ -90,6 +91,9 @@ class Position {
 
 		Bitboard attackers_to(Square sq, Bitboard occupied) const;
 		Bitboard checkers() const { return si.front().checkersBB; }
+		Bitboard check_squares(PieceType pt) const {
+			return si.front().checkSquares[sideToMove][pt];
+		}
 		
 		bool is_checkmate();
 		bool is_game_over();
@@ -133,6 +137,8 @@ class Position {
 		void remove_hand_piece(Color color, PieceType pt);
 
 		void update_blocker_info(Color c);
+		template<Color c>
+		void compute_check_squares();
 
 		// compute the zobrist hash code
 		void compute_key();

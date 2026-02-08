@@ -123,6 +123,10 @@ void Position::set(const std::string& sfenStr) {
     update_blocker_info(BLACK);
     update_blocker_info(WHITE);
 
+    // update the check squares for each color
+    compute_check_squares<BLACK>();
+    compute_check_squares<WHITE>();
+
     // compute the zobrist hash code
     compute_key();
 
@@ -200,6 +204,7 @@ std::string Position::sfen() const {
 // makes the given move.
 // the move is assumed to be legal.
 void Position::make_move(Move m) {
+    bool givesCheck = gives_check(m);
     uint8_t count;
 
     // add a new state info to the list
@@ -207,6 +212,7 @@ void Position::make_move(Move m) {
     si.push_front(StateInfo(si.front()));
     StateInfo* newSI = &si.front();
     newSI->capturedPT = NO_PIECE_TYPE;
+    newSI->checkersBB = 0;
 
     // move is not a drop
     if (!m.is_drop()) {
@@ -241,7 +247,8 @@ void Position::make_move(Move m) {
         // (remove the unpromoted piece and add the promoted piece)
         if (m.is_promotion()) {
             remove_piece(m.from());
-            add_piece(promote_piece(p), m.to());
+            p = promote_piece(p);
+            add_piece(p, m.to());
             // if a pawn is promoted, update the pawn file
             // pawns can be dropped to tha same file of the promoted pawn
             if (type_of(board[m.to()]) == P_PAWN) {
@@ -283,8 +290,14 @@ void Position::make_move(Move m) {
     update_blocker_info(BLACK);
     update_blocker_info(WHITE);
 
+    // update the check squares for the side to move
+    sideToMove == BLACK ? compute_check_squares<BLACK>() : compute_check_squares<WHITE>();
+
     // update the checkers bitboard
-    newSI->checkersBB = attackers_to(kingSq[sideToMove], all_pieces()) & all_pieces(~sideToMove);
+    if (givesCheck)
+        newSI->checkersBB = attackers_to(kingSq[sideToMove], all_pieces()) & all_pieces(~sideToMove);
+    else
+        newSI->checkersBB = 0;
 
     // update the zobrist key by toggling the side to move
     newSI->key ^= Zobrist::sideToMoveKey;
@@ -418,6 +431,25 @@ bool Position::is_legal(Move m) {
 
 bool Position::is_capture(Move m) const {
     return board[m.to()] != NO_PIECE;
+}
+
+
+bool Position::gives_check(Move m) const {
+    const StateInfo& si = this->si.front();
+    PieceType pt = m.is_drop() ? m.dropped() : type_of(board[m.from()]);
+    if (m.is_promotion())
+        pt = promote(pt);
+
+    // check if the move gives a direct check
+    if (check_squares(pt) & square_bb(m.to()))
+        return true;
+
+    // check if the move gives a discovered check
+    if (si.blockers[~sideToMove] & square_bb(m.from())) {
+        return !(line_bb(m.from(), king_square(~sideToMove)) & square_bb(m.to()));
+    }
+
+    return false;
 }
 
 
@@ -577,6 +609,28 @@ void Position::update_blocker_info(Color c) {
             si.blockers[c] |= between;
         }
     }
+}
+
+
+template<Color c>
+void Position::compute_check_squares() {
+    StateInfo& si = this->si.front();
+    Square ksq = king_square(~c);
+
+    si.checkSquares[c][KING]     = 0;
+    si.checkSquares[c][GOLD]     = attacks_bb<~c, GOLD>(ksq);
+    si.checkSquares[c][SILVER]   = attacks_bb<~c, SILVER>(ksq);
+    si.checkSquares[c][LANCE]    = attacks_bb<~c, LANCE>(ksq, all_pieces());
+    si.checkSquares[c][KNIGHT]   = attacks_bb<~c, KNIGHT>(ksq);
+    si.checkSquares[c][BISHOP]   = attacks_bb<~c, BISHOP>(ksq, all_pieces());
+    si.checkSquares[c][ROOK]     = attacks_bb<~c, ROOK>(ksq, all_pieces());
+    si.checkSquares[c][PAWN]     = attacks_bb<~c, PAWN>(ksq);
+    si.checkSquares[c][P_SILVER] = attacks_bb<~c, P_SILVER>(ksq);
+    si.checkSquares[c][P_LANCE]  = attacks_bb<~c, P_LANCE>(ksq);
+    si.checkSquares[c][P_KNIGHT] = attacks_bb<~c, P_KNIGHT>(ksq);
+    si.checkSquares[c][P_BISHOP] = attacks_bb<~c, P_BISHOP>(ksq, all_pieces());
+    si.checkSquares[c][P_ROOK]   = attacks_bb<~c, P_ROOK>(ksq, all_pieces());
+    si.checkSquares[c][P_PAWN]   = attacks_bb<~c, P_PAWN>(ksq);
 }
 
 
