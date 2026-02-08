@@ -54,8 +54,6 @@ void perft_test(Position& pos, int depth) {
     }
     std::cout << std::endl;
 
-    int total = 0;
-
     std::cout << "Perft test for each move" << std::endl;
     Move moveList[MAX_MOVES];
     Move* end = generate<LEGAL>(pos, moveList);
@@ -63,11 +61,8 @@ void perft_test(Position& pos, int depth) {
         pos.make_move(*m);
         count = perft(pos, depth - 1);
         std::cout << *m << "\t -  " << count << " \t -  " << pos.sfen() << std::endl;
-        total += count;
         pos.unmake_move(*m);
     }
-
-    std::cout << "Total: " << total << std::endl;
 }
 
 void perft_test(std::string sfen, int depth) {

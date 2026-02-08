@@ -136,7 +136,7 @@ inline Bitboard gen_sld_attacks(Square from, Bitboard occupied = 0) {
     Direction d;
     Bitboard attacks = 0;
 
-    constexpr size_t index = sld_mov_idx(make_piece(c, pt));
+    constexpr size_t index = sl_dir_index(make_piece(c, pt));
 
     for (size_t i=0; i<4 && PSlidingDirections[index][i] != NULL_DIR; ++i) {
         d = PSlidingDirections[index][i];
@@ -190,8 +190,8 @@ inline Bitboard sld_attacks_bb(Square from, Bitboard occupied = 0) {
 template<Color c, PieceType pt>
 inline Bitboard attacks_bb(Square from, Bitboard occupied = 0) {
     Bitboard attacks = dir_attacks_bb<c, pt>(from);
-    if constexpr (sld_mov_idx(make_piece(c, pt)) != -1) {
-        attacks |= gen_sld_attacks<c, pt>(from, occupied);
+    if constexpr (sliding_type_index(pt) != -1) {
+        attacks |= sld_attacks_bb<c, pt>(from, occupied);
     }
     return attacks;
 }

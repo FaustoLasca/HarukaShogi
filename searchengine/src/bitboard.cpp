@@ -30,7 +30,7 @@ Square pop_lsb(Bitboard& bb) {
 
 
 // data structures for precomputed bitboards
-Bitboard PieceDirAttacksBB[NUM_COLORS][NUM_MOV_TYPES][NUM_SQUARES];
+Bitboard PieceDirAttacksBB[NUM_COLORS][NUM_PIECE_TYPES][NUM_SQUARES];
 std::unordered_map<Bitboard, Bitboard> PieceSldAttacksBB[4][NUM_SQUARES];
 Bitboard BetweenBB[NUM_SQUARES][NUM_SQUARES];
 Bitboard LineBB[NUM_SQUARES][NUM_SQUARES];
@@ -43,7 +43,7 @@ void init_piece_dir_attacks() {
 
     // loop through all the elements of the data structure
     for (Color c = BLACK; c < NUM_COLORS; ++c) {
-        for (PieceType pt = KING; pt < NUM_MOV_TYPES; ++pt) {
+        for (PieceType pt = KING; pt < NUM_PIECE_TYPES; ++pt) {
             p = make_piece(c, pt);
 
             for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {

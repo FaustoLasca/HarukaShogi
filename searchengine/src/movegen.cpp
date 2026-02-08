@@ -98,11 +98,11 @@ Move* generate_drops(Position& pos, Move* moveList, Bitboard target) {
         Square sq = pop_lsb(bb);
         // add the drop moves for all piece types
         moveList = add_drop<c, GOLD>(pos, moveList, sq);
-        moveList = add_drop<c, BISHOP>(pos, moveList, sq);
-        moveList = add_drop<c, ROOK>(pos, moveList, sq);
         moveList = add_drop<c, SILVER>(pos, moveList, sq);
         moveList = add_drop<c, LANCE>(pos, moveList, sq);
         moveList = add_drop<c, KNIGHT>(pos, moveList, sq);
+        moveList = add_drop<c, BISHOP>(pos, moveList, sq);
+        moveList = add_drop<c, ROOK>(pos, moveList, sq);
         moveList = add_drop<c, PAWN>(pos, moveList, sq);
     }
 
@@ -127,13 +127,17 @@ Move* generate_all(Position& pos, Move* moveList) {
         moveList = generate_pawn_moves<c>(pos, moveList, target);
 
         moveList = generate_moves<c, GOLD>(pos, moveList, target);
-        moveList = generate_moves<c, BISHOP>(pos, moveList, target);
-        moveList = generate_moves<c, ROOK>(pos, moveList, target);
         moveList = generate_moves<c, SILVER>(pos, moveList, target);
         moveList = generate_moves<c, LANCE>(pos, moveList, target);
         moveList = generate_moves<c, KNIGHT>(pos, moveList, target);
+        moveList = generate_moves<c, BISHOP>(pos, moveList, target);
+        moveList = generate_moves<c, ROOK>(pos, moveList, target);
+        moveList = generate_moves<c, P_SILVER>(pos, moveList, target);
+        moveList = generate_moves<c, P_LANCE>(pos, moveList, target);
+        moveList = generate_moves<c, P_KNIGHT>(pos, moveList, target);
         moveList = generate_moves<c, P_BISHOP>(pos, moveList, target);
         moveList = generate_moves<c, P_ROOK>(pos, moveList, target);
+        moveList = generate_moves<c, P_PAWN>(pos, moveList, target);
 
         if constexpr (gt != CAPTURES) {
             moveList = generate_drops<c>(pos, moveList, target);

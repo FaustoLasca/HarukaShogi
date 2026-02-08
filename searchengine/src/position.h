@@ -29,7 +29,6 @@ enum CheckStatus {
 struct StateInfo {
 	StateInfo() : capturedPT(NO_PIECE_TYPE),
 				  checkersBB(0),
-				  blockers{0, 0},
 				  key(0) {}
 
 	Bitboard checkersBB;
@@ -147,7 +146,7 @@ class Position {
 
 		// bitboards
 		Bitboard allPiecesBB[NUM_COLORS] = {};
-		Bitboard piecesBB[NUM_COLORS][NUM_MOV_TYPES] = {};
+		Bitboard piecesBB[NUM_COLORS][NUM_PIECE_TYPES] = {};
 		std::array<Square, NUM_COLORS> kingSq;
 
 		bool pawnFiles[NUM_COLORS][NUM_FILES] = {};

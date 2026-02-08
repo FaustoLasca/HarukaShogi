@@ -435,8 +435,12 @@ Bitboard Position::attackers_to(Square sq, Bitboard occupied) const {
                                                 pieces(BLACK, P_BISHOP) | pieces(BLACK, P_ROOK) |
                                                 pieces(WHITE, P_BISHOP) | pieces(WHITE, P_ROOK));
     // golds and promoted pieces of the same color are grouped together
-    attackers |= attacks_bb<WHITE, GOLD>(sq) & (pieces(BLACK, GOLD));
-    attackers |= attacks_bb<BLACK, GOLD>(sq) & (pieces(WHITE, GOLD));
+    attackers |= attacks_bb<WHITE, GOLD>(sq) & (pieces(BLACK, GOLD)    | pieces(BLACK, P_SILVER) |
+                                                pieces(BLACK, P_LANCE) | pieces(BLACK, P_KNIGHT) |
+                                                pieces(BLACK, P_PAWN));
+    attackers |= attacks_bb<BLACK, GOLD>(sq) & (pieces(WHITE, GOLD)    | pieces(WHITE, P_SILVER) |
+                                                pieces(WHITE, P_LANCE) | pieces(WHITE, P_KNIGHT) |
+                                                pieces(WHITE, P_PAWN));
     attackers |= attacks_bb<WHITE, SILVER>(sq) & pieces(BLACK, SILVER);
     attackers |= attacks_bb<BLACK, SILVER>(sq) & pieces(WHITE, SILVER);
     // lances only have sliding attacks, so we can generate them directly
@@ -513,7 +517,7 @@ void Position::add_piece(Piece p, Square sq) {
 
     // update the bitboards
     allPiecesBB[color_of(p)] |= square_bb(sq);
-    piecesBB[color_of(p)][mov_idx(type_of(p))] |= square_bb(sq);
+    piecesBB[color_of(p)][type_of(p)] |= square_bb(sq);
 }
 
 
@@ -525,7 +529,7 @@ void Position::remove_piece(Square sq) {
 
     // update the bitboards
     allPiecesBB[color_of(p)] ^= square_bb(sq);
-    piecesBB[color_of(p)][mov_idx(type_of(p))] ^= square_bb(sq);
+    piecesBB[color_of(p)][type_of(p)] ^= square_bb(sq);
 }
 
 
@@ -538,7 +542,7 @@ void Position::move_piece(Square from, Square to) {
 
     // update the bitboards
     allPiecesBB[color_of(p)] ^= square_bb(from) | square_bb(to);
-    piecesBB[color_of(p)][mov_idx(type_of(p))] ^= square_bb(from) | square_bb(to);
+    piecesBB[color_of(p)][type_of(p)] ^= square_bb(from) | square_bb(to);
 }
 
 
