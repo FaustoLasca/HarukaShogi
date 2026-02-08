@@ -120,8 +120,8 @@ void Position::set(const std::string& sfenStr) {
     si.front().checkersBB = attackers_to(kingSq[sideToMove], all_pieces()) & all_pieces(~sideToMove);
 
     // update the blocker info for each color
-    update_blocker_info(BLACK);
-    update_blocker_info(WHITE);
+    update_line_of_sight(BLACK);
+    update_line_of_sight(WHITE);
 
     // update the check squares for each color
     compute_check_squares<BLACK>();
@@ -213,7 +213,6 @@ void Position::make_move(Move m) {
     si.push_front(StateInfo(si.front()));
     StateInfo* newSI = &si.front();
     newSI->capturedPT = NO_PIECE_TYPE;
-    newSI->checkersBB = 0;
 
     // move is not a drop
     if (!m.is_drop()) {
@@ -264,12 +263,54 @@ void Position::make_move(Move m) {
         // update the zobrist key by adding the piece after the move to the to square
         newSI->key ^= Zobrist::boardKeys[m.to()][board[m.to()]];
         
+
+        // on a move, we need to update the line of sight and check squares info in 3 cases:
+        // 1. the king moves: In this case we need to update the all the check squares info
+        //                    and the line of sight info for the moving player
+        // 2. a sliding peice moves: In this case we need to update the check and line of sight info
+        //                           for the opposite player, only for the sliding pieces
+        // 3. a move is made that moves in/out of the line of sight of the opponent:
+        //    In this case we update the sliding info for the opponent
+        // 4. a move is made that moves in/out of the line of sight of the moving player:
+        //    We update the sliding info for the moving player
+        // 5. a sliding piece is captured: We update the sliding info for the moving player
         if (type_of(p) == KING) {
             // update king square
             kingSq[sideToMove] = m.to();
-            kingMove = true;
+
+            // case 1 - update both check square and line of sight info for the moving player
+            sideToMove == BLACK ? compute_check_squares<WHITE>() 
+                                : compute_check_squares<BLACK>();
+
+            update_line_of_sight(sideToMove);
+
+            // compute_check_squares<BLACK>();
+            // compute_check_squares<WHITE>();
+            // update_line_of_sight(BLACK);
+            // update_line_of_sight(WHITE);
         }
-            
+        // case 2&3 - a sliding piece moves or a move is made that moves in/out of the line of 
+        // sight of the opposite player
+        if (sl_dir_index(unpromote_piece(p)) != -1 || 
+                 newSI->lineOfSight[~sideToMove] & (square_bb(m.from()) | square_bb(m.to()))) {
+            sideToMove == BLACK ? compute_sld_check_squares<BLACK>() 
+                                : compute_sld_check_squares<WHITE>();
+
+            update_line_of_sight(~sideToMove);
+        }
+        // case 4&5
+        if (newSI->lineOfSight[sideToMove] & (square_bb(m.from()) | square_bb(m.to())) ||
+            sliding_type_index(newSI->capturedPT) != -1) {
+
+            sideToMove == BLACK ? compute_sld_check_squares<WHITE>()
+                                : compute_sld_check_squares<BLACK>();
+
+            update_line_of_sight(sideToMove);
+        }
+
+        // TODO: I MISSED A CASE SOMEWHERE ABOVE, THIS SHOULDN'T BE NECESSARY
+        // sideToMove == BLACK ? compute_check_squares<WHITE>() 
+        //                     : compute_check_squares<BLACK>();
     }
     // drop
     else {
@@ -283,6 +324,21 @@ void Position::make_move(Move m) {
         // update the zobrist key
         newSI->key ^= Zobrist::handKeys[sideToMove][m.dropped()][count];
         newSI->key ^= Zobrist::boardKeys[m.to()][board[m.to()]];
+
+        // on a drop, we need to update the line of sight and check squares info in 2 cases:
+        // 1. the dropped piece is a sliding piece
+        // 2. the piece is dropped on a line of sight for one of the 2 players
+        if (sliding_type_index(m.dropped()) != -1 || 
+            newSI->lineOfSight[~sideToMove] & (square_bb(m.to()) | square_bb(m.from()))) {
+            sideToMove == BLACK ? compute_sld_check_squares<WHITE>() 
+                                : compute_sld_check_squares<BLACK>();
+            update_line_of_sight(~sideToMove);
+        }
+        if (newSI->lineOfSight[sideToMove] & (square_bb(m.to()) | square_bb(m.from()))) {
+            sideToMove == BLACK ? compute_sld_check_squares<BLACK>() 
+                                : compute_sld_check_squares<WHITE>();
+            update_line_of_sight(sideToMove);
+        }
     }
 
     // update side to move and game ply
@@ -290,17 +346,6 @@ void Position::make_move(Move m) {
     sideToMove = ~sideToMove;
     gamePly++;
 
-    // update the blocker info for both colors
-    update_blocker_info(BLACK);
-    update_blocker_info(WHITE);
-
-    // update the check squares for the side to move
-    sideToMove == BLACK ? compute_sld_check_squares<BLACK>() 
-                        : compute_sld_check_squares<WHITE>();
-    // changes to check squares for dir moves are only necessary when the king moves
-    if (kingMove)
-        sideToMove == BLACK ? compute_dir_check_squares<BLACK>() 
-                            : compute_dir_check_squares<WHITE>();
 
     // update the checkers bitboard
     if (givesCheck)
@@ -597,23 +642,24 @@ void Position::remove_hand_piece(Color color, PieceType pt) {
 }
 
 
-void Position::update_blocker_info(Color c) {
-    Square ksq = king_square(c);
+void Position::update_line_of_sight(Color c) {
     StateInfo& si = this->si.front();
+    Square ksq = king_square(c);
+    si.lineOfSight[c] = 0;
     si.blockers[c] = 0;
 
-    Bitboard attackers = 0;
-    attackers |= gen_sld_attacks<BLACK, BISHOP>(ksq, 0) & 
-                 (pieces(~c, BISHOP) | pieces(~c, P_BISHOP));
-    attackers |= gen_sld_attacks<BLACK, ROOK>(ksq, 0) & 
-                 (pieces(~c, ROOK) | pieces(~c, P_ROOK));
-    attackers |= c == BLACK ? gen_sld_attacks<BLACK, LANCE>(ksq, 0) & pieces(WHITE, LANCE)
-                            : gen_sld_attacks<WHITE, LANCE>(ksq, 0) & pieces(BLACK, LANCE);
+    Bitboard snipers = 0;
+    snipers |= attacks_bb<BLACK, BISHOP>(ksq) & (pieces(~c, BISHOP) | pieces(~c, P_BISHOP));
+    snipers |= attacks_bb<BLACK, ROOK>(ksq)   & (pieces(~c, ROOK)   | pieces(~c, P_ROOK));
+    snipers |= c == BLACK ? attacks_bb<BLACK, LANCE>(ksq) & pieces(WHITE, LANCE)
+                          : attacks_bb<WHITE, LANCE>(ksq) & pieces(BLACK, LANCE);
     
-    while (attackers) {
-        Square attacker = pop_lsb(attackers);
-        Bitboard between = between_bb(attacker, ksq) & all_pieces();
+    while (snipers) {
+        Square sniper = pop_lsb(snipers);
+        Bitboard between = between_bb(sniper, ksq);
+        si.lineOfSight[c] |= between;
 
+        between &= all_pieces();
         if (one_bit(between)) {
             si.blockers[c] |= between;
         }

@@ -34,6 +34,7 @@ struct StateInfo {
 	Bitboard checkersBB;
 	Bitboard checkSquares[NUM_COLORS][NUM_PIECE_TYPES];
 	Bitboard blockers[NUM_COLORS];
+	Bitboard lineOfSight[NUM_COLORS];
 
 	PieceType capturedPT;
 	uint64_t key;
@@ -136,7 +137,8 @@ class Position {
 		void add_hand_piece(Color color, PieceType pt);
 		void remove_hand_piece(Color color, PieceType pt);
 
-		void update_blocker_info(Color c);
+		void update_line_of_sight(Color c);
+
 		template<Color c> void compute_check_squares();
 		template<Color c> void compute_dir_check_squares();
 		template<Color c> void compute_sld_check_squares();
