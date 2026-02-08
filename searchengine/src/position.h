@@ -137,8 +137,9 @@ class Position {
 		void remove_hand_piece(Color color, PieceType pt);
 
 		void update_blocker_info(Color c);
-		template<Color c>
-		void compute_check_squares();
+		template<Color c> void compute_check_squares();
+		template<Color c> void compute_dir_check_squares();
+		template<Color c> void compute_sld_check_squares();
 
 		// compute the zobrist hash code
 		void compute_key();

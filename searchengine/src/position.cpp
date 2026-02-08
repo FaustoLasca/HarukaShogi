@@ -205,6 +205,7 @@ std::string Position::sfen() const {
 // the move is assumed to be legal.
 void Position::make_move(Move m) {
     bool givesCheck = gives_check(m);
+    bool kingMove = false;
     uint8_t count;
 
     // add a new state info to the list
@@ -262,10 +263,13 @@ void Position::make_move(Move m) {
 
         // update the zobrist key by adding the piece after the move to the to square
         newSI->key ^= Zobrist::boardKeys[m.to()][board[m.to()]];
-
-        // update king square
-        if (type_of(p) == KING)
+        
+        if (type_of(p) == KING) {
+            // update king square
             kingSq[sideToMove] = m.to();
+            kingMove = true;
+        }
+            
     }
     // drop
     else {
@@ -291,7 +295,12 @@ void Position::make_move(Move m) {
     update_blocker_info(WHITE);
 
     // update the check squares for the side to move
-    sideToMove == BLACK ? compute_check_squares<BLACK>() : compute_check_squares<WHITE>();
+    sideToMove == BLACK ? compute_sld_check_squares<BLACK>() 
+                        : compute_sld_check_squares<WHITE>();
+    // changes to check squares for dir moves are only necessary when the king moves
+    if (kingMove)
+        sideToMove == BLACK ? compute_dir_check_squares<BLACK>() 
+                            : compute_dir_check_squares<WHITE>();
 
     // update the checkers bitboard
     if (givesCheck)
@@ -613,24 +622,39 @@ void Position::update_blocker_info(Color c) {
 
 
 template<Color c>
-void Position::compute_check_squares() {
+void Position::compute_dir_check_squares() {
     StateInfo& si = this->si.front();
     Square ksq = king_square(~c);
 
     si.checkSquares[c][KING]     = 0;
     si.checkSquares[c][GOLD]     = attacks_bb<~c, GOLD>(ksq);
     si.checkSquares[c][SILVER]   = attacks_bb<~c, SILVER>(ksq);
-    si.checkSquares[c][LANCE]    = attacks_bb<~c, LANCE>(ksq, all_pieces());
     si.checkSquares[c][KNIGHT]   = attacks_bb<~c, KNIGHT>(ksq);
-    si.checkSquares[c][BISHOP]   = attacks_bb<~c, BISHOP>(ksq, all_pieces());
-    si.checkSquares[c][ROOK]     = attacks_bb<~c, ROOK>(ksq, all_pieces());
     si.checkSquares[c][PAWN]     = attacks_bb<~c, PAWN>(ksq);
     si.checkSquares[c][P_SILVER] = attacks_bb<~c, P_SILVER>(ksq);
     si.checkSquares[c][P_LANCE]  = attacks_bb<~c, P_LANCE>(ksq);
     si.checkSquares[c][P_KNIGHT] = attacks_bb<~c, P_KNIGHT>(ksq);
+    si.checkSquares[c][P_PAWN]   = attacks_bb<~c, P_PAWN>(ksq);
+}
+
+
+template<Color c>
+void Position::compute_sld_check_squares() {
+    StateInfo& si = this->si.front();
+    Square ksq = king_square(~c);
+
+    si.checkSquares[c][LANCE]    = attacks_bb<~c, LANCE>(ksq, all_pieces());
+    si.checkSquares[c][BISHOP]   = attacks_bb<~c, BISHOP>(ksq, all_pieces());
+    si.checkSquares[c][ROOK]     = attacks_bb<~c, ROOK>(ksq, all_pieces());
     si.checkSquares[c][P_BISHOP] = attacks_bb<~c, P_BISHOP>(ksq, all_pieces());
     si.checkSquares[c][P_ROOK]   = attacks_bb<~c, P_ROOK>(ksq, all_pieces());
-    si.checkSquares[c][P_PAWN]   = attacks_bb<~c, P_PAWN>(ksq);
+}
+
+
+template<Color c>
+void Position::compute_check_squares() {
+    compute_dir_check_squares<c>();
+    compute_sld_check_squares<c>();
 }
 
 
