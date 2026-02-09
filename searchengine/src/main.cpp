@@ -27,6 +27,7 @@ int main() {
     auto start = std::chrono::high_resolution_clock::now();
 
     std::cout << perft(pos, depth) << std::endl;
+    // perft_test(pos, depth);
     // searcher.search(std::chrono::milliseconds(100000000), depth);
 
 

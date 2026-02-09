@@ -189,7 +189,9 @@ inline Bitboard sld_attacks_bb(Square from, Bitboard occupied = 0) {
 
 template<Color c, PieceType pt>
 inline Bitboard attacks_bb(Square from, Bitboard occupied = 0) {
-    Bitboard attacks = dir_attacks_bb<c, pt>(from);
+    Bitboard attacks = 0;
+    if constexpr (pt != LANCE && pt != BISHOP && pt != ROOK)
+        attacks = dir_attacks_bb<c, pt>(from);
     if constexpr (sliding_type_index(pt) != -1) {
         attacks |= sld_attacks_bb<c, pt>(from, occupied);
     }

@@ -67,8 +67,7 @@ void Position::set(const std::string& sfenStr) {
     std::memset(hands, 0, sizeof(hands));
     std::memset(pawnFiles, 0, sizeof(pawnFiles));
     std::fill(std::begin(allPiecesBB), std::end(allPiecesBB), Bitboard(0));
-    std::memset(dirPieces, 0, sizeof(dirPieces));
-    std::memset(slPieces, 0, sizeof(slPieces));
+    std::memset(piecesBB, 0, sizeof(piecesBB));
     gameStatus = NO_STATUS;
     winner = NO_COLOR;
 
@@ -121,8 +120,12 @@ void Position::set(const std::string& sfenStr) {
     si.front().checkersBB = attackers_to(kingSq[sideToMove], all_pieces()) & all_pieces(~sideToMove);
 
     // update the blocker info for each color
-    update_blocker_info(BLACK);
-    update_blocker_info(WHITE);
+    update_line_of_sight(BLACK);
+    update_line_of_sight(WHITE);
+
+    // update the check squares for each color
+    compute_check_squares<BLACK>();
+    compute_check_squares<WHITE>();
 
     // compute the zobrist hash code
     compute_key();
@@ -201,6 +204,8 @@ std::string Position::sfen() const {
 // makes the given move.
 // the move is assumed to be legal.
 void Position::make_move(Move m) {
+    bool givesCheck = gives_check(m);
+    bool kingMove = false;
     uint8_t count;
 
     // add a new state info to the list
@@ -242,7 +247,8 @@ void Position::make_move(Move m) {
         // (remove the unpromoted piece and add the promoted piece)
         if (m.is_promotion()) {
             remove_piece(m.from());
-            add_piece(promote_piece(p), m.to());
+            p = promote_piece(p);
+            add_piece(p, m.to());
             // if a pawn is promoted, update the pawn file
             // pawns can be dropped to tha same file of the promoted pawn
             if (type_of(board[m.to()]) == P_PAWN) {
@@ -256,10 +262,58 @@ void Position::make_move(Move m) {
 
         // update the zobrist key by adding the piece after the move to the to square
         newSI->key ^= Zobrist::boardKeys[m.to()][board[m.to()]];
+        
 
-        // update king square
-        if (type_of(p) == KING)
+        // on a move, we need to update the line of sight and check squares info in 3 cases:
+        // 1. the king moves: In this case we need to update the all the check squares info
+        //                    and the line of sight info for the moving player
+        // 2. a sliding peice moves: In this case we need to update the check and line of sight info
+        //                           for the opposite player, only for the sliding pieces
+        // 3. a move is made that moves in/out of the line of sight of the opponent:
+        //    In this case we update the sliding info for the opponent
+        // 4. a move is made that moves in/out of the line of sight of the moving player:
+        //    We update the sliding info for the moving player
+        // 5. a sliding piece is captured: We update the sliding info for the moving player
+        if (type_of(p) == KING) {
+            // update king square
             kingSq[sideToMove] = m.to();
+
+            // case 1 - update both check square and line of sight info for the moving player
+            sideToMove == BLACK ? compute_check_squares<WHITE>() 
+                                : compute_check_squares<BLACK>();
+
+            update_line_of_sight(sideToMove);
+        }
+        // case 2&3 - a sliding piece moves or a move is made that moves in/out of the line of 
+        // sight of the opposite player
+        if (sl_dir_index(unpromote_piece(p)) != -1 || 
+                 newSI->lineOfSight[~sideToMove] & (square_bb(m.from()) | square_bb(m.to()))) {
+            sideToMove == BLACK ? compute_sld_check_squares<BLACK>() 
+                                : compute_sld_check_squares<WHITE>();
+
+            update_line_of_sight(~sideToMove);
+        }
+        // case 4&5
+        if (newSI->lineOfSight[sideToMove] & (square_bb(m.from()) | square_bb(m.to())) ||
+            sliding_type_index(newSI->capturedPT) != -1) {
+
+            sideToMove == BLACK ? compute_sld_check_squares<WHITE>()
+                                : compute_sld_check_squares<BLACK>();
+
+            update_line_of_sight(sideToMove);
+        }
+
+        // if a piece moves in/out of a sliding check square, they need to be recomputed
+        if ((square_bb(m.from()) | square_bb(m.to())) & 
+            (newSI->checkSquares[sideToMove][BISHOP] | newSI->checkSquares[sideToMove][ROOK])) {
+            sideToMove == BLACK ? compute_sld_check_squares<BLACK>() 
+                                : compute_sld_check_squares<WHITE>();
+        }
+        if ((square_bb(m.from()) | square_bb(m.to())) & 
+            (newSI->checkSquares[~sideToMove][BISHOP] | newSI->checkSquares[~sideToMove][ROOK])) {
+            sideToMove == BLACK ? compute_sld_check_squares<WHITE>() 
+                                : compute_sld_check_squares<BLACK>();
+        }
     }
     // drop
     else {
@@ -273,6 +327,31 @@ void Position::make_move(Move m) {
         // update the zobrist key
         newSI->key ^= Zobrist::handKeys[sideToMove][m.dropped()][count];
         newSI->key ^= Zobrist::boardKeys[m.to()][board[m.to()]];
+
+        // on a drop, we need to update the line of sight and check squares info in 2 cases:
+        // 1. the dropped piece is a sliding piece
+        // 2. the piece is dropped on a line of sight for one of the 2 players
+        if (sliding_type_index(m.dropped()) != -1 || 
+            newSI->lineOfSight[~sideToMove] & (square_bb(m.to()) | square_bb(m.from()))) {
+            sideToMove == BLACK ? compute_sld_check_squares<WHITE>() 
+                                : compute_sld_check_squares<BLACK>();
+            update_line_of_sight(~sideToMove);
+        }
+        if (newSI->lineOfSight[sideToMove] & (square_bb(m.to()) | square_bb(m.from()))) {
+            sideToMove == BLACK ? compute_sld_check_squares<BLACK>() 
+                                : compute_sld_check_squares<WHITE>();
+            update_line_of_sight(sideToMove);
+        }
+        if (square_bb(m.to()) & 
+            (newSI->checkSquares[sideToMove][BISHOP] | newSI->checkSquares[sideToMove][ROOK])) {
+            sideToMove == BLACK ? compute_sld_check_squares<BLACK>() 
+                                : compute_sld_check_squares<WHITE>();
+        }
+        if (square_bb(m.to()) & 
+            (newSI->checkSquares[~sideToMove][BISHOP] | newSI->checkSquares[~sideToMove][ROOK])) {
+            sideToMove == BLACK ? compute_sld_check_squares<WHITE>() 
+                                : compute_sld_check_squares<BLACK>();
+        }
     }
 
     // update side to move and game ply
@@ -280,12 +359,12 @@ void Position::make_move(Move m) {
     sideToMove = ~sideToMove;
     gamePly++;
 
-    // update the blocker info for both colors
-    update_blocker_info(BLACK);
-    update_blocker_info(WHITE);
 
     // update the checkers bitboard
-    newSI->checkersBB = attackers_to(kingSq[sideToMove], all_pieces()) & all_pieces(~sideToMove);
+    if (givesCheck)
+        newSI->checkersBB = attackers_to(kingSq[sideToMove], all_pieces()) & all_pieces(~sideToMove);
+    else
+        newSI->checkersBB = 0;
 
     // update the zobrist key by toggling the side to move
     newSI->key ^= Zobrist::sideToMoveKey;
@@ -422,45 +501,69 @@ bool Position::is_capture(Move m) const {
 }
 
 
+bool Position::gives_check(Move m) const {
+    const StateInfo& si = this->si.front();
+    PieceType pt = m.is_drop() ? m.dropped() : type_of(board[m.from()]);
+    if (m.is_promotion())
+        pt = promote(pt);
+
+    // check if the move gives a direct check
+    if (check_squares(pt) & square_bb(m.to()))
+        return true;
+
+    // check if the move gives a discovered check
+    if (si.blockers[~sideToMove] & square_bb(m.from())) {
+        return !(line_bb(m.from(), king_square(~sideToMove)) & square_bb(m.to()));
+    }
+
+    return false;
+}
+
+
 Bitboard Position::attackers_to(Square sq, Bitboard occupied) const {
     Bitboard attackers = 0;
-    // generate each direction and check if there's an attacker
-    attackers |= dir_attacks_bb<N_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, S_DIR) | dir_pieces(BLACK, S_DIR));
-    attackers |= dir_attacks_bb<NE_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, SW_DIR) | dir_pieces(BLACK, SW_DIR));
-    attackers |= dir_attacks_bb<E_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, W_DIR) | dir_pieces(BLACK, W_DIR));
-    attackers |= dir_attacks_bb<SE_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, NW_DIR) | dir_pieces(BLACK, NW_DIR));
-    attackers |= dir_attacks_bb<S_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, N_DIR) | dir_pieces(BLACK, N_DIR));
-    attackers |= dir_attacks_bb<SW_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, NE_DIR) | dir_pieces(BLACK, NE_DIR));
-    attackers |= dir_attacks_bb<W_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, E_DIR) | dir_pieces(BLACK, E_DIR));
-    attackers |= dir_attacks_bb<NW_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, SE_DIR) | dir_pieces(BLACK, SE_DIR));
-    attackers |= dir_attacks_bb<NNE_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, SSW_DIR) | dir_pieces(BLACK, SSW_DIR));
-    attackers |= dir_attacks_bb<NNW_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, SSE_DIR) | dir_pieces(BLACK, SSE_DIR));
-    attackers |= dir_attacks_bb<SSE_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, NNW_DIR) | dir_pieces(BLACK, NNW_DIR));
-    attackers |= dir_attacks_bb<SSW_DIR>(square_bb(sq)) & 
-                 (dir_pieces(WHITE, NNE_DIR) | dir_pieces(BLACK, NNE_DIR));
+    // generate attacks for each piece and check if there's an attacker
+    // 
+    // the color of the move generation and the pieces are swapped, as the attacks are
+    // generated starting from the target square
+    // 
+    // pieces that share the same movement type are grouped together
 
-    // generate sliding moves and check if there's an attacker
-    attackers |= gen_sld_attacks<BLACK, LANCE>(sq, occupied) & 
-                 sld_pieces(WHITE, LANCE);
-    attackers |= gen_sld_attacks<WHITE, LANCE>(sq, occupied) & 
-                 sld_pieces(BLACK, LANCE);
-    attackers |= gen_sld_attacks<BLACK, BISHOP>(sq, occupied) & 
-                 (sld_pieces(WHITE, BISHOP) | sld_pieces(WHITE, P_BISHOP) |
-                 sld_pieces(BLACK, BISHOP) | sld_pieces(BLACK, P_BISHOP));
-    attackers |= gen_sld_attacks<BLACK, ROOK>(sq, occupied) & 
-                 (sld_pieces(WHITE, ROOK) | sld_pieces(WHITE, P_ROOK) |
-                 sld_pieces(BLACK, ROOK) | sld_pieces(BLACK, P_ROOK));
+    // kings and promoted rooks and bishops are grouped together
+    attackers |= attacks_bb<BLACK, KING>(sq) & (pieces(BLACK, KING)     | pieces(WHITE, KING)   |
+                                                pieces(BLACK, P_BISHOP) | pieces(BLACK, P_ROOK) |
+                                                pieces(WHITE, P_BISHOP) | pieces(WHITE, P_ROOK));
+    // golds and promoted pieces of the same color are grouped together
+    attackers |= attacks_bb<WHITE, GOLD>(sq) & (pieces(BLACK, GOLD)    | pieces(BLACK, P_SILVER) |
+                                                pieces(BLACK, P_LANCE) | pieces(BLACK, P_KNIGHT) |
+                                                pieces(BLACK, P_PAWN));
+    attackers |= attacks_bb<BLACK, GOLD>(sq) & (pieces(WHITE, GOLD)    | pieces(WHITE, P_SILVER) |
+                                                pieces(WHITE, P_LANCE) | pieces(WHITE, P_KNIGHT) |
+                                                pieces(WHITE, P_PAWN));
+    attackers |= attacks_bb<WHITE, SILVER>(sq) & pieces(BLACK, SILVER);
+    attackers |= attacks_bb<BLACK, SILVER>(sq) & pieces(WHITE, SILVER);
+    // lances only have sliding attacks, so we can generate them directly
+    attackers |= sld_attacks_bb<WHITE, LANCE>(sq, occupied) & pieces(BLACK, LANCE);
+    attackers |= sld_attacks_bb<BLACK, LANCE>(sq, occupied) & pieces(WHITE, LANCE);
+    attackers |= attacks_bb<WHITE, KNIGHT>(sq) & pieces(BLACK, KNIGHT);
+    attackers |= attacks_bb<BLACK, KNIGHT>(sq) & pieces(WHITE, KNIGHT);
+    // the dir attacks for promoted bishops and rooks are generated with the king
+    // there is no need to generate them here
+    // bishops of both colors, promoted and unpromoted are grouped together
+    attackers |= sld_attacks_bb<BLACK, BISHOP>(sq, occupied) & (pieces(BLACK, BISHOP)   | 
+                                                                pieces(BLACK, P_BISHOP) |
+                                                                pieces(WHITE, BISHOP)   | 
+                                                                pieces(WHITE, P_BISHOP));
+    // rooks of both colors, promoted and unpromoted are grouped together
+    attackers |= sld_attacks_bb<BLACK, ROOK>(sq, occupied) & (pieces(BLACK, ROOK)   | 
+                                                              pieces(BLACK, P_ROOK) |
+                                                              pieces(WHITE, ROOK)   | 
+                                                              pieces(WHITE, P_ROOK));
+    // pawns only attack forward, so we can generate them directly from the direction
+    attackers |= dir_attacks_bb<S_DIR>(square_bb(sq)) & pieces(BLACK, PAWN);
+    attackers |= dir_attacks_bb<N_DIR>(square_bb(sq)) & pieces(WHITE, PAWN);
+
+    attackers &= occupied;
 
     return attackers;
 }
@@ -513,17 +616,7 @@ void Position::add_piece(Piece p, Square sq) {
 
     // update the bitboards
     allPiecesBB[color_of(p)] |= square_bb(sq);
-    // king is excluded from dirPieces as the moves are handled separately
-    if (type_of(p) != KING) {
-        for (int i = 0; i < 8 && PTDirections[p-1][i] != NULL_DIR; ++i) {
-            dirPieces[color_of(p)][PTDirections[p-1][i]] |= square_bb(sq);
-        }
-    }
-
-    int sl_idx = sliding_type_index(type_of(p));
-    if (sl_idx >= 0) {
-        slPieces[color_of(p)][sl_idx] |= square_bb(sq);
-    }
+    piecesBB[color_of(p)][type_of(p)] |= square_bb(sq);
 }
 
 
@@ -535,17 +628,7 @@ void Position::remove_piece(Square sq) {
 
     // update the bitboards
     allPiecesBB[color_of(p)] ^= square_bb(sq);
-    // king is excluded from dirPieces as the moves are handled separately
-    if (type_of(p) != KING) {
-        for (int i = 0; i < 8 && PTDirections[p-1][i] != NULL_DIR; ++i) {
-            dirPieces[color_of(p)][PTDirections[p-1][i]] ^= square_bb(sq);
-        }
-    }
-
-    int sl_idx = sliding_type_index(type_of(p));
-    if (sl_idx >= 0) {
-        slPieces[color_of(p)][sl_idx] ^= square_bb(sq);
-    }
+    piecesBB[color_of(p)][type_of(p)] ^= square_bb(sq);
 }
 
 
@@ -558,17 +641,7 @@ void Position::move_piece(Square from, Square to) {
 
     // update the bitboards
     allPiecesBB[color_of(p)] ^= square_bb(from) | square_bb(to);
-    // king is excluded from dirPieces as the moves are handled separately
-    if (type_of(p) != KING) {
-        for (int i = 0; i < 8 && PTDirections[p-1][i] != NULL_DIR; ++i) {
-            dirPieces[color_of(p)][PTDirections[p-1][i]] ^= square_bb(from) | square_bb(to);
-        }
-    }
-
-    int sl_idx = sliding_type_index(type_of(p));
-    if (sl_idx >= 0) {
-        slPieces[color_of(p)][sl_idx] ^= square_bb(from) | square_bb(to);
-    }
+    piecesBB[color_of(p)][type_of(p)] ^= square_bb(from) | square_bb(to);
 }
 
 
@@ -582,27 +655,65 @@ void Position::remove_hand_piece(Color color, PieceType pt) {
 }
 
 
-void Position::update_blocker_info(Color c) {
-    Square ksq = king_square(c);
+void Position::update_line_of_sight(Color c) {
     StateInfo& si = this->si.front();
+    Square ksq = king_square(c);
+    si.lineOfSight[c] = 0;
     si.blockers[c] = 0;
 
-    Bitboard attackers = 0;
-    attackers |= gen_sld_attacks<BLACK, BISHOP>(ksq, 0) & 
-                 (sld_pieces(~c, BISHOP) | sld_pieces(~c, P_BISHOP));
-    attackers |= gen_sld_attacks<BLACK, ROOK>(ksq, 0) & 
-                 (sld_pieces(~c, ROOK) | sld_pieces(~c, P_ROOK));
-    attackers |= c == BLACK ? gen_sld_attacks<BLACK, LANCE>(ksq, 0) & sld_pieces(WHITE, LANCE)
-                            : gen_sld_attacks<WHITE, LANCE>(ksq, 0) & sld_pieces(BLACK, LANCE);
+    Bitboard snipers = 0;
+    snipers |= attacks_bb<BLACK, BISHOP>(ksq) & (pieces(~c, BISHOP) | pieces(~c, P_BISHOP));
+    snipers |= attacks_bb<BLACK, ROOK>(ksq)   & (pieces(~c, ROOK)   | pieces(~c, P_ROOK));
+    snipers |= c == BLACK ? attacks_bb<BLACK, LANCE>(ksq) & pieces(WHITE, LANCE)
+                          : attacks_bb<WHITE, LANCE>(ksq) & pieces(BLACK, LANCE);
     
-    while (attackers) {
-        Square attacker = pop_lsb(attackers);
-        Bitboard between = between_bb(attacker, ksq) & all_pieces();
+    while (snipers) {
+        Square sniper = pop_lsb(snipers);
+        Bitboard between = between_bb(sniper, ksq);
+        si.lineOfSight[c] |= between;
 
+        between &= all_pieces();
         if (one_bit(between)) {
             si.blockers[c] |= between;
         }
     }
+}
+
+
+template<Color c>
+void Position::compute_dir_check_squares() {
+    StateInfo& si = this->si.front();
+    Square ksq = king_square(~c);
+
+    si.checkSquares[c][KING]     = 0;
+    si.checkSquares[c][GOLD]     = attacks_bb<~c, GOLD>(ksq);
+    si.checkSquares[c][SILVER]   = attacks_bb<~c, SILVER>(ksq);
+    si.checkSquares[c][KNIGHT]   = attacks_bb<~c, KNIGHT>(ksq);
+    si.checkSquares[c][PAWN]     = attacks_bb<~c, PAWN>(ksq);
+    si.checkSquares[c][P_SILVER] = attacks_bb<~c, P_SILVER>(ksq);
+    si.checkSquares[c][P_LANCE]  = attacks_bb<~c, P_LANCE>(ksq);
+    si.checkSquares[c][P_KNIGHT] = attacks_bb<~c, P_KNIGHT>(ksq);
+    si.checkSquares[c][P_PAWN]   = attacks_bb<~c, P_PAWN>(ksq);
+}
+
+
+template<Color c>
+void Position::compute_sld_check_squares() {
+    StateInfo& si = this->si.front();
+    Square ksq = king_square(~c);
+
+    si.checkSquares[c][LANCE]    = attacks_bb<~c, LANCE>(ksq, all_pieces());
+    si.checkSquares[c][BISHOP]   = attacks_bb<~c, BISHOP>(ksq, all_pieces());
+    si.checkSquares[c][ROOK]     = attacks_bb<~c, ROOK>(ksq, all_pieces());
+    si.checkSquares[c][P_BISHOP] = attacks_bb<~c, P_BISHOP>(ksq, all_pieces());
+    si.checkSquares[c][P_ROOK]   = attacks_bb<~c, P_ROOK>(ksq, all_pieces());
+}
+
+
+template<Color c>
+void Position::compute_check_squares() {
+    compute_dir_check_squares<c>();
+    compute_sld_check_squares<c>();
 }
 
 

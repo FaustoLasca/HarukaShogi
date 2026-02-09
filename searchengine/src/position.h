@@ -32,7 +32,9 @@ struct StateInfo {
 				  key(0) {}
 
 	Bitboard checkersBB;
+	Bitboard checkSquares[NUM_COLORS][NUM_PIECE_TYPES];
 	Bitboard blockers[NUM_COLORS];
+	Bitboard lineOfSight[NUM_COLORS];
 
 	PieceType capturedPT;
 	uint64_t key;
@@ -90,6 +92,9 @@ class Position {
 
 		Bitboard attackers_to(Square sq, Bitboard occupied) const;
 		Bitboard checkers() const { return si.front().checkersBB; }
+		Bitboard check_squares(PieceType pt) const {
+			return si.front().checkSquares[sideToMove][pt];
+		}
 		
 		bool is_checkmate();
 		bool is_game_over();
@@ -114,10 +119,7 @@ class Position {
 
 		Bitboard all_pieces(Color color) const { return allPiecesBB[color]; }
 		Bitboard all_pieces() const { return allPiecesBB[BLACK] | allPiecesBB[WHITE]; }
-		Bitboard dir_pieces(Color color, Direction dir) const { return dirPieces[color][dir]; }
-		Bitboard sld_pieces(Color color, PieceType pt) const {
-			return slPieces[color][sliding_type_index(pt)];
-		}
+		Bitboard pieces(Color color, PieceType pt) const { return piecesBB[color][pt]; }
 
 		// temporary method to debug the repetition table
 		void print_repetition_values() const {
@@ -135,7 +137,11 @@ class Position {
 		void add_hand_piece(Color color, PieceType pt);
 		void remove_hand_piece(Color color, PieceType pt);
 
-		void update_blocker_info(Color c);
+		void update_line_of_sight(Color c);
+
+		template<Color c> void compute_check_squares();
+		template<Color c> void compute_dir_check_squares();
+		template<Color c> void compute_sld_check_squares();
 
 		// compute the zobrist hash code
 		void compute_key();
@@ -149,8 +155,7 @@ class Position {
 
 		// bitboards
 		Bitboard allPiecesBB[NUM_COLORS] = {};
-		Bitboard dirPieces[NUM_COLORS][NUM_DIRECTIONS] = {};
-		Bitboard slPieces[NUM_COLORS][NUM_SLIDING_TYPES] = {};
+		Bitboard piecesBB[NUM_COLORS][NUM_PIECE_TYPES] = {};
 		std::array<Square, NUM_COLORS> kingSq;
 
 		bool pawnFiles[NUM_COLORS][NUM_FILES] = {};
