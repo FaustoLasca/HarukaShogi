@@ -185,7 +185,8 @@ Bitboard dirty_gen_sld(Piece p, Square from, Bitboard occupied);
 Bitboard sld_attacks_bb(size_t sld_idx, Square from, Bitboard occupied = 0);
 template<Color c, PieceType pt>
 inline Bitboard sld_attacks_bb(Square from, Bitboard occupied = 0) {
-    return gen_sld_attacks<c, pt>(from, occupied);
+    constexpr size_t index = sl_dir_index(make_piece(c, pt));
+    return sld_attacks_bb(index, from, occupied);
 }
 
 
