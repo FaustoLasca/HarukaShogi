@@ -447,6 +447,36 @@ void Position::unmake_move(Move m) {
 }
 
 
+bool Position::is_pseudo_legal(Move m) const {
+    // TODO: might need to check if the move data is valid
+    if (m.is_null())
+        return false;
+
+    if (m.is_drop()) {
+        // check if the piece is in the hand
+        if (hands[sideToMove][m.dropped()] == 0)
+            return false;
+        // check if the square is empty
+        if (board[m.to()] != NO_PIECE)
+            return false;
+    }
+    else {
+        // check if the piece is on the board
+        if (board[m.from()] == NO_PIECE)
+            return false;
+        // check if the piece is of the correct color
+        if (color_of(board[m.from()]) != sideToMove)
+            return false;
+        // check if the destination square is occupied by the same color
+        if (board[m.to()] != NO_PIECE && color_of(board[m.to()]) == sideToMove) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+
 bool Position::is_legal(Move m) {
     if (m.is_drop()) {
 
@@ -468,7 +498,7 @@ bool Position::is_legal(Move m) {
     else {
 
         // pawns, lances and knights cannot move to the last ranks without promotion
-        if (!m.is_drop() && !m.is_promotion()) {
+        if (!m.is_promotion()) {
             PieceType pt = type_of(board[m.from()]);
             if (pt == PAWN || pt == LANCE || pt == KNIGHT) {
                 if (rank_of(m.to()) == (sideToMove == BLACK ? R_1 : R_9))

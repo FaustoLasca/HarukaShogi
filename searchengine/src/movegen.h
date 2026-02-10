@@ -57,7 +57,8 @@ constexpr std::array<DirectionStruct, NUM_SLIDING_TYPES * MAX_SLIDING_DIRECTIONS
 };
 
 
-constexpr size_t MAX_MOVES = 593;
+// slightly more than the maximum to be safe and allow for illegal moves
+constexpr size_t MAX_MOVES = 600;
 
 } // namespace harukashogi
 

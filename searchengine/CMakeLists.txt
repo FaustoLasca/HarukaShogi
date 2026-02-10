@@ -25,6 +25,7 @@ pybind11_add_module(haruka
     src/opening_book.cpp
     src/book_data.cpp
     src/bitboard.cpp
+    src/movepicker.cpp
 )
 
 target_include_directories(haruka PRIVATE include)
@@ -42,6 +43,7 @@ add_executable(test_types
     src/opening_book.cpp
     src/book_data.cpp
     src/bitboard.cpp
+    src/movepicker.cpp
 )
 target_include_directories(test_types PRIVATE include)
 
