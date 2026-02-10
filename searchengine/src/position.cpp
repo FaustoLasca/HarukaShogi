@@ -498,7 +498,7 @@ bool Position::is_legal(Move m) {
     else {
 
         // pawns, lances and knights cannot move to the last ranks without promotion
-        if (!m.is_drop() && !m.is_promotion()) {
+        if (!m.is_promotion()) {
             PieceType pt = type_of(board[m.from()]);
             if (pt == PAWN || pt == LANCE || pt == KNIGHT) {
                 if (rank_of(m.to()) == (sideToMove == BLACK ? R_1 : R_9))

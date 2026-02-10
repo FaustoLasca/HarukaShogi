@@ -35,9 +35,9 @@ std::ostream& operator<<(std::ostream& os, Move m) {
 
     os << m.to();
 
-    if (m.is_promotion()) {
-        os << "+";
-    }
+    if (!m.is_drop())
+        if (m.is_promotion())
+            os << "+";
 
     return os;
 }

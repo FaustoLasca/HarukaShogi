@@ -91,6 +91,7 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
     // 1. PV_NODE  (exact score): return the score of the entry
     // 3. CUT_NODE (lower bound): return the score if it is greater than beta (pruned)
     // 2. ALL_NODE (upper bound): return the score if it is lower than alpha (already found better)
+    Move ttMove = Move::null();
     if (ttHit) {
         if (ttEntry->depth >= depth) {
             // case 1: PV_NODE (exact score)
@@ -105,6 +106,8 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
             if (ttEntry->nodeType == ALL_NODE && ttEntry->score < alpha)
                 return ttEntry->score;
         }
+
+        ttMove = ttEntry->bestMove;
     }
     // initialize the node type to ALL_NODE
     // if the entry is pruned, set the node type to CUT_NODE
@@ -112,7 +115,7 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
     NodeType nodeType = ALL_NODE;
 
     // initialize the move picker
-    MovePicker movePicker(pos, depth, ttEntry->bestMove);
+    MovePicker movePicker(pos, depth, ttMove);
 
     // loop through children nodes
     int bestScore = -INF_SCORE;

@@ -46,19 +46,23 @@ int evaluate(Position& pos) {
 
 int evaluate_move(const Position& pos, Move move) {
     int score = 0;
-    // if the move is a capture, add a bonus to the score
-    // based on the value of the captured piece and the piece that made the capture
-    if (pos.is_capture(move))
-        score += 1000*PieceValues[type_of(pos.piece(move.to()))] - 
-                 100*PieceValues[type_of(pos.piece(move.from()))];
 
-    // if the move is a promotion, add a bonus to the score
-    // based on the value of the promoted piece
-    if (move.is_promotion()) {
-        PieceType promotedPT = type_of(promote_piece(pos.piece(move.from())));
-        score += 1000 * (PieceValues[promotedPT] - 
-                 PieceValues[type_of(pos.piece(move.from()))] );
+    if (!move.is_drop()) {
+        // if the move is a capture, add a bonus to the score
+        // based on the value of the captured piece and the piece that made the capture
+        if (pos.is_capture(move))
+            score += 1000*PieceValues[type_of(pos.piece(move.to()))] - 
+                    100*PieceValues[type_of(pos.piece(move.from()))];
+
+        // if the move is a promotion, add a bonus to the score
+        // based on the value of the promoted piece
+        if (move.is_promotion()) {
+            PieceType promotedPT = type_of(promote_piece(pos.piece(move.from())));
+            score += 1000 * (PieceValues[promotedPT] - 
+                    PieceValues[type_of(pos.piece(move.from()))] );
+        }
     }
+    
     return score;
 }
 

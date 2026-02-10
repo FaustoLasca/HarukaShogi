@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Generate compile_commands.json for clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-# set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -mbmi2")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -mbmi2")
 
 # Pybind11 configuration
 set(PYBIND11_FINDPYTHON ON)
