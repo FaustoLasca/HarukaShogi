@@ -5,6 +5,7 @@
 #include "search.h"
 #include "movegen.h"
 #include "evaluate.h"
+#include "movepicker.h"
 #include "misc.h"
 
 
@@ -110,55 +111,32 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
     // if a score >= alpha, set the node type to PV_NODE
     NodeType nodeType = ALL_NODE;
 
-    // generate all moves from the position
-    Move moveList[MAX_MOVES];
-    Move* end = generate<LEGAL>(pos, moveList);
-
-    // evaluate all moves and sort them by value in descending order
-    ValMove scoredMoves[MAX_MOVES];
-    ValMove* endScored = scoredMoves;
-    for (Move* m = moveList; m < end; ++m) {
-        *endScored = *m;
-        // if we are following the pv
-        // evaluate the pv move with the max value
-        if (ttHit && *m == ttEntry->bestMove)
-            endScored->value = INF_SCORE;
-        else
-            endScored->value = evaluate_move(pos, *m);
-        endScored++;
-    }
-
-    std::sort(scoredMoves, endScored, [](const ValMove& a, const ValMove& b) {
-        return a.value > b.value;
-    });
-
-    // check for stalemate
-    // extremely rare but possible
-    if (moveList[0].is_null())
-        return 0;
+    // initialize the move picker
+    MovePicker movePicker(pos, depth, ttEntry->bestMove);
 
     // loop through children nodes
     int bestScore = -INF_SCORE;
     Move nodeBestMove = Move::null();
     int score;
-    for (ValMove* m = scoredMoves; m < endScored; ++m) {
+    Move m;
+    while ((m = movePicker.next_move()) != Move::null()) {
 
-        pos.make_move(*m);
+        pos.make_move(m);
         // in case of time up, unmake the move before stopping
         // the pos must be restored to the original position
         try {
             score = -min_max(depth - 1, ply + 1, -beta, -alpha);
         } catch (const TimeUpException& e) {
-            pos.unmake_move(*m);
+            pos.unmake_move(m);
             throw e;
         }
         
-        pos.unmake_move(*m);
+        pos.unmake_move(m);
 
         // update best score and the pv table
         if (score > bestScore) {
             bestScore = score;
-            nodeBestMove = *m;
+            nodeBestMove = m;
 
             // alpha-beta pruning
             // if the score is greater than alpha, update alpha

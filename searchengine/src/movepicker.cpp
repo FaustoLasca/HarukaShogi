@@ -13,22 +13,28 @@ MovePicker::MovePicker(Position& pos, int depth, Move ttMove) : pos(pos), depth(
     // check if the tt move is legal
     if (pos.is_pseudo_legal(ttMove)) {
         if (pos.is_legal(ttMove)) {
-            if (pos.checkers())
+            if (pos.checkers()) {
                 stage = EVASION_TT_STAGE;
-            else
+                return;
+            }
+            else{
                 stage = TT_STAGE;
+                return;
+            }
         }
     }
  
     // if the depth is 0 or less, we are in quiescence
     else if (depth <= 0)
-        stage = QUIESCENCE_STAGE;
+        stage = QUIESCENCE_STAGE_INIT;
     // if there are checkers, we are in evasion
     else if (pos.checkers())
-        stage = EVASION_STAGE;
+        stage = EVASION_STAGE_INIT;
     // otherwise, we are in capture search
     else
-        stage = CAPTURE_STAGE;
+        stage = CAPTURE_STAGE_INIT;
+
+    // std::cout << "Initial stage: " << stage << std::endl;
 }
 
 
@@ -60,10 +66,16 @@ Move MovePicker::next_move() {
             stage++;
             Move moveList[MAX_MOVES];
             Move* end = generate<CAPTURES>(pos, moveList);
+            curr = scoredMoves;
             scoredEnd = score(scoredMoves, moveList, end);
             std::sort(scoredMoves, scoredEnd, [](const ValMove& a, const ValMove& b) {
                 return a.value > b.value;
             });
+
+            // std::cout << "Captures stage: " << stage << std::endl;
+            // std::cout << "N moves: " << end - moveList << std::endl;
+            // std::cout << "Score moves: " << scoredEnd - scoredMoves << std::endl;
+
             break;
         }
 
@@ -71,10 +83,16 @@ Move MovePicker::next_move() {
             stage++;
             Move moveList[MAX_MOVES];
             Move* end = generate<QUIET>(pos, moveList);
+            curr = scoredMoves;
             scoredEnd = score(scoredMoves, moveList, end);
             std::sort(scoredMoves, scoredEnd, [](const ValMove& a, const ValMove& b) {
                 return a.value > b.value;
             });
+
+            // std::cout << "Quiets stage: " << stage << std::endl;
+            // std::cout << "N moves: " << end - moveList << std::endl;
+            // std::cout << "Score moves: " << scoredEnd - scoredMoves << std::endl;
+
             break;
         }
 
@@ -82,18 +100,24 @@ Move MovePicker::next_move() {
             stage++;
             Move moveList[MAX_MOVES];
             Move* end = generate<EVASIONS>(pos, moveList);
+            curr = scoredMoves;
             scoredEnd = score(scoredMoves, moveList, end);
             std::sort(scoredMoves, scoredEnd, [](const ValMove& a, const ValMove& b) {
                 return a.value > b.value;
             });
+
+            // std::cout << "Evasion stage: " << stage << std::endl;
+            // std::cout << "N moves: " << end - moveList << std::endl;
+            // std::cout << "Score moves: " << scoredEnd - scoredMoves << std::endl;
+
             break;
         }
     }
     
     // move curr to the next legal move
-    do {
+    while (curr < scoredEnd && !pos.is_legal(*curr)) {
         curr++;
-    } while (curr < scoredEnd && !pos.is_legal(*curr));
+    }
 
     if (curr == scoredEnd) {
         // if the moves are over, return null move
@@ -107,7 +131,9 @@ Move MovePicker::next_move() {
         }
     }
 
-    return *curr;
+    Move move = *curr;
+    curr++;
+    return move;
 }
 
 

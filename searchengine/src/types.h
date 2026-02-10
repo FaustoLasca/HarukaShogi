@@ -359,6 +359,7 @@ class Move {
             return Square((data & 0x3F80u) >> 7);
         }
         constexpr bool is_promotion() const {
+            assert(!is_drop());
             return data & 0x4000u;
         }
 

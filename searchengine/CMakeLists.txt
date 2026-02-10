@@ -7,7 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 # Generate compile_commands.json for clangd
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
-set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -mbmi2")
+# set(CMAKE_CXX_FLAGS_RELEASE "-O3 -march=native -mbmi2")
 
 # Pybind11 configuration
 set(PYBIND11_FINDPYTHON ON)
@@ -25,6 +25,7 @@ pybind11_add_module(haruka
     src/opening_book.cpp
     src/book_data.cpp
     src/bitboard.cpp
+    src/movepicker.cpp
 )
 
 target_include_directories(haruka PRIVATE include)
@@ -42,6 +43,7 @@ add_executable(test_types
     src/opening_book.cpp
     src/book_data.cpp
     src/bitboard.cpp
+    src/movepicker.cpp
 )
 target_include_directories(test_types PRIVATE include)
 
