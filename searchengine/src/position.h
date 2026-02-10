@@ -3,11 +3,11 @@
 
 #include <string>
 #include <array>
-#include <vector>
 #include <forward_list>
 #include <iostream>
 
 #include "types.h"
+#include "bitboard.h"
 
 namespace harukashogi {
 
@@ -27,12 +27,16 @@ enum CheckStatus {
 
 
 struct StateInfo {
-	StateInfo() : capturedPT(NO_PIECE_TYPE), checkStatus{CHECK_UNRESOLVED, CHECK_UNRESOLVED}, key(0) {}
+	StateInfo() : capturedPT(NO_PIECE_TYPE),
+				  checkersBB(0),
+				  key(0) {}
+
+	Bitboard checkersBB;
+	Bitboard checkSquares[NUM_COLORS][NUM_PIECE_TYPES];
+	Bitboard blockers[NUM_COLORS];
+	Bitboard lineOfSight[NUM_COLORS];
 
 	PieceType capturedPT;
-
-	std::array<CheckStatus, NUM_COLORS> checkStatus;
-
 	uint64_t key;
 };
 
@@ -46,7 +50,10 @@ class RepetitionTable {
 		void add(uint64_t key) { table[index(key)]++;}
 		void remove(uint64_t key) { table[index(key)]--;}
 
-		bool reached_repetitions(uint64_t key, std::forward_list<StateInfo>& si, uint8_t nRepetitions = MAX_REPETITIONS);
+		bool reached_repetitions(
+			uint64_t key,
+			std::forward_list<StateInfo>& si,
+			uint8_t nRepetitions = MAX_REPETITIONS);
 
 		int get_counts_needed() const { return countsNeeded; }
 		int get_repetitions() const { return repetitions; }
@@ -64,6 +71,7 @@ class RepetitionTable {
 
 constexpr uint8_t MAX_HAND_COUNT = 18;
 
+
 class Position {
     public:
 		// constructor
@@ -73,29 +81,45 @@ class Position {
 		static void init();
 
 		// SFEN string methods
-		void set(const std::string& sfenStr = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1");
+		void set(const std::string& 
+			sfenStr = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
+		);
 		std::string sfen() const;
 
 		// move methods
 		void make_move(Move m);
 		void unmake_move(Move m);
 
+		Bitboard attackers_to(Square sq, Bitboard occupied) const;
+		Bitboard checkers() const { return si.front().checkersBB; }
+		Bitboard check_squares(PieceType pt) const {
+			return si.front().checkSquares[sideToMove][pt];
+		}
 		
-		bool is_in_check(Color color);
 		bool is_checkmate();
 		bool is_game_over();
 		
 		bool is_legal(Move m);
 		bool is_capture(Move m) const;
+		bool gives_check(Move m) const;
 
 		// getters
 		Piece piece(Square sq) const { return board[sq]; }
-		int hand_count(Color color, PieceType pt) const { return hands[color * NUM_UNPROMOTED_PIECE_TYPES + pt]; }
+		Square king_square(Color color) const { return kingSq[color]; }
+		int hand_count(Color color, PieceType pt) const {
+			return hands[color][pt];
+		}
 		Color side_to_move() const { return sideToMove; }
-		bool pawn_on_file(Color color, File file) const { return pawnFiles[color * NUM_FILES + file]; }
+		bool pawn_on_file(Color color, File file) const { 
+			return pawnFiles[color][file];
+		}
 		Color get_winner() const;
 		int get_move_count() const { return gamePly; }
 		uint64_t get_key() const { return si.front().key; }
+
+		Bitboard all_pieces(Color color) const { return allPiecesBB[color]; }
+		Bitboard all_pieces() const { return allPiecesBB[BLACK] | allPiecesBB[WHITE]; }
+		Bitboard pieces(Color color, PieceType pt) const { return piecesBB[color][pt]; }
 
 		// temporary method to debug the repetition table
 		void print_repetition_values() const {
@@ -105,6 +129,20 @@ class Position {
 
 		
 		private:
+
+		// methods to update all the affected information when a piece moves
+		void add_piece(Piece p, Square sq);
+		void remove_piece(Square sq);
+		void move_piece(Square from, Square to);
+		void add_hand_piece(Color color, PieceType pt);
+		void remove_hand_piece(Color color, PieceType pt);
+
+		void update_line_of_sight(Color c);
+
+		template<Color c> void compute_check_squares();
+		template<Color c> void compute_dir_check_squares();
+		template<Color c> void compute_sld_check_squares();
+
 		// compute the zobrist hash code
 		void compute_key();
 		
@@ -113,9 +151,14 @@ class Position {
 		
 		// data members
 		std::array<Piece, NUM_SQUARES> board;
-		std::array<uint8_t, NUM_COLORS * NUM_UNPROMOTED_PIECE_TYPES> hands;
+		uint8_t hands[NUM_COLORS][NUM_UNPROMOTED_PIECE_TYPES] = {};
+
+		// bitboards
+		Bitboard allPiecesBB[NUM_COLORS] = {};
+		Bitboard piecesBB[NUM_COLORS][NUM_PIECE_TYPES] = {};
 		std::array<Square, NUM_COLORS> kingSq;
-		std::array<bool, NUM_COLORS * NUM_FILES> pawnFiles;
+
+		bool pawnFiles[NUM_COLORS][NUM_FILES] = {};
 		Color sideToMove;
 		int gamePly;
 		

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <cassert>
+#include <stdexcept>
 
 namespace harukashogi {
 
@@ -39,7 +40,7 @@ enum PieceType : uint8_t {
 
     NO_PIECE_TYPE,
 };
-constexpr uint8_t NUM_SLIDING_TYPES = 3;
+constexpr uint8_t NUM_SLIDING_TYPES = 5;
 constexpr uint8_t NUM_UNPROMOTED_PIECE_TYPES = 8;
 
 enum Piece : uint8_t {
@@ -58,24 +59,29 @@ enum Piece : uint8_t {
 // functions on pieces and piece types
 constexpr PieceType type_of(Piece p) { return PieceType( (p-1) % NUM_PIECE_TYPES ); };
 constexpr Color color_of(Piece p) { return Color( (p-1) / NUM_PIECE_TYPES ); };
-constexpr Piece make_piece(Color c, PieceType pt) { return Piece(c * NUM_PIECE_TYPES + pt + 1); };
+constexpr Piece make_piece(Color c, PieceType pt) { return Piece(int(c) * int(NUM_PIECE_TYPES) + int(pt) + 1); };
 constexpr bool is_promoted( PieceType pt ) { return pt >= P_SILVER; };
 constexpr bool is_promoted( Piece p ) { return is_promoted(type_of(p)); };
 constexpr bool can_promote( PieceType pt ) { return pt>=SILVER && pt<=PAWN; };
 constexpr Piece promote_piece( Piece p ) { return is_promoted(p) ? p : Piece(p + 6); };
+constexpr PieceType promote( PieceType pt ) { return is_promoted(pt) ? pt : PieceType(pt + 6); };
 constexpr Piece unpromote_piece( Piece p ) { return is_promoted(p) ? Piece(p - 6) : p; };
-constexpr PieceType unpromoted_type( PieceType pt ) { return is_promoted(pt) ? PieceType(pt - 6) : pt; };
-// used to index the sliding move directions array
+constexpr PieceType unpromoted_type( PieceType pt ) {
+    return is_promoted(pt) ? PieceType(pt - 6) : pt;
+}
+// used to index the sliding pieces bitboard array
 constexpr std::size_t sliding_type_index( PieceType pt ) { 
     switch (pt) {
         case BISHOP:
-        case P_BISHOP:
             return 0;
-        case ROOK:
-        case P_ROOK:
+        case P_BISHOP:
             return 1;
-        case LANCE:
+        case ROOK:
             return 2;
+        case P_ROOK:
+            return 3;
+        case LANCE:
+            return 4;
         default:
             return -1;
     }
@@ -106,28 +112,160 @@ enum Rank : uint8_t {
     NUM_RANKS = 9,
 };
 
-struct Direction {
+enum Direction : int8_t {
+    N_DIR,
+    NE_DIR,
+    E_DIR,
+    SE_DIR,
+    S_DIR,
+    SW_DIR,
+    W_DIR,
+    NW_DIR,
+    // knight directions
+    NNE_DIR,
+    NNW_DIR,
+    SSE_DIR,
+    SSW_DIR,
+
+    NULL_DIR,
+    NUM_DIRECTIONS = 12,
+};
+
+constexpr int dir_delta(Direction dir) {
+    switch (dir) {
+        case N_DIR:
+            return -9;
+        case NE_DIR:
+            return -10;
+        case E_DIR:
+            return -1;
+        case SE_DIR:
+            return 8;
+        case S_DIR:
+            return 9;
+        case SW_DIR:
+            return 10;
+        case W_DIR:
+            return 1;
+        case NW_DIR:
+            return -8;
+        case NNE_DIR:
+            return -19;
+        case NNW_DIR:
+            return -17;
+        case SSE_DIR:
+            return 17;
+        case SSW_DIR:
+            return 19;
+        default:
+            throw std::invalid_argument("Invalid direction");
+    }
+}
+
+constexpr Square operator+(Square sq, int delta) { return Square(int(sq) + delta); }
+constexpr Square operator-(Square sq, int delta) { return Square(int(sq) - delta); }
+constexpr Square& operator+=(Square& sq, int delta) { return sq = sq + delta; }
+constexpr Square& operator-=(Square& sq, int delta) { return sq = sq - delta; }
+
+
+// array containing the directions each piece type can move to
+constexpr Direction PTDirections[NUM_PIECES][8] = {
+    // black pieces
+    {N_DIR,    NE_DIR,   E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NW_DIR  }, // KING
+    {N_DIR,    NE_DIR,   E_DIR,    S_DIR,    W_DIR,    NW_DIR,   NULL_DIR, NULL_DIR}, // GOLD
+    {N_DIR,    NE_DIR,   SE_DIR,   SW_DIR,   NW_DIR,   NULL_DIR, NULL_DIR, NULL_DIR}, // SILVER
+    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // LANCE
+    {NNE_DIR,  NNW_DIR,  NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // KNIGHT
+    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // BISHOP
+    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // ROOK
+    {N_DIR,    NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // PAWN
+    {N_DIR,    NE_DIR,   E_DIR,    S_DIR,    W_DIR,    NW_DIR,   NULL_DIR, NULL_DIR}, // P_SILVER
+    {N_DIR,    NE_DIR,   E_DIR,    S_DIR,    W_DIR,    NW_DIR,   NULL_DIR, NULL_DIR}, // P_LANCE
+    {N_DIR,    NE_DIR,   E_DIR,    S_DIR,    W_DIR,    NW_DIR,   NULL_DIR, NULL_DIR}, // P_KNIGHT
+    {N_DIR,    E_DIR,    S_DIR,    W_DIR,    NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // P_BISHOP
+    {NE_DIR,   SE_DIR,   SW_DIR,   NW_DIR,   NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // P_ROOK
+    {N_DIR,    NE_DIR,   E_DIR,    S_DIR,    W_DIR,    NW_DIR,   NULL_DIR, NULL_DIR}, // P_PAWN
+
+    // white pieces
+    {N_DIR,    NE_DIR,   E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NW_DIR  }, // KING
+    {N_DIR,    E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NULL_DIR, NULL_DIR}, // GOLD
+    {NE_DIR,   SE_DIR,   S_DIR,    SW_DIR,   NW_DIR,   NULL_DIR, NULL_DIR, NULL_DIR}, // SILVER
+    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // LANCE
+    {SSE_DIR,  SSW_DIR,  NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // KNIGHT
+    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // BISHOP
+    {NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // ROOK
+    {S_DIR,    NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // PAWN
+    {N_DIR,    E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NULL_DIR, NULL_DIR}, // P_SILVER
+    {N_DIR,    E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NULL_DIR, NULL_DIR}, // P_LANCE
+    {N_DIR,    E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NULL_DIR, NULL_DIR}, // P_KNIGHT
+    {N_DIR,    E_DIR,    S_DIR,    W_DIR,    NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // P_BISHOP
+    {NE_DIR,   SE_DIR,   SW_DIR,   NW_DIR,   NULL_DIR, NULL_DIR, NULL_DIR, NULL_DIR}, // P_ROOK
+    {N_DIR,    E_DIR,    SE_DIR,   S_DIR,    SW_DIR,   W_DIR,    NULL_DIR, NULL_DIR}, // P_PAWN
+};
+
+// array containing the sliding directions each piece type can move to
+constexpr Direction PSlidingDirections[NUM_PIECES][4] = {
+    {NE_DIR,   SE_DIR,   SW_DIR,   NW_DIR  }, // BISHOP
+    {N_DIR,    E_DIR,    S_DIR,    W_DIR   }, // ROOK
+    {N_DIR,    NULL_DIR, NULL_DIR, NULL_DIR}, // B_LANCE
+    {S_DIR,    NULL_DIR, NULL_DIR, NULL_DIR}  // W_LANCE
+};
+
+// returns the index to the PSlidingDirections structure
+constexpr size_t sl_dir_index(Piece p) {
+    switch (p) {
+        case B_BISHOP:
+        case P_B_BISHOP:
+        case W_BISHOP:
+        case P_W_BISHOP:
+            return 0;
+
+        case B_ROOK:
+        case P_B_ROOK:
+        case W_ROOK:
+        case P_W_ROOK:
+            return 1;
+
+        case B_LANCE:
+            return 2;
+
+        case W_LANCE:
+            return 3;
+
+        default:
+            return -1;
+    }
+}
+
+
+
+
+
+
+struct DirectionStruct {
     int8_t df;
     int8_t dr;
 
-    constexpr Direction(int8_t df, int8_t dr) : df(df), dr(dr) {}
-    constexpr Direction() : Direction(0, 0) {}
+    constexpr DirectionStruct(int8_t df, int8_t dr) : df(df), dr(dr) {}
+    constexpr DirectionStruct() : DirectionStruct(0, 0) {}
 
     constexpr int8_t d_index() const { return dr*9 + df; }
 
-    constexpr bool operator==(const Direction& other) const { return df == other.df && dr == other.dr; }
+    constexpr bool operator==(const DirectionStruct& other) const {
+        return df == other.df && dr == other.dr;
+    }
 };
-constexpr Direction NO_DIR = Direction(0, 0);
-constexpr Direction NORTH_EAST = Direction(-1, -1);
-constexpr Direction NORTH = Direction(0, -1);
-constexpr Direction NORTH_WEST = Direction(1, -1);
-constexpr Direction WEST = Direction(1, 0);
-constexpr Direction SOUTH_WEST = Direction(1, 1);
-constexpr Direction SOUTH = Direction(0, 1);
-constexpr Direction SOUTH_EAST = Direction(-1, 1);
-constexpr Direction EAST = Direction(-1, 0);
+constexpr DirectionStruct NO_DIR = DirectionStruct(0, 0);
+constexpr DirectionStruct NORTH_EAST = DirectionStruct(-1, -1);
+constexpr DirectionStruct NORTH = DirectionStruct(0, -1);
+constexpr DirectionStruct NORTH_WEST = DirectionStruct(1, -1);
+constexpr DirectionStruct WEST = DirectionStruct(1, 0);
+constexpr DirectionStruct SOUTH_WEST = DirectionStruct(1, 1);
+constexpr DirectionStruct SOUTH = DirectionStruct(0, 1);
+constexpr DirectionStruct SOUTH_EAST = DirectionStruct(-1, 1);
+constexpr DirectionStruct EAST = DirectionStruct(-1, 0);
 
-constexpr uint8_t NUM_DIRECTIONS = 8;
+constexpr uint8_t NUM_1DIR = 8;
 constexpr uint8_t MAX_SLIDING_DIRECTIONS = 4;
 
 // max number of squares that can attack a given square
@@ -135,14 +273,20 @@ constexpr uint8_t MAX_SLIDING_DIRECTIONS = 4;
 constexpr uint8_t MAX_ATTACKERS = 10;
 
 // operators to add/subtract direction from square
-constexpr Square operator+(Square sq, Direction d) { return Square(int(sq) + d.d_index()); }
-constexpr Square operator-(Square sq, Direction d) { return Square(int(sq) - d.d_index()); }
-constexpr Square& operator+=(Square& sq, Direction d) { return sq = sq + d; }
-constexpr Square& operator-=(Square& sq, Direction d) { return sq = sq - d; }
+constexpr Square operator+(Square sq, DirectionStruct d) { return Square(int(sq) + d.d_index()); }
+constexpr Square operator-(Square sq, DirectionStruct d) { return Square(int(sq) - d.d_index()); }
+constexpr Square& operator+=(Square& sq, DirectionStruct d) { return sq = sq + d; }
+constexpr Square& operator-=(Square& sq, DirectionStruct d) { return sq = sq - d; }
 
-constexpr Direction operator*(int n, Direction d) { return Direction(n * d.df, n * d.dr); }
-constexpr Direction operator+(Direction d1, Direction d2) { return Direction(d1.df + d2.df, d1.dr + d2.dr); }
-constexpr Direction operator-(Direction d1, Direction d2) { return Direction(d1.df - d2.df, d1.dr - d2.dr); }
+constexpr DirectionStruct operator*(int n, DirectionStruct d) {
+    return DirectionStruct(n * d.df, n * d.dr);
+}
+constexpr DirectionStruct operator+(DirectionStruct d1, DirectionStruct d2) {
+    return DirectionStruct(d1.df + d2.df, d1.dr + d2.dr);
+}
+constexpr DirectionStruct operator-(DirectionStruct d1, DirectionStruct d2) {
+    return DirectionStruct(d1.df - d2.df, d1.dr - d2.dr);
+}
 
 // functions to convert between square, file and rank
 constexpr Square make_square(File f, Rank r) { return Square(r*9 + f); };
@@ -154,7 +298,7 @@ constexpr bool promotion_zone(Square sq, Color c) {
 };
 
 // safe way to add a direction to a square
-constexpr Square add_direction(Square square, Direction d) {
+constexpr Square add_direction(Square square, DirectionStruct d) {
     uint8_t f = file_of(square) + d.df;
     uint8_t r = rank_of(square) + d.dr;
     if (f > F_9 || r > R_9)

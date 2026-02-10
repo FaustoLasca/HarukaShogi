@@ -82,7 +82,7 @@ class Haruka(Player):
         self.max_depth = max_depth
 
         module.init()
-        self.searcher = module.Searcher(useOpeningBook)
+        self.searcher = module.Searcher()
 
         self.state = GameState()
     

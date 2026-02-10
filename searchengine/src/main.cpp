@@ -1,31 +1,41 @@
 #include <iostream>
-#include <random>
-#include <iomanip>
+#include <immintrin.h>
 #include <bitset>
+#include <chrono>
 
-#include "movegen.h"
-#include "types.h"
-#include "position.h"
-#include "search.h"
+#include "bitboard.h"
 #include "misc.h"
+#include "position.h"
 #include "perft.h"
-#include "ttable.h"
+#include "types.h"
+#include "movegen.h"
+#include "search.h"
+#include "types.h"
 
 using namespace harukashogi;
 
 
 int main() {
-    
     init();
 
-    Searcher searcher;
-    searcher.set_position();
+    Position pos;
+    pos.set();
 
-    Move bestMove = searcher.search(chr::milliseconds(600000), 4);
+    constexpr Color c = BLACK;
+    constexpr PieceType pt = BISHOP;
+    constexpr Piece p = make_piece(c, pt);
+    constexpr Square sq = SQ_55;
 
-    std::cout << "Best move: " << bestMove << std::endl;
+    std::cout << sld_attacks_bb(sl_dir_index(p), sq, pos.all_pieces()) << std::endl;
 
-    searcher.print_stats();
+
+    auto start = std::chrono::high_resolution_clock::now();
+
+    std::cout << "Perft: " << perft(pos, 6) << std::endl;
+
+    auto end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> duration = end - start;
+    std::cout << "Time taken: " << duration.count() << " seconds" << std::endl;
 
     return 0;
 }

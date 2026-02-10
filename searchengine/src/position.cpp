@@ -1,8 +1,10 @@
 #include <sstream>
 #include <iostream>
 #include <random>
+#include <cstring>
 
 #include "position.h"
+#include "bitboard.h"
 #include "types.h"
 #include "movegen.h"
 #include "misc.h"
@@ -60,10 +62,12 @@ void Position::set(const std::string& sfenStr) {
 
     ss >> std::noskipws;
 
-    // empty board and hands
+    // empty board, hands, and bitboards
     board.fill(NO_PIECE);
-    hands.fill(0);
-    pawnFiles.fill(false);
+    std::memset(hands, 0, sizeof(hands));
+    std::memset(pawnFiles, 0, sizeof(pawnFiles));
+    std::fill(std::begin(allPiecesBB), std::end(allPiecesBB), Bitboard(0));
+    std::memset(piecesBB, 0, sizeof(piecesBB));
     gameStatus = NO_STATUS;
     winner = NO_COLOR;
 
@@ -79,13 +83,14 @@ void Position::set(const std::string& sfenStr) {
             promote = true;
 
         else if ((idx = PieceToChar.find(token)) != std::string::npos) {
-            board[sq] = promote ? promote_piece(Piece(idx)) : Piece(idx);
+            Piece p = promote ? promote_piece(Piece(idx)) : Piece(idx);
+            add_piece(p, sq);
             // update the king location
             if (type_of(board[sq]) == KING)
                 kingSq[color_of(board[sq])] = sq;
             // update the pawn file
             if (type_of(board[sq]) == PAWN)
-                pawnFiles[color_of(board[sq]) * NUM_FILES + file_of(sq)] = true;
+                pawnFiles[color_of(board[sq])][file_of(sq)] = true;
             promote = false;
             sq += EAST;
         }
@@ -100,7 +105,7 @@ void Position::set(const std::string& sfenStr) {
     while ((ss >> token) && token != ' ') {
         color = isupper(token) ? BLACK : WHITE;
         if ((idx = PieceToChar.find(tolower(token))) != std::string::npos)
-            hands[color * NUM_UNPROMOTED_PIECE_TYPES + type_of(Piece(idx))]++;
+            add_hand_piece(color, type_of(Piece(idx)));
     }
 
     // 4. full move count
@@ -110,6 +115,17 @@ void Position::set(const std::string& sfenStr) {
     // initialize the state info list
     si.clear();
     si.push_front(StateInfo());
+
+    // update the checkers bitboard
+    si.front().checkersBB = attackers_to(kingSq[sideToMove], all_pieces()) & all_pieces(~sideToMove);
+
+    // update the blocker info for each color
+    update_line_of_sight(BLACK);
+    update_line_of_sight(WHITE);
+
+    // update the check squares for each color
+    compute_check_squares<BLACK>();
+    compute_check_squares<WHITE>();
 
     // compute the zobrist hash code
     compute_key();
@@ -167,7 +183,7 @@ std::string Position::sfen() const {
     // 3. hand pieces
     for (int i = 0; i < NUM_COLORS; ++i) {
         for (PieceType pt = GOLD; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
-            for (int count = 0; count < hands[c * NUM_UNPROMOTED_PIECE_TYPES + pt]; ++count) {
+            for (int count = 0; count < hands[c][pt]; ++count) {
                 ss << PieceToChar[make_piece(c, pt)];
                 hands_empty = false;
             }
@@ -188,86 +204,175 @@ std::string Position::sfen() const {
 // makes the given move.
 // the move is assumed to be legal.
 void Position::make_move(Move m) {
+    bool givesCheck = gives_check(m);
+    bool kingMove = false;
     uint8_t count;
 
     // add a new state info to the list
     // copy the current state info to the new one
     si.push_front(StateInfo(si.front()));
-    si.front().checkStatus.fill(CHECK_UNRESOLVED);
-    si.front().capturedPT = NO_PIECE_TYPE;
+    StateInfo* newSI = &si.front();
+    newSI->capturedPT = NO_PIECE_TYPE;
 
     // move is not a drop
     if (!m.is_drop()) {
         // update the zobrist key by removing the piece from the from square
-        si.front().key ^= Zobrist::boardKeys[m.from()][board[m.from()]];
+        newSI->key ^= Zobrist::boardKeys[m.from()][board[m.from()]];
+
+        Piece p = board[m.from()];
 
         // capture
         if (board[m.to()] != NO_PIECE) {
             PieceType capturedPT = type_of(board[m.to()]);
             // unpromote the piece before adding to hand
-            count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(capturedPT)];
-            hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(capturedPT)]++;
+            count = hands[sideToMove][unpromoted_type(capturedPT)];
+            add_hand_piece(sideToMove, unpromoted_type(capturedPT));
             // handle pawn files if a pawn is captured
             if (capturedPT == PAWN)
-                pawnFiles[~sideToMove * NUM_FILES + file_of(m.to())] = false;
+                pawnFiles[~sideToMove][file_of(m.to())] = false;
 
             // update the zobrist key by removing the captured piece from the to square
             // and adding the captured piece to the hand
-            si.front().key ^= Zobrist::boardKeys[m.to()][board[m.to()]];
-            si.front().key ^= Zobrist::handKeys[sideToMove][unpromoted_type(capturedPT)][count];
+            newSI->key ^= Zobrist::boardKeys[m.to()][board[m.to()]];
+            newSI->key ^= Zobrist::handKeys[sideToMove][unpromoted_type(capturedPT)][count];
 
             // update the captured piece type in the state info
-            si.front().capturedPT = capturedPT;
+            newSI->capturedPT = capturedPT;
+
+            // remove the captured piece from the board
+            remove_piece(m.to());
         }
 
-        // update the board pieces
-        board[m.to()] = board[m.from()];
-        board[m.from()] = NO_PIECE;
-            
         // promote the piece if it's a promotion
+        // (remove the unpromoted piece and add the promoted piece)
         if (m.is_promotion()) {
-            board[m.to()] = promote_piece(board[m.to()]);
+            remove_piece(m.from());
+            p = promote_piece(p);
+            add_piece(p, m.to());
             // if a pawn is promoted, update the pawn file
             // pawns can be dropped to tha same file of the promoted pawn
             if (type_of(board[m.to()]) == P_PAWN) {
-                pawnFiles[sideToMove * NUM_FILES + file_of(m.from())] = false;
+                pawnFiles[sideToMove][file_of(m.from())] = false;
             }
+        }
+        // otherwise just move the piece
+        else {
+            move_piece(m.from(), m.to());
         }
 
         // update the zobrist key by adding the piece after the move to the to square
-        si.front().key ^= Zobrist::boardKeys[m.to()][board[m.to()]];
+        newSI->key ^= Zobrist::boardKeys[m.to()][board[m.to()]];
+        
 
-        // update king square
-        if (type_of(board[m.to()]) == KING)
+        // on a move, we need to update the line of sight and check squares info in 3 cases:
+        // 1. the king moves: In this case we need to update the all the check squares info
+        //                    and the line of sight info for the moving player
+        // 2. a sliding peice moves: In this case we need to update the check and line of sight info
+        //                           for the opposite player, only for the sliding pieces
+        // 3. a move is made that moves in/out of the line of sight of the opponent:
+        //    In this case we update the sliding info for the opponent
+        // 4. a move is made that moves in/out of the line of sight of the moving player:
+        //    We update the sliding info for the moving player
+        // 5. a sliding piece is captured: We update the sliding info for the moving player
+        if (type_of(p) == KING) {
+            // update king square
             kingSq[sideToMove] = m.to();
+
+            // case 1 - update both check square and line of sight info for the moving player
+            sideToMove == BLACK ? compute_check_squares<WHITE>() 
+                                : compute_check_squares<BLACK>();
+
+            update_line_of_sight(sideToMove);
+        }
+        // case 2&3 - a sliding piece moves or a move is made that moves in/out of the line of 
+        // sight of the opposite player
+        if (sl_dir_index(unpromote_piece(p)) != -1 || 
+                 newSI->lineOfSight[~sideToMove] & (square_bb(m.from()) | square_bb(m.to()))) {
+            sideToMove == BLACK ? compute_sld_check_squares<BLACK>() 
+                                : compute_sld_check_squares<WHITE>();
+
+            update_line_of_sight(~sideToMove);
+        }
+        // case 4&5
+        if (newSI->lineOfSight[sideToMove] & (square_bb(m.from()) | square_bb(m.to())) ||
+            sliding_type_index(newSI->capturedPT) != -1) {
+
+            sideToMove == BLACK ? compute_sld_check_squares<WHITE>()
+                                : compute_sld_check_squares<BLACK>();
+
+            update_line_of_sight(sideToMove);
+        }
+
+        // if a piece moves in/out of a sliding check square, they need to be recomputed
+        if ((square_bb(m.from()) | square_bb(m.to())) & 
+            (newSI->checkSquares[sideToMove][BISHOP] | newSI->checkSquares[sideToMove][ROOK])) {
+            sideToMove == BLACK ? compute_sld_check_squares<BLACK>() 
+                                : compute_sld_check_squares<WHITE>();
+        }
+        if ((square_bb(m.from()) | square_bb(m.to())) & 
+            (newSI->checkSquares[~sideToMove][BISHOP] | newSI->checkSquares[~sideToMove][ROOK])) {
+            sideToMove == BLACK ? compute_sld_check_squares<WHITE>() 
+                                : compute_sld_check_squares<BLACK>();
+        }
     }
     // drop
     else {
-        hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.dropped()]--;
-        count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.dropped()];
-        board[m.to()] = make_piece(sideToMove, m.dropped());
+        remove_hand_piece(sideToMove, m.dropped());
+        count = hands[sideToMove][m.dropped()];
+        add_piece(make_piece(sideToMove, m.dropped()), m.to());
         // handle pawn files if a pawn is dropped
         if (m.dropped() == PAWN)
-            pawnFiles[sideToMove * NUM_FILES + file_of(m.to())] = true;
+            pawnFiles[sideToMove][file_of(m.to())] = true;
 
         // update the zobrist key
-        si.front().key ^= Zobrist::handKeys[sideToMove][m.dropped()][count];
-        si.front().key ^= Zobrist::boardKeys[m.to()][board[m.to()]];
+        newSI->key ^= Zobrist::handKeys[sideToMove][m.dropped()][count];
+        newSI->key ^= Zobrist::boardKeys[m.to()][board[m.to()]];
+
+        // on a drop, we need to update the line of sight and check squares info in 2 cases:
+        // 1. the dropped piece is a sliding piece
+        // 2. the piece is dropped on a line of sight for one of the 2 players
+        if (sliding_type_index(m.dropped()) != -1 || 
+            newSI->lineOfSight[~sideToMove] & square_bb(m.to())) {
+            sideToMove == BLACK ? compute_sld_check_squares<WHITE>() 
+                                : compute_sld_check_squares<BLACK>();
+            update_line_of_sight(~sideToMove);
+        }
+        if (newSI->lineOfSight[sideToMove] & square_bb(m.to())) {
+            sideToMove == BLACK ? compute_sld_check_squares<BLACK>() 
+                                : compute_sld_check_squares<WHITE>();
+            update_line_of_sight(sideToMove);
+        }
+        if (square_bb(m.to()) & 
+            (newSI->checkSquares[sideToMove][BISHOP] | newSI->checkSquares[sideToMove][ROOK])) {
+            sideToMove == BLACK ? compute_sld_check_squares<BLACK>() 
+                                : compute_sld_check_squares<WHITE>();
+        }
+        if (square_bb(m.to()) & 
+            (newSI->checkSquares[~sideToMove][BISHOP] | newSI->checkSquares[~sideToMove][ROOK])) {
+            sideToMove == BLACK ? compute_sld_check_squares<WHITE>() 
+                                : compute_sld_check_squares<BLACK>();
+        }
     }
 
     // update side to move and game ply
-    si.front().checkStatus.fill(CHECK_UNRESOLVED);
     gameStatus = NO_STATUS;
     sideToMove = ~sideToMove;
     gamePly++;
 
+
+    // update the checkers bitboard
+    if (givesCheck)
+        newSI->checkersBB = attackers_to(kingSq[sideToMove], all_pieces()) & all_pieces(~sideToMove);
+    else
+        newSI->checkersBB = 0;
+
     // update the zobrist key by toggling the side to move
-    si.front().key ^= Zobrist::sideToMoveKey;
+    newSI->key ^= Zobrist::sideToMoveKey;
 
     // compute_key();
 
     // update the repetition table
-    repetitionTable.add(si.front().key);
+    repetitionTable.add(newSI->key);
 }
 
 
@@ -285,35 +390,40 @@ void Position::unmake_move(Move m) {
     gamePly--;
 
     // update game status
-    gameStatus = IN_PROGRESS;
+    gameStatus = NO_STATUS;
     winner = NO_COLOR;
 
     // move is not a drop
     if (!m.is_drop()) {
-        // update the board
-        board[m.from()] = board[m.to()];
+
+        Piece p = board[m.to()];
+
+        // unpromote the piece if it's a promotion
+        // (remove the promoted piece and add the unpromoted piece)
+        if (m.is_promotion()) {
+            remove_piece(m.to());
+            add_piece(unpromote_piece(p), m.from());
+            // if the promoted piece was a pawn, update the pawn file
+            if (type_of(board[m.from()]) == PAWN) {
+                pawnFiles[sideToMove][file_of(m.from())] = true;
+            }
+        }
+        // otherwise just move the piece
+        else {
+            move_piece(m.to(), m.from());
+        }
 
         // capture
+        // (remove the captured piece from the hand and add it to the board)
         if (si.front().capturedPT != NO_PIECE_TYPE) {
             PieceType capturedPT = si.front().capturedPT;
             // piece was promoted, so unpromote it before removing from hand
-            hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(capturedPT)]--;
-            count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + unpromoted_type(capturedPT)];
-            board[m.to()] = make_piece(~sideToMove, capturedPT);
+            remove_hand_piece(sideToMove, unpromoted_type(capturedPT));
+            count = hands[sideToMove][unpromoted_type(capturedPT)];
+            add_piece(make_piece(~sideToMove, capturedPT), m.to());
             // handle pawn files if a pawn was captured and is now on the board
             if (capturedPT == PAWN)
-                pawnFiles[~sideToMove * NUM_FILES + file_of(m.to())] = true;
-        }
-        else
-            board[m.to()] = NO_PIECE;
-            
-        // unpromote the piece if it's a promotion
-        if (m.is_promotion()) {
-            board[m.from()] = unpromote_piece(board[m.from()]);
-            // if the promoted piece was a pawn, update the pawn file
-            if (type_of(board[m.from()]) == PAWN) {
-                pawnFiles[sideToMove * NUM_FILES + file_of(m.from())] = true;
-            }
+                pawnFiles[~sideToMove][file_of(m.to())] = true;
         }
 
         // update king square
@@ -323,13 +433,13 @@ void Position::unmake_move(Move m) {
 
     // move is a drop
     else {
-        count = hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.dropped()];
-        hands[sideToMove * NUM_UNPROMOTED_PIECE_TYPES + m.dropped()]++;
+        count = hands[sideToMove][m.dropped()];
+        add_hand_piece(sideToMove, m.dropped());
 
-        board[m.to()] = NO_PIECE;
+        remove_piece(m.to());
         // handle pawn files if a pawn was dropped and is now not on the board
         if (m.dropped() == PAWN)
-            pawnFiles[sideToMove * NUM_FILES + file_of(m.to())] = false;
+            pawnFiles[sideToMove][file_of(m.to())] = false;
     }
 
     // remove the current state info from the list
@@ -337,42 +447,53 @@ void Position::unmake_move(Move m) {
 }
 
 
-bool Position::is_in_check(Color color) {
-    CheckStatus& checkStatus = si.front().checkStatus[color];
-    // CheckStatus checkStatus = CHECK_UNRESOLVED;
-    if (checkStatus == CHECK_UNRESOLVED) {
-        checkStatus = is_attacked(*this, kingSq[color], ~color) ? CHECK : NOT_CHECK;
-    }
-    return checkStatus == CHECK;
-}
-
-
 bool Position::is_legal(Move m) {
-    if (m.is_null())
-        return false;
+    if (m.is_drop()) {
 
-    // TODO: this is unoptimized, needs to be optimized
-    make_move(m);
-    bool is_legal = !is_in_check(~sideToMove);
+        // pawn drops can't checkmate
+        if (m.dropped() == PAWN) {
+            // if the pawn drop puts the king in check, control if it's checkmate
+            Square attacked = m.to() + (sideToMove == BLACK ? dir_delta(N_DIR) : dir_delta(S_DIR));
+            if (attacked == kingSq[~sideToMove]) {
+                bool checkmate = false;
+                make_move(m);
+                checkmate = is_checkmate();
+                unmake_move(m);
+                return !checkmate;
+            }
+        }
 
-    // pawn drop can't checkmate
-    // TODO: this works but is very inefficient
-    // generate pawn move and check for checkmate
-    if (is_legal && m.is_drop() && m.dropped() == PAWN) {
-        Direction pawnAttack = (sideToMove == BLACK) ? SOUTH : NORTH;
-        // if the pawn drop eats the king, check if there are any legal moves
-        // for the opponent. If not it's checkmate.
-        if ((m.to() + pawnAttack) == kingSq[sideToMove]) {
-            Move moveList[MAX_MOVES];
-            generate_moves(*this, moveList);
-            if (moveList[0].is_null())
-                is_legal = false;   
+    }
+    // not a drop
+    else {
+
+        // pawns, lances and knights cannot move to the last ranks without promotion
+        if (!m.is_drop() && !m.is_promotion()) {
+            PieceType pt = type_of(board[m.from()]);
+            if (pt == PAWN || pt == LANCE || pt == KNIGHT) {
+                if (rank_of(m.to()) == (sideToMove == BLACK ? R_1 : R_9))
+                    return false;
+                // knights cannot move to the second last rank without promotion
+                if (pt == KNIGHT && rank_of(m.to()) == (sideToMove == BLACK ? R_2 : R_8))
+                    return false;
+            }
+        }
+
+        // the KING can move in check from move genetation
+        if (type_of(board[m.from()]) == KING) {
+            if (attackers_to(m.to(), all_pieces() ^ square_bb(m.from())) & all_pieces(~sideToMove))
+                return false;
+            else
+                return true;
+        }
+
+        // if a blocker is moving, it has to move on the same line wrt the king
+        if (square_bb(m.from()) & si.front().blockers[sideToMove]) {
+            return line_bb(m.from(), king_square(sideToMove)) & square_bb(m.to());
         }
     }
 
-    unmake_move(m);
-
-    return is_legal;
+    return true;
 }
 
 
@@ -381,22 +502,84 @@ bool Position::is_capture(Move m) const {
 }
 
 
+bool Position::gives_check(Move m) const {
+    const StateInfo& si = this->si.front();
+    PieceType pt = m.is_drop() ? m.dropped() : type_of(board[m.from()]);
+    if (m.is_promotion())
+        pt = promote(pt);
+
+    // check if the move gives a direct check
+    if (check_squares(pt) & square_bb(m.to()))
+        return true;
+
+    // check if the move gives a discovered check
+    if (!m.is_drop())
+        if (si.blockers[~sideToMove] & square_bb(m.from()))
+            return !(line_bb(m.from(), king_square(~sideToMove)) & square_bb(m.to()));
+
+    return false;
+}
+
+
+Bitboard Position::attackers_to(Square sq, Bitboard occupied) const {
+    Bitboard attackers = 0;
+    // generate attacks for each piece and check if there's an attacker
+    // 
+    // the color of the move generation and the pieces are swapped, as the attacks are
+    // generated starting from the target square
+    // 
+    // pieces that share the same movement type are grouped together
+
+    // kings and promoted rooks and bishops are grouped together
+    attackers |= attacks_bb<BLACK, KING>(sq) & (pieces(BLACK, KING)     | pieces(WHITE, KING)   |
+                                                pieces(BLACK, P_BISHOP) | pieces(BLACK, P_ROOK) |
+                                                pieces(WHITE, P_BISHOP) | pieces(WHITE, P_ROOK));
+    // golds and promoted pieces of the same color are grouped together
+    attackers |= attacks_bb<WHITE, GOLD>(sq) & (pieces(BLACK, GOLD)    | pieces(BLACK, P_SILVER) |
+                                                pieces(BLACK, P_LANCE) | pieces(BLACK, P_KNIGHT) |
+                                                pieces(BLACK, P_PAWN));
+    attackers |= attacks_bb<BLACK, GOLD>(sq) & (pieces(WHITE, GOLD)    | pieces(WHITE, P_SILVER) |
+                                                pieces(WHITE, P_LANCE) | pieces(WHITE, P_KNIGHT) |
+                                                pieces(WHITE, P_PAWN));
+    attackers |= attacks_bb<WHITE, SILVER>(sq) & pieces(BLACK, SILVER);
+    attackers |= attacks_bb<BLACK, SILVER>(sq) & pieces(WHITE, SILVER);
+    // lances only have sliding attacks, so we can generate them directly
+    attackers |= sld_attacks_bb<WHITE, LANCE>(sq, occupied) & pieces(BLACK, LANCE);
+    attackers |= sld_attacks_bb<BLACK, LANCE>(sq, occupied) & pieces(WHITE, LANCE);
+    attackers |= attacks_bb<WHITE, KNIGHT>(sq) & pieces(BLACK, KNIGHT);
+    attackers |= attacks_bb<BLACK, KNIGHT>(sq) & pieces(WHITE, KNIGHT);
+    // the dir attacks for promoted bishops and rooks are generated with the king
+    // there is no need to generate them here
+    // bishops of both colors, promoted and unpromoted are grouped together
+    attackers |= sld_attacks_bb<BLACK, BISHOP>(sq, occupied) & (pieces(BLACK, BISHOP)   | 
+                                                                pieces(BLACK, P_BISHOP) |
+                                                                pieces(WHITE, BISHOP)   | 
+                                                                pieces(WHITE, P_BISHOP));
+    // rooks of both colors, promoted and unpromoted are grouped together
+    attackers |= sld_attacks_bb<BLACK, ROOK>(sq, occupied) & (pieces(BLACK, ROOK)   | 
+                                                              pieces(BLACK, P_ROOK) |
+                                                              pieces(WHITE, ROOK)   | 
+                                                              pieces(WHITE, P_ROOK));
+    // pawns only attack forward, so we can generate them directly from the direction
+    attackers |= dir_attacks_bb<S_DIR>(square_bb(sq)) & pieces(BLACK, PAWN);
+    attackers |= dir_attacks_bb<N_DIR>(square_bb(sq)) & pieces(WHITE, PAWN);
+
+    attackers &= occupied;
+
+    return attackers;
+}
+
+
 bool Position::is_checkmate() {
-    Color color = sideToMove;
     // only go forward if the king is in check
-    if (is_in_check(color)) {
+    if (checkers()) {
         // first check if the king has any legal moves
         Move moveList[MAX_MOVES];
-        Move* end = piece_moves(*this, moveList, kingSq[color]);
-
-        // if the king has no legal move, generate all moves
+        Move* end = generate<LEGAL>(*this, moveList);
         if (end == moveList) {
-            end = generate_moves(*this, moveList);
-            if (end == moveList) {
-                gameStatus = GAME_OVER;
-                winner = ~color;
-                return true;
-            }
+            gameStatus = GAME_OVER;
+            winner = ~sideToMove;
+            return true;
         }
     }
 
@@ -428,6 +611,113 @@ Color Position::get_winner() const {
 }
 
 
+void Position::add_piece(Piece p, Square sq) {
+    // update the board
+    board[sq] = p;
+
+    // update the bitboards
+    allPiecesBB[color_of(p)] |= square_bb(sq);
+    piecesBB[color_of(p)][type_of(p)] |= square_bb(sq);
+}
+
+
+void Position::remove_piece(Square sq) {
+    Piece p = board[sq];
+
+    // update the board
+    board[sq] = NO_PIECE;
+
+    // update the bitboards
+    allPiecesBB[color_of(p)] ^= square_bb(sq);
+    piecesBB[color_of(p)][type_of(p)] ^= square_bb(sq);
+}
+
+
+void Position::move_piece(Square from, Square to) {
+    Piece p = board[from];
+
+    // update the board
+    board[from] = NO_PIECE;
+    board[to] = p;
+
+    // update the bitboards
+    allPiecesBB[color_of(p)] ^= square_bb(from) | square_bb(to);
+    piecesBB[color_of(p)][type_of(p)] ^= square_bb(from) | square_bb(to);
+}
+
+
+void Position::add_hand_piece(Color color, PieceType pt) {
+    hands[color][pt]++;
+}
+
+
+void Position::remove_hand_piece(Color color, PieceType pt) {
+    hands[color][pt]--;
+}
+
+
+void Position::update_line_of_sight(Color c) {
+    StateInfo& si = this->si.front();
+    Square ksq = king_square(c);
+    si.lineOfSight[c] = 0;
+    si.blockers[c] = 0;
+
+    Bitboard snipers = 0;
+    snipers |= attacks_bb<BLACK, BISHOP>(ksq) & (pieces(~c, BISHOP) | pieces(~c, P_BISHOP));
+    snipers |= attacks_bb<BLACK, ROOK>(ksq)   & (pieces(~c, ROOK)   | pieces(~c, P_ROOK));
+    snipers |= c == BLACK ? attacks_bb<BLACK, LANCE>(ksq) & pieces(WHITE, LANCE)
+                          : attacks_bb<WHITE, LANCE>(ksq) & pieces(BLACK, LANCE);
+    
+    while (snipers) {
+        Square sniper = pop_lsb(snipers);
+        Bitboard between = between_bb(sniper, ksq);
+        si.lineOfSight[c] |= between;
+
+        between &= all_pieces();
+        if (one_bit(between)) {
+            si.blockers[c] |= between;
+        }
+    }
+}
+
+
+template<Color c>
+void Position::compute_dir_check_squares() {
+    StateInfo& si = this->si.front();
+    Square ksq = king_square(~c);
+
+    si.checkSquares[c][KING]     = 0;
+    si.checkSquares[c][GOLD]     = attacks_bb<~c, GOLD>(ksq);
+    si.checkSquares[c][SILVER]   = attacks_bb<~c, SILVER>(ksq);
+    si.checkSquares[c][KNIGHT]   = attacks_bb<~c, KNIGHT>(ksq);
+    si.checkSquares[c][PAWN]     = attacks_bb<~c, PAWN>(ksq);
+    si.checkSquares[c][P_SILVER] = attacks_bb<~c, P_SILVER>(ksq);
+    si.checkSquares[c][P_LANCE]  = attacks_bb<~c, P_LANCE>(ksq);
+    si.checkSquares[c][P_KNIGHT] = attacks_bb<~c, P_KNIGHT>(ksq);
+    si.checkSquares[c][P_PAWN]   = attacks_bb<~c, P_PAWN>(ksq);
+}
+
+
+template<Color c>
+void Position::compute_sld_check_squares() {
+    StateInfo& si = this->si.front();
+    Square ksq = king_square(~c);
+
+    si.checkSquares[c][LANCE]    = attacks_bb<~c, LANCE>(ksq, all_pieces());
+    si.checkSquares[c][BISHOP]   = attacks_bb<~c, BISHOP>(ksq, all_pieces());
+    si.checkSquares[c][ROOK]     = attacks_bb<~c, ROOK>(ksq, all_pieces());
+    si.checkSquares[c][P_BISHOP] = attacks_bb<~c, P_BISHOP>(ksq, all_pieces());
+    si.checkSquares[c][P_ROOK]   = attacks_bb<~c, P_ROOK>(ksq, all_pieces());
+}
+
+
+template<Color c>
+void Position::compute_check_squares() {
+    compute_dir_check_squares<c>();
+    compute_sld_check_squares<c>();
+}
+
+
 // computes the zobrist hash code of the position
 // this is only called when setting the position
 // otherwise it's updated incrementally in make_move and unmake_move
@@ -444,7 +734,7 @@ void Position::compute_key() {
     // hand pieces
     for (Color color = BLACK; color < NUM_COLORS; ++color) {
         for (PieceType pt = GOLD; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
-            for (uint8_t count = 0; count < hands[color * NUM_UNPROMOTED_PIECE_TYPES + pt]; ++count)
+            for (uint8_t count = 0; count < hands[color][pt]; ++count)
                 key ^= Zobrist::handKeys[color][pt][count];
         }
     }
@@ -457,7 +747,11 @@ void Position::compute_key() {
 }
 
 
-bool RepetitionTable::reached_repetitions(uint64_t key, std::forward_list<StateInfo>& si, uint8_t nRepetitions) {
+bool RepetitionTable::reached_repetitions(
+        uint64_t key,
+        std::forward_list<StateInfo>& si,
+        uint8_t nRepetitions
+    ) {
     // if the count is less than the draw repetition limit, return the count
     // even if it's wrong, it doesn't matter
     if (table[index(key)] < nRepetitions) {
@@ -482,7 +776,8 @@ bool RepetitionTable::reached_repetitions(uint64_t key, std::forward_list<StateI
                 }
                 else
                     wrongHits++;
-                // if the remaining hits are less than the repetitions limit, exit early and return false
+                // if the remaining hits are less than the repetitions limit, exit early and
+                // return false
                 if (table[index(st.key)] - wrongHits < nRepetitions)
                     return false;
             }

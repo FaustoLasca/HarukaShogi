@@ -16,7 +16,7 @@ import haruka_v0_2
 def duel(sfen: str = None) -> tuple[int, int]:
 
     player1 = Haruka(time_limit=500, useOpeningBook=False, module=haruka)
-    player2 = Haruka(time_limit=500, useOpeningBook=False, module=haruka)
+    player2 = Haruka(time_limit=500, useOpeningBook=False, module=haruka_v0_2)
 
     n_wins = [0, 0]
 

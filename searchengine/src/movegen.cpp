@@ -1,242 +1,186 @@
 #include "movegen.h"
 #include "types.h"
 #include "position.h"
+#include "bitboard.h"
+#include "misc.h"
 
 namespace harukashogi {
 
 
-bool is_attacked(const Position& pos, Square square, Color by) {
-    // -1 for black, 1 for white
-    // this is used to invert the direction of the move,
-    // since we look starting from the destination square
-    int colorFactor = (by == BLACK) ? -1 : 1;
-    Direction d;
-    Square to = square;
-    Piece p;
-
-    // for every piece type, generate inverse move and check if piece is there
-    for (PieceType pt = KING; pt < NUM_PIECE_TYPES; ++pt) {
-        p = make_piece(by, pt);
-
-        for (int i = 0; i < NUM_DIRECTIONS; ++i) {
-            d = colorFactor * StandardMoveDirections[pt * NUM_DIRECTIONS + i];
-            if (d == NO_DIR)
-                break;
-
-            to = add_direction(square, d);
-            if (to != NO_SQUARE)
-                if (pos.piece(to) == p )
-                    return true;
-        }
-
-        // check sliding moves if necessary
-        if (sliding_type_index(pt) != -1) {
-            for (int i = 0; i < MAX_SLIDING_DIRECTIONS; ++i) {
-                d = colorFactor * SlidingMoveDirections[sliding_type_index(pt) * MAX_SLIDING_DIRECTIONS + i];
-                if (d == NO_DIR)
-                    break;
-
-                to = add_direction(square, d);
-                // loop until out of bounds or piece is found
-                while (to != NO_SQUARE) {
-                    if (pos.piece(to) == p)
-                        return true;
-                    // stop if we hit a piece
-                    else if (pos.piece(to) != NO_PIECE)
-                        break;
-
-                    to = add_direction(to, d);
-                }
-            }
-        }
-    }
-
-    return false;
-}
-
-
-Move* piece_moves(Position& pos, Move* moveList, Square from) {
-    PieceType pt = type_of(pos.piece(from));
-    PieceType captured = NO_PIECE_TYPE;
-    Move move = Move::null();
-    Color color = color_of(pos.piece(from));
-    int colorFactor = (color == BLACK) ? 1 : -1;
-    bool promotion = false;
-    bool forced_promotion = false;
-    Rank lastRank = (color == BLACK) ? R_1 : R_9;
-    Rank secondLastRank = (color == BLACK) ? R_2 : R_8;
-    Direction d;
-    Square to = from;
-
-    // standard moves
-    for (int i = 0; i < NUM_DIRECTIONS; ++i) {
-        d = colorFactor * StandardMoveDirections[pt * NUM_DIRECTIONS + i];
-        if (d == NO_DIR)
-            break;
-
-        to = add_direction(from, d);
-        if (to != NO_SQUARE) {
-            // empty square or capture
-            if (pos.piece(to) == NO_PIECE || color_of(pos.piece(to)) == ~color)
-                move = Move(from, to);
-
-            // check if promotion is available
-            if ((promotion_zone(to, color) || promotion_zone(from, color)) && !is_promoted(pt) && can_promote(pt)) {
-                promotion = true;
-                // check if promotion is forced
-                // applies to pawns and knights for standard moves
-                if ((pt == PAWN || pt == KNIGHT) && rank_of(move.to()) == lastRank)
-                    forced_promotion = true;
-                else if (pt == KNIGHT && rank_of(move.to()) == secondLastRank)
-                    forced_promotion = true;
-            }
-           
-
-            // add move to the list
-            if (!move.is_null()) {
-                if (pos.is_legal(move)) {
-                    if (!forced_promotion)
-                        *moveList++ = move;
-                    if (promotion) {
-                        move = Move(move.from(), move.to(), true);
-                        *moveList++ = move;
-                    }
-                }
-            }
-
-            // reset flags and move
-            promotion = false;
-            forced_promotion = false;
-            move = Move::null();
-            captured = NO_PIECE_TYPE;
-        }
-    }
-
-    // sliding moves
-    if (sliding_type_index(pt) != -1) {
-        bool collision = false;
-
-        for (int i = 0; i < MAX_SLIDING_DIRECTIONS; ++i) {
-            d = colorFactor * SlidingMoveDirections[sliding_type_index(pt) * MAX_SLIDING_DIRECTIONS + i];
-            if (d == NO_DIR)
-                break;
-
-            to = add_direction(from, d);
-
-            collision = false;
-
-            while (to != NO_SQUARE && !collision) {
-                if (pos.piece(to) == NO_PIECE)
-                    move = Move(from, to);
-
-                else if (color_of(pos.piece(to)) == ~color) {
-                    move = Move(from, to);
-                    collision = true;
-                }
-
-                else {
-                    collision = true;
-                }
-
-                // check if promotion is available
-                if ((promotion_zone(to, color) || promotion_zone(from, color)) && !is_promoted(pt)) {
-                    promotion = true;
-                    // check if promotion is forced
-                    // only applies to lance for sliding moves
-                    if (pt == LANCE && rank_of(move.to()) == lastRank)
-                        forced_promotion = true;
-                }
-
-                // if valid move, add to move list
-                if (!move.is_null()) {
-                    if (pos.is_legal(move)) {
-                        if (!forced_promotion)
-                            *moveList++ = move;
-                        if (promotion) {
-                            move = Move(move.from(), move.to(), true);
-                            *moveList++ = move;
-                        }
-                    }
-                }
-
-                // reset flags and move
-                promotion = false;
-                forced_promotion = false;
-                move = Move::null();
-                captured = NO_PIECE_TYPE;
-
-                to = add_direction(to, d);
-            }
-        }
+template<Color c>
+Move* splat_pawn_moves(Position& pos, Move* moveList, Bitboard attacks) {
+    while (attacks) {
+        Square to = pop_lsb(attacks);
+        constexpr int delta = c == BLACK ? -dir_delta(N_DIR) : -dir_delta(S_DIR);
+        Square from = to + delta;
+        if (promotion_zone(to, c) || promotion_zone(from, c))
+            *moveList++ = Move(from, to, true);
+        *moveList++ = Move(from, to);
     }
 
     return moveList;
 }
 
 
-// generates all drop from the given position
-// the moves are added to the move list and the first free slot is returned
-Move* drop_moves(Position& pos, Move* moveList) {
-    Color toMove = pos.side_to_move();
-    int colorFactor = (toMove == BLACK) ? 1 : -1;
-    Square pawnAttack;
-    Move move = Move::null();
-    Rank lastRanks[2];
-    lastRanks[0] = (toMove == BLACK) ? R_1 : R_9;
-    lastRanks[1] = (toMove == BLACK) ? R_2 : R_8;
-
-    // loop through all free squares
-    for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
-        if (pos.piece(sq) == NO_PIECE) {
-
-            // loop through the pieces in the hand
-            // the pawn is special, so we handle it separately
-            for (PieceType pt = GOLD; pt < PAWN; ++pt) {
-                if (pos.hand_count(toMove, pt) > 0) {
-
-                    // LANCE and KNIGHT cannot be dropped on the last rank
-                    if ((pt == KNIGHT || pt == LANCE) && rank_of(sq) == lastRanks[0])
-                        continue;
-                    // KNIGHT cannot be dropped on the second last rank either
-                    else if (pt == KNIGHT && rank_of(sq) == lastRanks[1])
-                        continue;
-
-                    // add the drop to the move list
-                    move = Move(pt, sq);
-                    // TODO: no need to always check if the move is legal, needs optimization
-                    if (pos.is_legal(move))
-                        *moveList++ = move;
-                    
-                }
-            }
-
-            // handle the pawn separately
-            // the pawn can't be dropped on the last rank
-            // the pawn can't be dropped on the same rank as other pawns
-            // the pawn drop can't checkmate (this is checked in is_legal)
-            if (pos.hand_count(toMove, PAWN) > 0) {
-                if (!pos.pawn_on_file(toMove, file_of(sq)) && rank_of(sq) != lastRanks[0]) {
-                    move = Move(PAWN, sq);
-
-                    if (pos.is_legal(move))
-                        *moveList++ = move;
-                }
-            }
-        }
+template<Color c, PieceType pt>
+Move* splat_moves(Position& pos, Move* moveList, Bitboard attacks, Square from) {
+    while (attacks) {
+        Square to = pop_lsb(attacks);
+        if constexpr (can_promote(pt))
+            if (promotion_zone(to, c) || promotion_zone(from, c))
+                *moveList++ = Move(from, to, true);
+        *moveList++ = Move(from, to);
     }
 
     return moveList;
 }
 
 
-Move* generate_moves(Position& pos, Move* moveList) {
-    // generate drop moves
-    moveList = drop_moves(pos, moveList);
+template<Color c>
+Move* generate_pawn_moves(Position& pos, Move* moveList, Bitboard target) {
+    Bitboard pawns = pos.pieces(c, PAWN);
+    Bitboard attacks = c == BLACK ? dir_attacks_bb<N_DIR>(pawns) : dir_attacks_bb<S_DIR>(pawns);
+    attacks &= target;
+    moveList = splat_pawn_moves<c>(pos, moveList, attacks);
+    return moveList;
+}
 
-    // for each piece on the board, generate piece moves
-    for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
-        if (pos.piece(sq) != NO_PIECE && color_of(pos.piece(sq)) == pos.side_to_move())
-            moveList = piece_moves(pos, moveList, sq);
+
+template<Color c, PieceType pt>
+Move* generate_moves(Position& pos, Move* moveList, Bitboard target) {
+    Bitboard pieces = pos.pieces(c, pt);
+    Square from;
+
+    while (pieces) {
+        from = pop_lsb(pieces);
+        Bitboard attacks = attacks_bb<c, pt>(from, pos.all_pieces());
+        attacks &= target;
+        moveList = splat_moves<c, pt>(pos, moveList, attacks, from);
+    }
+
+    return moveList;
+}
+
+
+// adds a drop move to the move list if the move is pseudo-legal
+template<Color c, PieceType pt>
+Move* add_drop(Position& pos, Move* moveList, Square sq) {
+    if (pos.hand_count(c, pt) > 0) {
+
+        if constexpr (pt == PAWN || pt == LANCE || pt == KNIGHT) {
+            // pawns, knights and lances cannot be dropped on the last rank
+            if (rank_of(sq) == (c == BLACK ? R_1 : R_9))
+                return moveList;
+            // knights cannot be dropped on the second last rank
+            else if (pt == KNIGHT && rank_of(sq) == (c == BLACK ? R_2 : R_8))
+                return moveList;
+        }
+
+        // pawns cannot be dropped on the same file as other pawns
+        if constexpr (pt == PAWN)
+            if (pos.pawn_on_file(c, file_of(sq)))
+                return moveList;
+
+        *moveList++ = Move(pt, sq);
+        return moveList;
+    }
+
+    return moveList;
+}
+
+
+template<Color c>
+Move* generate_drops(Position& pos, Move* moveList, Bitboard target) {
+    Bitboard bb = invert(pos.all_pieces()) & target;
+    
+    while (bb) {
+        // get the next free square
+        Square sq = pop_lsb(bb);
+        // add the drop moves for all piece types
+        moveList = add_drop<c, GOLD>(pos, moveList, sq);
+        moveList = add_drop<c, SILVER>(pos, moveList, sq);
+        moveList = add_drop<c, LANCE>(pos, moveList, sq);
+        moveList = add_drop<c, KNIGHT>(pos, moveList, sq);
+        moveList = add_drop<c, BISHOP>(pos, moveList, sq);
+        moveList = add_drop<c, ROOK>(pos, moveList, sq);
+        moveList = add_drop<c, PAWN>(pos, moveList, sq);
+    }
+
+    return moveList;
+}
+
+
+template <GenType gt, Color c>
+Move* generate_all(Position& pos, Move* moveList) {
+    Bitboard checkers = pos.checkers();
+    Bitboard target;
+    Square ksq = pos.king_square(c);
+    
+    // if there is more than one checker, there can only be king moves
+    if (!( gt == EVASIONS && !one_bit(checkers))) {
+
+        target = gt == EVASIONS     ? checkers | between_bb(ksq, lsb(checkers))
+               : gt == NON_EVASIONS ? ~pos.all_pieces(c)
+               : gt == CAPTURES     ? pos.all_pieces(~c)
+                                    : ~pos.all_pieces(); // QUIETS
+
+        moveList = generate_pawn_moves<c>(pos, moveList, target);
+
+        moveList = generate_moves<c, GOLD>(pos, moveList, target);
+        moveList = generate_moves<c, SILVER>(pos, moveList, target);
+        moveList = generate_moves<c, LANCE>(pos, moveList, target);
+        moveList = generate_moves<c, KNIGHT>(pos, moveList, target);
+        moveList = generate_moves<c, BISHOP>(pos, moveList, target);
+        moveList = generate_moves<c, ROOK>(pos, moveList, target);
+        moveList = generate_moves<c, P_SILVER>(pos, moveList, target);
+        moveList = generate_moves<c, P_LANCE>(pos, moveList, target);
+        moveList = generate_moves<c, P_KNIGHT>(pos, moveList, target);
+        moveList = generate_moves<c, P_BISHOP>(pos, moveList, target);
+        moveList = generate_moves<c, P_ROOK>(pos, moveList, target);
+        moveList = generate_moves<c, P_PAWN>(pos, moveList, target);
+
+        if constexpr (gt != CAPTURES) {
+            moveList = generate_drops<c>(pos, moveList, target);
+        }
+
+    }
+
+    // treat king moves separately, as the logic is different for EVASION
+    Bitboard kingBb = dir_attacks_bb<c, KING>(pos.king_square(c));
+    kingBb &= gt == EVASIONS ? ~pos.all_pieces(c) : target; 
+    moveList = splat_moves<c, KING>(pos, moveList, kingBb, pos.king_square(c));
+
+    return moveList;
+}
+
+
+template <GenType gt>
+Move* generate(Position& pos, Move* moveList) {
+    static_assert(gt != LEGAL, "LEGAL is not a valid generation type");
+    
+    moveList = pos.side_to_move() == BLACK ? generate_all<gt, BLACK>(pos, moveList)
+                                           : generate_all<gt, WHITE>(pos, moveList);
+
+    return moveList;
+}
+
+
+template Move* generate<EVASIONS>(Position& pos, Move* moveList);
+template Move* generate<NON_EVASIONS>(Position& pos, Move* moveList);
+template Move* generate<QUIET>(Position& pos, Move* moveList);
+template Move* generate<CAPTURES>(Position& pos, Move* moveList);
+
+
+template <>
+Move* generate<LEGAL>(Position& pos, Move* moveList) {
+
+    Move pseudoLegalMoves[MAX_MOVES];
+    Move* end = pos.checkers() ? generate<EVASIONS>(pos, pseudoLegalMoves) 
+                               : generate<NON_EVASIONS>(pos, pseudoLegalMoves);
+
+    for (Move* m = pseudoLegalMoves; m < end; ++m) {
+        if (pos.is_legal(*m))
+            *moveList++ = *m;
     }
 
     return moveList;

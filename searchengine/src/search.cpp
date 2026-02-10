@@ -53,7 +53,9 @@ int Searcher::iterative_deepening(chr::milliseconds timeLimit, int maxDepth) {
         }
     }
 
-    chr::milliseconds timeTaken = chr::duration_cast<chr::milliseconds>(chr::steady_clock::now() - startTime);
+    chr::milliseconds timeTaken = chr::duration_cast<chr::milliseconds>(
+        chr::steady_clock::now() - startTime
+    );
     int nodesPS = nodeCount / (timeTaken.count() / 1000.0);
 
     std::cout << "Evaluation: " << score << "\t Depth: " << depth - 1 << "\t Nodes: " << nodeCount
@@ -110,7 +112,7 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
 
     // generate all moves from the position
     Move moveList[MAX_MOVES];
-    Move* end = generate_moves(pos, moveList);
+    Move* end = generate<LEGAL>(pos, moveList);
 
     // evaluate all moves and sort them by value in descending order
     ValMove scoredMoves[MAX_MOVES];
@@ -212,7 +214,7 @@ int Searcher::quiescence(int alpha, int beta) {
     // generate all moves from the position
     // only captures will be considered
     Move moveList[MAX_MOVES];
-    Move* end = generate_moves(pos, moveList);
+    Move* end = generate<CAPTURES>(pos, moveList);
 
     // evaluate all moves and sort them by value in descending order
     ValMove scoredMoves[MAX_MOVES];
@@ -238,7 +240,7 @@ int Searcher::quiescence(int alpha, int beta) {
     int score;
     for (ValMove* m = scoredMoves; m < endScored; ++m) {
         // only consider captures
-        if (pos.is_capture(*m)) {
+        if (pos.is_capture(*m) && pos.is_legal(*m)) {
 
             pos.make_move(*m);
             score = -quiescence(-beta, -alpha);

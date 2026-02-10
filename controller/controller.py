@@ -26,9 +26,15 @@ class Controller:
             if len(moves) == 0:
                 break
             current_player = self.state.current_player
-            move = self.players[current_player].get_move(moves)
 
-            self.state.move(move)
+            try:
+                move = self.players[current_player].get_move(moves)
+
+                self.state.move(move)
+            except Exception as e:
+                print(f"Error making move: {e}")
+                break
+            
             for player in self.players:
                 player.update_state(move, self.state.copy())
             n_moves = n_moves + 1
