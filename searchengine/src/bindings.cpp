@@ -10,7 +10,7 @@ namespace harukashogi {
 
 PYBIND11_MODULE(haruka, m) {
     py::class_<Searcher>(m, "Searcher", py::module_local())
-        .def(py::init<bool>(), py::arg("useOpeningBook"))
+        .def(py::init<bool>(), py::arg("useOpeningBook")=false)
         .def("set_position", &Searcher::set_position)
         .def("search", py::overload_cast<int, int>(&Searcher::search),
             py::arg("time_limit"),

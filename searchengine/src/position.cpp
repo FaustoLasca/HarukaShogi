@@ -332,12 +332,12 @@ void Position::make_move(Move m) {
         // 1. the dropped piece is a sliding piece
         // 2. the piece is dropped on a line of sight for one of the 2 players
         if (sliding_type_index(m.dropped()) != -1 || 
-            newSI->lineOfSight[~sideToMove] & (square_bb(m.to()) | square_bb(m.from()))) {
+            newSI->lineOfSight[~sideToMove] & square_bb(m.to())) {
             sideToMove == BLACK ? compute_sld_check_squares<WHITE>() 
                                 : compute_sld_check_squares<BLACK>();
             update_line_of_sight(~sideToMove);
         }
-        if (newSI->lineOfSight[sideToMove] & (square_bb(m.to()) | square_bb(m.from()))) {
+        if (newSI->lineOfSight[sideToMove] & square_bb(m.to())) {
             sideToMove == BLACK ? compute_sld_check_squares<BLACK>() 
                                 : compute_sld_check_squares<WHITE>();
             update_line_of_sight(sideToMove);
@@ -464,6 +464,7 @@ bool Position::is_legal(Move m) {
         }
 
     }
+    // not a drop
     else {
 
         // pawns, lances and knights cannot move to the last ranks without promotion
@@ -512,9 +513,9 @@ bool Position::gives_check(Move m) const {
         return true;
 
     // check if the move gives a discovered check
-    if (si.blockers[~sideToMove] & square_bb(m.from())) {
-        return !(line_bb(m.from(), king_square(~sideToMove)) & square_bb(m.to()));
-    }
+    if (!m.is_drop())
+        if (si.blockers[~sideToMove] & square_bb(m.from()))
+            return !(line_bb(m.from(), king_square(~sideToMove)) & square_bb(m.to()));
 
     return false;
 }

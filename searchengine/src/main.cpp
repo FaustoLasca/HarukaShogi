@@ -19,7 +19,7 @@ int main() {
     init();
 
     Position pos;
-    pos.set("ln6l/1r2gkg2/4psnp1/p1pps1p1p/1p3p3/P1P1S1P1P/1PSPP1N2/2G2G3/LNK4RL w BPbp 48");
+    pos.set();
 
     constexpr Color c = BLACK;
     constexpr PieceType pt = BISHOP;
@@ -31,7 +31,7 @@ int main() {
 
     auto start = std::chrono::high_resolution_clock::now();
 
-    std::cout << "Perft: " << perft(pos, 4) << std::endl;
+    std::cout << "Perft: " << perft(pos, 6) << std::endl;
 
     auto end = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> duration = end - start;
