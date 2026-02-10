@@ -161,26 +161,6 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
         } 
     }
 
-    if (nodeBestMove == Move::null()) {
-        std::cout << "BEST MOVE IS NULL" << std::endl;
-        std::cout << "Depth: " << depth << std::endl;
-        std::cout << "Ply: " << ply << std::endl;
-        std::cout << "Alpha: " << alpha << std::endl;
-        std::cout << "Beta: " << beta << std::endl;
-        std::cout << "NodeType: " << nodeType << std::endl;
-        std::cout << "NodeBestMove: " << nodeBestMove.to_string() << std::endl;
-        std::cout << "BestScore: " << bestScore << std::endl;
-
-        std::cout << "Legal moves: " << std::endl;
-        Move moveList[MAX_MOVES];
-        Move* end = generate<LEGAL>(pos, moveList);
-        for (Move* m = moveList; m < end; ++m) {
-            std::cout << *m << std::endl;
-        }
-
-        throw std::runtime_error("Best move is null");
-    }
-
     ttEntry->key = pos.get_key();
     ttEntry->score = bestScore;
     ttEntry->depth = depth;
