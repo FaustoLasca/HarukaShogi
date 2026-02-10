@@ -99,6 +99,7 @@ class Position {
 		bool is_checkmate();
 		bool is_game_over();
 		
+		bool is_pseudo_legal(Move m) const;
 		bool is_legal(Move m);
 		bool is_capture(Move m) const;
 		bool gives_check(Move m) const;
