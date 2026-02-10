@@ -1,10 +1,11 @@
 #include <bitset>
 #include <bit>
-#include <unordered_map>
+#include <immintrin.h>
 #include <vector>
 
 #include "bitboard.h"
 #include "types.h"
+#include "misc.h"
 
 namespace harukashogi {
 
@@ -30,7 +31,6 @@ Square pop_lsb(Bitboard& bb) {
 
 // data structures for precomputed bitboards
 Bitboard PieceDirAttacksBB[NUM_COLORS][NUM_PIECE_TYPES][NUM_SQUARES];
-std::unordered_map<Bitboard, Bitboard> PieceSldAttacksBB[4][NUM_SQUARES];
 Bitboard BetweenBB[NUM_SQUARES][NUM_SQUARES];
 Bitboard LineBB[NUM_SQUARES][NUM_SQUARES];
 
@@ -139,39 +139,111 @@ Bitboard trim_xray(Square sq, Bitboard xray) {
 }
 
 
-void init_piece_sld_attacks() {
-    for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
-        Bitboard xray;
+// this data structure stores all the necesary information to look up the pext-bitboard in the array
+// 1. mask_hi, mask_lo: the attack mask for the given piece and square, split in two 64 bit
+//    numbers (pext is only up to 64 bita at a time)
+// 2. shift: the shift amount to apply to the result of the hi pext result to concatenate them into
+//    a single index of the occupied bitboard
+// 3. offset: the offset to apply to the result of the lo pext result to get the final index into
+//    data structure
+struct PextInfo {
+    uint64_t mask_hi, mask_lo;
+    uint8_t shift;
+    uint32_t offset;
+};
 
-        xray = gen_sld_attacks<BLACK, BISHOP>(sq, 0);
-        xray = trim_xray(sq, xray);
-        auto occupied = gen_occupied(xray);
-        for (auto occ : occupied) {
-            PieceSldAttacksBB[0][sq][occ] = gen_sld_attacks<BLACK, BISHOP>(sq, occ);
-        }
+PextInfo PextInfos[4][NUM_SQUARES];
+Bitboard PextBitboards[520448];
 
-        xray = gen_sld_attacks<BLACK, ROOK>(sq, 0);
-        xray = trim_xray(sq, xray);
-        occupied = gen_occupied(xray);
-        for (auto occ : occupied) {
-            PieceSldAttacksBB[1][sq][occ] = gen_sld_attacks<BLACK, ROOK>(sq, occ);
-        }
 
-        xray = gen_sld_attacks<BLACK, LANCE>(sq, 0);
-        xray = trim_xray(sq, xray);
-        occupied = gen_occupied(xray);
-        for (auto occ : occupied) {
-            PieceSldAttacksBB[2][sq][occ] = gen_sld_attacks<BLACK, LANCE>(sq, occ);
-        }
+Bitboard sld_attacks_bb(size_t sld_idx, Square from, Bitboard occupied) {
+    PextInfo info = PextInfos[sld_idx][from];
+    // split the occupied bitboard in lo and hi
+    uint64_t occ_lo = static_cast<uint64_t>(occupied);
+    uint64_t occ_hi = static_cast<uint64_t>(occupied >> 64);
+    
+    // compute the pext
+    uint64_t lo_pext = _pext_u64(occ_lo, info.mask_lo);
+    uint64_t hi_pext = _pext_u64(occ_hi, info.mask_hi);
+    uint64_t pext = lo_pext | (hi_pext << info.shift);
 
-        xray = gen_sld_attacks<WHITE, LANCE>(sq, 0);
-        xray = trim_xray(sq, xray);
-        occupied = gen_occupied(xray);
-        for (auto occ : occupied) {
-            PieceSldAttacksBB[3][sq][occ] = gen_sld_attacks<WHITE, LANCE>(sq, occ);
+    // return the bitboard
+    return PextBitboards[info.offset + pext];
+}
+
+// helper function used to initialize the pext-bitboards
+Bitboard dirty_gen_sld(Piece p, Square sq, Bitboard occupied = 0) {
+    switch (p) {
+        case B_BISHOP:
+            return gen_sld_attacks<BLACK, BISHOP>(sq, occupied);
+        case B_ROOK:
+            return gen_sld_attacks<BLACK, ROOK>(sq, occupied);
+        case B_LANCE:
+            return gen_sld_attacks<BLACK, LANCE>(sq, occupied);
+        case W_LANCE:
+            return gen_sld_attacks<WHITE, LANCE>(sq, occupied);
+        default:
+            throw std::invalid_argument("Invalid piece");
+    }
+}
+
+
+void init_pext_bitboards() {
+    size_t sld_idx;
+    uint64_t mask_lo, mask_hi;
+    uint64_t occ_lo, occ_hi;
+    uint64_t pext_lo, pext_hi, pext;
+    Bitboard xray;
+    Bitboard attacks;
+
+    uint32_t offset = 0;
+    for (auto p : {B_BISHOP, B_ROOK, B_LANCE, W_LANCE}) {
+        sld_idx = sl_dir_index(p);
+        for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
+
+            // store the offset to the big data structure
+            PextInfos[sld_idx][sq].offset = offset;
+
+            // compute the mask Bitboard
+            xray = dirty_gen_sld(p, sq, 0);
+            xray = trim_xray(sq, xray);
+
+            // split the mask in hi and lo
+            mask_lo = static_cast<uint64_t>(xray);
+            mask_hi = static_cast<uint64_t>(xray >> 64);
+            PextInfos[sld_idx][sq].mask_lo = mask_lo;
+            PextInfos[sld_idx][sq].mask_hi = mask_hi;
+
+            // the shift amount is equal to the number of bits in the lo mask
+            PextInfos[sld_idx][sq].shift = popcount(mask_lo);
+
+            // generate all the relevant occupied bitboards
+            auto occupied = gen_occupied(xray);
+
+            // fill the data structure with the pext-bitboards
+            for (auto occ : occupied) {
+                // compute the attacks
+                attacks = dirty_gen_sld(p, sq, occ);
+
+                // split the occupied bitboard in lo and hi
+                occ_lo = static_cast<uint64_t>(occ);
+                occ_hi = static_cast<uint64_t>(occ >> 64);
+
+                // compute the pext
+                pext_lo = _pext_u64(occ_lo, mask_lo);
+                pext_hi = _pext_u64(occ_hi, mask_hi);
+                pext = pext_lo | (pext_hi << PextInfos[sld_idx][sq].shift);
+
+                // store the attacks in the data structure
+                PextBitboards[PextInfos[sld_idx][sq].offset + pext] = attacks;
+
+                // increment the offset
+                offset++;
+            }
         }
     }
 }
+
 
 void init_between_bb() {
     Direction dirs[] = {N_DIR, NE_DIR, E_DIR, SE_DIR, S_DIR, SW_DIR, W_DIR, NW_DIR};
@@ -250,7 +322,7 @@ Bitboard line_bb(Square from, Square to) {
 // initializes the precomputed data structures for bitboards
 void Bitboards::init() {
     init_piece_dir_attacks();
-    init_piece_sld_attacks();
+    init_pext_bitboards();
     init_between_bb();
 }
 
