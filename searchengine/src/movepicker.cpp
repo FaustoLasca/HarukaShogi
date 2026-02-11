@@ -51,14 +51,14 @@ ValMove* MovePicker::score(ValMove* scoredMoves, Move* moveList, Move* end) {
         
         if (!m->is_drop()) {
             if (pos.is_capture(*m))
-                score += 1000*PieceValues[type_of(pos.piece(m->to()))] - 
-                        100*PieceValues[type_of(pos.piece(m->from()))];
+                score += 100*PieceValues[type_of(pos.piece(m->to()))] - 
+                        10*PieceValues[type_of(pos.piece(m->from()))];
 
             // if the move is a promotion, add a bonus to the score
             // based on the value of the promoted piece
             if (m->is_promotion()) {
                 PieceType promotedPT = type_of(promote_piece(pos.piece(m->from())));
-                score += 1000 * (PieceValues[promotedPT] - 
+                score += 100 * (PieceValues[promotedPT] - 
                         PieceValues[type_of(pos.piece(m->from()))] );
             }
         }

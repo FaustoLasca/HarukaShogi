@@ -32,7 +32,6 @@ class Searcher {
             nodeCount = 0;
             bestMove = Move::null();
 
-            tt = TTable();
             this->useOpeningBook = useOpeningBook;
             if (useOpeningBook) {
                 openingBook = OpeningBook();

@@ -15,8 +15,8 @@ constexpr int PieceValues[NUM_PIECE_TYPES] = {
 int evaluate(Position& pos);
 
 
-constexpr int WIN_SCORE = 1000000;
-constexpr int INF_SCORE = 1000001;
+constexpr int WIN_SCORE = 32000;
+constexpr int INF_SCORE = 32001;
 
 
 } // namespace harukashogi
