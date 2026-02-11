@@ -192,40 +192,19 @@ int Searcher::quiescence(int alpha, int beta) {
     if (eval > alpha)
         alpha = eval;
 
-    // generate all moves from the position
-    // only captures will be considered
-    Move moveList[MAX_MOVES];
-    Move* end = generate<CAPTURES>(pos, moveList);
-
-    // evaluate all moves and sort them by value in descending order
-    ValMove scoredMoves[MAX_MOVES];
-    ValMove* endScored = scoredMoves;
-    for (Move* m = moveList; m < end; ++m) {
-        *endScored = *m;
-
-        // in case of time up, unmake the move before throwing the exception
-        try {
-            endScored->value = evaluate_move(pos, *m);
-        } catch (const TimeUpException& e) {
-            pos.unmake_move(*m);
-            throw e;
-        }
-        endScored++;
-    }
-
-    std::sort(scoredMoves, endScored, [](const ValMove& a, const ValMove& b) {
-        return a.value > b.value;
-    });
+    // initialize the move picker
+    MovePicker movePicker(pos, 0);
 
     // search through the scored captures
     int score;
-    for (ValMove* m = scoredMoves; m < endScored; ++m) {
+    Move m;
+    while ((m = movePicker.next_move()) != Move::null()) {
         // only consider captures
-        if (pos.is_capture(*m) && pos.is_legal(*m)) {
+        if (pos.is_capture(m) && pos.is_legal(m)) {
 
-            pos.make_move(*m);
+            pos.make_move(m);
             score = -quiescence(-beta, -alpha);
-            pos.unmake_move(*m);
+            pos.unmake_move(m);
 
             if (score > bestScore) {
                 bestScore = score;

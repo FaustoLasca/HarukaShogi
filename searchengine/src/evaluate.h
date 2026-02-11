@@ -6,23 +6,17 @@
 namespace harukashogi {
 
 
-int evaluate(Position& pos);
+constexpr int PieceValues[NUM_PIECE_TYPES] = {
+    0, 6, 5, 4, 3, 10, 12, 1,
+    6, 6, 6, 16, 16, 6
+};
 
-int evaluate_move(const Position& pos, Move move);
+
+int evaluate(Position& pos);
 
 
 constexpr int WIN_SCORE = 1000000;
 constexpr int INF_SCORE = 1000001;
-
-
-class ValMove : public Move {
-    public:
-        int value;
-
-        void operator=(Move& move) {
-            this->data = move.raw();
-        };
-};
 
 
 } // namespace harukashogi

@@ -1,6 +1,7 @@
 #include <algorithm>
 
 #include "movepicker.h"
+#include "evaluate.h"
 
 namespace harukashogi {
 
@@ -45,7 +46,24 @@ ValMove* MovePicker::score(ValMove* scoredMoves, Move* moveList, Move* end) {
     ValMove* curr = scoredMoves;
     for (Move* m = moveList; m < end; ++m) {
         valMove = *m;
-        valMove.value = evaluate_move(pos, *m);
+        int score = 0;
+        
+        
+        if (!m->is_drop()) {
+            if (pos.is_capture(*m))
+                score += 1000*PieceValues[type_of(pos.piece(m->to()))] - 
+                        100*PieceValues[type_of(pos.piece(m->from()))];
+
+            // if the move is a promotion, add a bonus to the score
+            // based on the value of the promoted piece
+            if (m->is_promotion()) {
+                PieceType promotedPT = type_of(promote_piece(pos.piece(m->from())));
+                score += 1000 * (PieceValues[promotedPT] - 
+                        PieceValues[type_of(pos.piece(m->from()))] );
+            }
+        }
+
+        valMove.value = score;
         *curr++ = valMove;
     }
 

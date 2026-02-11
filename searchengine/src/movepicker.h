@@ -3,9 +3,18 @@
 
 #include "movegen.h"
 #include "position.h"
-#include "evaluate.h"
 
 namespace harukashogi {
+
+
+class ValMove : public Move {
+    public:
+        int value;
+
+        void operator=(Move& move) {
+            this->data = move.raw();
+        };
+};
 
 
 enum Stage {

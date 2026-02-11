@@ -5,12 +5,6 @@
 namespace harukashogi {
 
 
-constexpr int PieceValues[NUM_PIECE_TYPES] = {
-    0, 6, 5, 4, 3, 10, 12, 1,
-    6, 6, 6, 16, 16, 6
-};
-
-
 int evaluate(Position& pos) {
     Color sideToMove = pos.side_to_move();
     int score = 0;
