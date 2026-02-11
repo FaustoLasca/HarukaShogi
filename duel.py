@@ -11,12 +11,13 @@ from starting_positions import STARTING_POSITIONS
 import haruka
 import haruka_v0_1
 import haruka_v0_2
+import haruka_v0_3
 
 
 def duel(sfen: str = None) -> tuple[int, int]:
 
-    player1 = Haruka(time_limit=500, useOpeningBook=False, module=haruka)
-    player2 = Haruka(time_limit=500, useOpeningBook=False, module=haruka_v0_2)
+    player1 = Haruka(time_limit=100, useOpeningBook=False, module=haruka)
+    player2 = Haruka(time_limit=100, useOpeningBook=False, module=haruka_v0_3)
 
     n_wins = [0, 0]
 

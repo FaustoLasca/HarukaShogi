@@ -23,5 +23,7 @@ int main() {
 
     std::cout << searcher.search(600000, 6) << std::endl;
 
+    searcher.print_stats();
+
     return 0;
 }
