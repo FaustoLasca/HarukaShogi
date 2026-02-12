@@ -16,8 +16,8 @@ import haruka_v0_3
 
 def duel(sfen: str = None) -> dict:
 
-    player1 = Haruka(time_limit=100, useOpeningBook=False, module=haruka)
-    player2 = Haruka(time_limit=100, useOpeningBook=False, module=haruka_v0_3)
+    player1 = Haruka(time_limit=150, useOpeningBook=False, module=haruka)
+    player2 = Haruka(time_limit=150, useOpeningBook=False, module=haruka_v0_3)
 
     n_wins = [0, 0]
     errors = 0
@@ -46,11 +46,6 @@ def duel(sfen: str = None) -> dict:
     except Exception as e:
         print(f"Error playing game: {e}")
         errors += 1
-    
-    if winner == 0:
-        n_wins[1] += 1
-    elif winner == 1:
-        n_wins[0] += 1
 
     return dict(wins=n_wins[0], losses=n_wins[1], draws=2-n_wins[0]-n_wins[1]-errors, errors=errors)
 

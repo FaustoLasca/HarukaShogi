@@ -42,8 +42,8 @@ if __name__ == "__main__":
 
     players = [
         # MinMaxPlayer(SimpleEvaluator(), time_budget=1),
-        Haruka(time_limit=500, useOpeningBook=True),
-        Haruka(time_limit=500, useOpeningBook=True, module=haruka_v0_3),
+        Haruka(time_limit=50, useOpeningBook=True),
+        Haruka(time_limit=50, useOpeningBook=True, module=haruka_v0_3),
         # GuiPlayer(move_request_queue, move_response_queue),
     ]
 
