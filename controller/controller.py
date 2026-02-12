@@ -27,13 +27,10 @@ class Controller:
                 break
             current_player = self.state.current_player
 
-            try:
-                move = self.players[current_player].get_move(moves)
+            
+            move = self.players[current_player].get_move(moves)
 
-                self.state.move(move)
-            except Exception as e:
-                print(f"Error making move: {e}")
-                break
+            self.state.move(move)
             
             for player in self.players:
                 player.update_state(move, self.state.copy())
