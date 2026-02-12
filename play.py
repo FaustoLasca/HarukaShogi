@@ -10,6 +10,7 @@ from ui.gui import Gui
 
 import haruka
 import haruka_v0_3
+import haruka_v0_4
 
 
 SFEN_STRING = None
@@ -26,7 +27,7 @@ SFEN_STRING = None
 # SFEN_STRING = "7nl/5R1gk/6Ppp/9/9/9/+p+p+p6/2+p6/K1+p6 b G 1" # mate in 5
 # SFEN_STRING = "4R2nl/6sk1/6pp1/8p/9/9/+p+p+p6/2+p6/K1+p6 b GLB 1" # mate in 5
 
-SFEN_STRING = "ln6l/1r2gkg2/4psnp1/p1pps1p1p/1p3p3/P1P1S1P1P/1PSPP1N2/2G2G3/LNK4RL w BPbp 48"
+# SFEN_STRING = "ln6l/1r2gkg2/4psnp1/p1pps1p1p/1p3p3/P1P1S1P1P/1PSPP1N2/2G2G3/LNK4RL w BPbp 48"
 
 
 
@@ -42,8 +43,8 @@ if __name__ == "__main__":
 
     players = [
         # MinMaxPlayer(SimpleEvaluator(), time_budget=1),
-        Haruka(time_limit=50, useOpeningBook=True),
-        Haruka(time_limit=50, useOpeningBook=True, module=haruka_v0_3),
+        Haruka(time_limit=500, useOpeningBook=True),
+        Haruka(time_limit=500, useOpeningBook=True, module=haruka_v0_4),
         # GuiPlayer(move_request_queue, move_response_queue),
     ]
 
