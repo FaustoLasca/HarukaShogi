@@ -20,11 +20,8 @@ int evaluate(Position& pos) {
         
 
     // add the piece values to the score
-    for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
-        if (pos.piece(sq) != NO_PIECE)
-            score += (color_of(pos.piece(sq)) == sideToMove) ? 
-                     100*PieceValues[type_of(pos.piece(sq))] : 
-                     -100*PieceValues[type_of(pos.piece(sq))];
+    for (PieceType pt = GOLD; pt < NUM_PIECE_TYPES; ++pt) {
+        score += (popcount(pos.pieces(sideToMove, pt)) - popcount(pos.pieces(~sideToMove, pt))) * 100*PieceValues[pt];
     }
 
     // add the value of the hand pieces
