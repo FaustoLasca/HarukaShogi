@@ -114,6 +114,9 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
     // if a score >= alpha, set the node type to PV_NODE
     NodeType nodeType = ALL_NODE;
 
+    if (ply == 0 && ttMove.is_null())
+        ttMove = bestMove;
+
     // initialize the move picker
     MovePicker movePicker(pos, depth, ttMove);
 
@@ -140,6 +143,8 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
         if (score > bestScore) {
             bestScore = score;
             nodeBestMove = m;
+            if (ply == 0)
+                bestMove = nodeBestMove;
 
             // alpha-beta pruning
             // if the score is greater than alpha, update alpha
@@ -166,9 +171,6 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
     ttEntry->depth = depth;
     ttEntry->nodeType = nodeType;
     ttEntry->bestMove = nodeBestMove;
-
-    if (ply == 0)
-        bestMove = nodeBestMove;
 
     return bestScore;
 }
