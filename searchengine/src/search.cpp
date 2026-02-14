@@ -201,21 +201,17 @@ int Searcher::quiescence(int alpha, int beta) {
     int score;
     Move m;
     while ((m = movePicker.next_move()) != Move::null()) {
-        // only consider captures
-        if (pos.is_capture(m) && pos.is_legal(m)) {
+        pos.make_move(m);
+        score = -quiescence(-beta, -alpha);
+        pos.unmake_move(m);
 
-            pos.make_move(m);
-            score = -quiescence(-beta, -alpha);
-            pos.unmake_move(m);
+        if (score > bestScore) {
+            bestScore = score;
 
-            if (score > bestScore) {
-                bestScore = score;
-
-                if (score > alpha)
-                    alpha = score;
-                if (score >= beta)
-                    return score;
-            }
+            if (score > alpha)
+                alpha = score;
+            if (score >= beta)
+                return score;
         }
     }
     

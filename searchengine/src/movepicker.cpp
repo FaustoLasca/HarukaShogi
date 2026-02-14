@@ -83,7 +83,11 @@ Move MovePicker::next_move() {
         case QUIESCENCE_STAGE_INIT: {
             stage++;
             Move moveList[MAX_MOVES];
-            Move* end = generate<CAPTURES>(pos, moveList);
+            Move *end;
+            if (pos.checkers())
+                end = generate<EVASIONS>(pos, moveList);
+            else
+                end = generate<CAPTURES>(pos, moveList);
             curr = scoredMoves;
             scoredEnd = score(scoredMoves, moveList, end);
             std::sort(scoredMoves, scoredEnd, [](const ValMove& a, const ValMove& b) {
