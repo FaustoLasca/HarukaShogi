@@ -95,7 +95,30 @@ class Position {
 		Bitboard check_squares(PieceType pt) const {
 			return si.front().checkSquares[sideToMove][pt];
 		}
-		
+		Bitboard blockers(Color c) const { return si.front().blockers[c]; }
+
+		// returns all attacks of the given piece type for the given color
+		// use mostly in evaluation
+		template<PieceType pt>
+		Bitboard attacks(Color c) const {
+			if constexpr (pt == KING)
+				return attacks_bb<BLACK, KING>(king_square(c));
+
+			else if constexpr (pt == PAWN)
+				return c == BLACK ? dir_attacks_bb<N_DIR>(pieces(c, PAWN))
+								: dir_attacks_bb<S_DIR>(pieces(c, PAWN));
+								
+			else {
+				Bitboard bb = pieces(c, pt);
+				Bitboard attacks = 0;
+				while (bb)
+					attacks |= c == BLACK ? attacks_bb<BLACK, pt>(pop_lsb(bb), all_pieces())
+										: attacks_bb<WHITE, pt>(pop_lsb(bb), all_pieces());
+
+				return attacks;
+			}
+		}
+
 		bool is_checkmate();
 		bool is_game_over();
 		

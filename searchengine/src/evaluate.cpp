@@ -5,6 +5,30 @@
 namespace harukashogi {
 
 
+constexpr int PawnSquareValues[NUM_COLORS][NUM_SQUARES] = {
+    {0, 0, 0, 0, 0, 0, 0, 0, 0,
+     3, 3, 3, 3, 3, 3, 3, 3, 3,
+     3, 3, 3, 3, 3, 3, 3, 3, 3,
+     3, 3, 3, 3, 3, 3, 3, 3, 3,
+     2, 2, 2, 2, 2, 2, 2, 2, 2,
+     1, 1, 1, 1, 1, 1, 1, 1, 1,
+     0, 0, 0, 0, 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0, 0, 0, 0, 0},
+
+    {0, 0, 0, 0, 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0, 0, 0, 0, 0,
+     0, 0, 0, 0, 0, 0, 0, 0, 0,
+     1, 1, 1, 1, 1, 1, 1, 1, 1,
+     2, 2, 2, 2, 2, 2, 2, 2, 2,
+     3, 3, 3, 3, 3, 3, 3, 3, 3,
+     3, 3, 3, 3, 3, 3, 3, 3, 3,
+     3, 3, 3, 3, 3, 3, 3, 3, 3,
+     0, 0, 0, 0, 0, 0, 0, 0, 0}
+};
+
+
+
 int evaluate(Position& pos) {
     Color sideToMove = pos.side_to_move();
     int score = 0;
@@ -20,48 +44,49 @@ int evaluate(Position& pos) {
         
 
     // add the piece values to the score
-    for (PieceType pt = GOLD; pt < NUM_PIECE_TYPES; ++pt) {
-        Bitboard own = pos.pieces(sideToMove, pt);
-        Bitboard their = pos.pieces(~sideToMove, pt);
-        score += (popcount(own) - popcount(their)) * 100*PieceValues[pt];
-    }
+    for (PieceType pt = GOLD; pt < NUM_PIECE_TYPES; ++pt)
+        score += (popcount(pos.pieces(sideToMove, pt)) - popcount(pos.pieces(~sideToMove, pt)))
+                 * 100*PieceValues[pt];
+
+    // add pawn position values
+    Bitboard ownPawns = pos.pieces(sideToMove, PAWN);
+    while (ownPawns)
+        score += PawnSquareValues[sideToMove][pop_lsb(ownPawns)];
+    Bitboard oppPawns = pos.pieces(~sideToMove, PAWN);
+    while (oppPawns)
+        score -= PawnSquareValues[~sideToMove][pop_lsb(oppPawns)];
 
     // add the value of the king protection
-    Bitboard kingProtection = attacks_bb<BLACK, KING>(pos.king_square(sideToMove))
-                          & pos.all_pieces(sideToMove);
-    score += popcount(kingProtection) * 2;
-
-    kingProtection = attacks_bb<BLACK, KING>(pos.king_square(~sideToMove))
-                          & pos.all_pieces(~sideToMove);
-    score -= popcount(kingProtection) * 2;
+    score -= (popcount(pos.attacks<KING>(sideToMove)  & ~pos.all_pieces(sideToMove))
+           -  popcount(pos.attacks<KING>(~sideToMove) & ~pos.all_pieces(~sideToMove)))
+           * 3;
 
     // add sliding piece mobility
-    Bitboard bishops = pos.pieces(sideToMove, BISHOP) | pos.pieces(sideToMove, P_BISHOP);
-    while (bishops) {
-        Square from = pop_lsb(bishops);
-        Bitboard mobility = sld_attacks_bb<BLACK, BISHOP>(from, pos.all_pieces());
-        score += popcount(mobility) * 1;
-    }
-    Bitboard rooks = pos.pieces(sideToMove, ROOK) | pos.pieces(sideToMove, P_ROOK);
-    while (rooks) {
-        Square from = pop_lsb(rooks);
-        Bitboard mobility = sld_attacks_bb<BLACK, ROOK>(from, pos.all_pieces());
-        score += popcount(mobility) * 1;
-    }
+    Bitboard sliding = pos.pieces(sideToMove, BISHOP) | pos.pieces(sideToMove, P_BISHOP);
+    Bitboard attacks = 0;
+    while (sliding)
+        attacks |= attacks_bb<BLACK, BISHOP>(pop_lsb(sliding), pos.all_pieces());
+    score += popcount(attacks) * 1;
 
-    // remove opponent sliding piece mobility
-    bishops = pos.pieces(~sideToMove, BISHOP) | pos.pieces(~sideToMove, P_BISHOP);
-    while (bishops) {
-        Square from = pop_lsb(bishops);
-        Bitboard mobility = sld_attacks_bb<BLACK, BISHOP>(from, pos.all_pieces());
-        score -= popcount(mobility) * 1;
-    }
-    rooks = pos.pieces(~sideToMove, ROOK) | pos.pieces(~sideToMove, P_ROOK);
-    while (rooks) {
-        Square from = pop_lsb(rooks);
-        Bitboard mobility = sld_attacks_bb<BLACK, ROOK>(from, pos.all_pieces());
-        score -= popcount(mobility) * 1;
-    }
+    sliding = pos.pieces(sideToMove, ROOK) | pos.pieces(sideToMove, P_ROOK);
+    attacks = 0;
+    while (sliding)
+        attacks |= attacks_bb<BLACK, ROOK>(pop_lsb(sliding), pos.all_pieces());
+    score += popcount(attacks) * 1;
+
+    sliding = pos.pieces(~sideToMove, BISHOP) | pos.pieces(~sideToMove, P_BISHOP);
+    attacks = 0;
+    while (sliding)
+        attacks |= attacks_bb<WHITE, BISHOP>(pop_lsb(sliding), pos.all_pieces());
+    score -= popcount(attacks) * 1;
+
+    sliding = pos.pieces(~sideToMove, ROOK) | pos.pieces(~sideToMove, P_ROOK);
+    attacks = 0;
+    while (sliding)
+        attacks |= attacks_bb<WHITE, ROOK>(pop_lsb(sliding), pos.all_pieces());
+    score -= popcount(attacks) * 1;
+
+    
 
     // add the value of the hand pieces
     for (PieceType pt = SILVER; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
