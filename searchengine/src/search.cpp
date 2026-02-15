@@ -71,7 +71,7 @@ int Searcher::iterative_deepening(chr::milliseconds timeLimit, int maxDepth) {
 }
 
 
-int Searcher::min_max(int depth, int ply, int alpha, int beta, Move lastMove) {
+int Searcher::min_max(int depth, int ply, int alpha, int beta) {
     // if the depth is 0, return the evaluation of the position
     if (pos.is_game_over()) {
         nodeCount++;
@@ -130,19 +130,43 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta, Move lastMove) {
     Move nodeBestMove = Move::null();
     int score;
     Move m;
-    while ((m = movePicker.next_move()) != Move::null()) {
 
+    // variables for late move reductions
+    int nMoves = 0;
+    int reduction;
+    int searchDepth;
+
+    while ((m = movePicker.next_move()) != Move::null()) {
+        // late move reductions
+        // if we have explored more than LMR_N_MOVES moves, lower the depth by 1
+        // if the search score returned is higher than alpha, research at full depth
+        nMoves++;
+        reduction = 1 + std::log(nMoves) * std::log(depth - 1) / 3;
+        searchDepth = depth > 2 ? depth - reduction : depth - 1;
+        
         pos.make_move(m);
         // in case of time up, unmake the move before stopping
         // the pos must be restored to the original position
         try {
-            score = -min_max(depth - 1, ply + 1, -beta, -alpha, m);
+            score = -min_max(searchDepth, ply + 1, -beta, -alpha);
         } catch (const TimeUpException& e) {
             pos.unmake_move(m);
             throw e;
         }
-        
         pos.unmake_move(m);
+
+        // if the score is greater than alpha, and the search depth is less than the full depth
+        // perform a search at full depth
+        if (score >= alpha && searchDepth < depth - 1) {
+            pos.make_move(m);
+            try {
+                score = -min_max(depth - 1, ply + 1, -beta, -alpha);
+            } catch (const TimeUpException& e) {
+                pos.unmake_move(m);
+                throw e;
+            }
+            pos.unmake_move(m);
+        }
 
         // update best score and the pv table
         if (score > bestScore) {
@@ -150,33 +174,33 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta, Move lastMove) {
             nodeBestMove = m;
             if (ply == 0)
                 bestMove = nodeBestMove;
+        }
 
-            // alpha-beta pruning
-            // if the score is greater than alpha, update alpha
-            if (score >= alpha) {
-                alpha = score;
-                nodeType = PV_NODE;
+        // alpha-beta pruning
+        // if the score is greater than alpha, update alpha
+        if (score >= alpha) {
+            alpha = score;
+            nodeType = PV_NODE;
+        }
 
-                // if alpha is greater than beta, prune the search
-                // fail soft
-                if (alpha >= beta) {
-                    // update the move history to add a bonus for the move
-                    if (!m.is_null()) {
-                        int bonus = depth * depth;
-                        moveHistory[pos.side_to_move()][m.raw()] << bonus;
-                    }
-
-                    // update the transposition table entry
-                    ttEntry->key = pos.get_key();
-                    ttEntry->score = bestScore;
-                    ttEntry->depth = depth;
-                    ttEntry->nodeType = CUT_NODE;
-                    ttEntry->bestMove = nodeBestMove;
-
-                    return bestScore;
-                }
+        // if alpha is greater than beta, prune the search
+        // fail soft
+        if (alpha >= beta) {
+            // update the move history to add a bonus for the move
+            if (!m.is_null()) {
+                int bonus = depth * depth;
+                moveHistory[pos.side_to_move()][m.raw()] << bonus;
             }
-        } 
+
+            // update the transposition table entry
+            ttEntry->key = pos.get_key();
+            ttEntry->score = bestScore;
+            ttEntry->depth = depth;
+            ttEntry->nodeType = CUT_NODE;
+            ttEntry->bestMove = nodeBestMove;
+
+            return bestScore;
+        }
     }
 
     ttEntry->key = pos.get_key();
