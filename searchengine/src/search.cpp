@@ -41,6 +41,11 @@ int Searcher::iterative_deepening(chr::milliseconds timeLimit, int maxDepth) {
     startTime = chr::steady_clock::now();
     timeUp = false;
 
+    // lower the move histories by 3/4, to shrink old values and make new values more important
+    for (int i = 0; i < NUM_COLORS; i++)
+        for (int j = 0; j < HISTORY_SIZE; j++)
+            moveHistory[i][j] = moveHistory[i][j] * 3 / 4;
+
     // initialize the required variables
     int score = 0;
     int depth;
@@ -66,7 +71,7 @@ int Searcher::iterative_deepening(chr::milliseconds timeLimit, int maxDepth) {
 }
 
 
-int Searcher::min_max(int depth, int ply, int alpha, int beta) {
+int Searcher::min_max(int depth, int ply, int alpha, int beta, Move lastMove) {
     // if the depth is 0, return the evaluation of the position
     if (pos.is_game_over()) {
         nodeCount++;
@@ -118,7 +123,7 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
         ttMove = bestMove;
 
     // initialize the move picker
-    MovePicker movePicker(pos, depth, ttMove);
+    MovePicker movePicker(pos, depth, moveHistory[pos.side_to_move()], ttMove);
 
     // loop through children nodes
     int bestScore = -INF_SCORE;
@@ -131,7 +136,7 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
         // in case of time up, unmake the move before stopping
         // the pos must be restored to the original position
         try {
-            score = -min_max(depth - 1, ply + 1, -beta, -alpha);
+            score = -min_max(depth - 1, ply + 1, -beta, -alpha, m);
         } catch (const TimeUpException& e) {
             pos.unmake_move(m);
             throw e;
@@ -155,11 +160,19 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
                 // if alpha is greater than beta, prune the search
                 // fail soft
                 if (alpha >= beta) {
+                    // update the move history to add a bonus for the move
+                    if (!m.is_null()) {
+                        int bonus = depth * depth;
+                        moveHistory[pos.side_to_move()][m.raw()] << bonus;
+                    }
+
+                    // update the transposition table entry
                     ttEntry->key = pos.get_key();
                     ttEntry->score = bestScore;
                     ttEntry->depth = depth;
                     ttEntry->nodeType = CUT_NODE;
                     ttEntry->bestMove = nodeBestMove;
+
                     return bestScore;
                 }
             }
@@ -195,7 +208,7 @@ int Searcher::quiescence(int alpha, int beta) {
         alpha = eval;
 
     // initialize the move picker
-    MovePicker movePicker(pos, 0);
+    MovePicker movePicker(pos, 0, moveHistory[pos.side_to_move()]);
 
     // search through the scored captures
     int score;
@@ -230,8 +243,14 @@ bool Searcher::is_time_up() {
 void Searcher::set_position(std::string sfen) {
     pos = Position();
     pos.set(sfen);
+
     bestMove = Move::null();
     nodeCount = 0;
+
+    // when setting a new position, reset the move history
+    for (int i = 0; i < NUM_COLORS; i++)
+        for (int j = 0; j < HISTORY_SIZE; j++)
+            moveHistory[i][j] = 0;
 }
 
 

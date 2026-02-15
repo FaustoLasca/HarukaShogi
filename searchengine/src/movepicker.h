@@ -3,6 +3,7 @@
 
 #include "movegen.h"
 #include "position.h"
+#include "history.h"
 
 namespace harukashogi {
 
@@ -42,12 +43,12 @@ constexpr bool is_last_stage(Stage stage) {
 
 class MovePicker {
     public:
-        MovePicker(Position& pos, int depth, Move ttMove = Move::null());
+        MovePicker(Position& pos, int depth, HistoryEntry* moveHistory, Move ttMove = Move::null());
 
         Move next_move();
 
     private:
-
+        template <Stage stage>
         ValMove* score(ValMove* scoredMoves, Move* moveList, Move* end);
     
         Position& pos;
@@ -55,6 +56,8 @@ class MovePicker {
         Move ttMove;
 
         int stage;
+
+        HistoryEntry* moveHistory;
 
         ValMove scoredMoves[MAX_MOVES];
         ValMove *curr, *scoredEnd;

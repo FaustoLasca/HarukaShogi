@@ -6,7 +6,8 @@
 namespace harukashogi {
 
 
-MovePicker::MovePicker(Position& pos, int depth, Move ttMove) : pos(pos), depth(depth), ttMove(ttMove) {
+MovePicker::MovePicker(Position& pos, int depth, HistoryEntry* moveHistory, Move ttMove) : 
+        pos(pos), depth(depth), moveHistory(moveHistory), ttMove(ttMove) {
     // initialize the score moves array as empty
     curr = scoredMoves;
     scoredEnd = scoredMoves;
@@ -40,6 +41,7 @@ MovePicker::MovePicker(Position& pos, int depth, Move ttMove) : pos(pos), depth(
 
 
 // takes a movelist and returns fills the scoredMoves array with the moves and their scores
+template <Stage stage>
 ValMove* MovePicker::score(ValMove* scoredMoves, Move* moveList, Move* end) {
     ValMove valMove;
 
@@ -47,20 +49,26 @@ ValMove* MovePicker::score(ValMove* scoredMoves, Move* moveList, Move* end) {
     for (Move* m = moveList; m < end; ++m) {
         valMove = *m;
         int score = 0;
-        
-        
-        if (!m->is_drop()) {
-            if (pos.is_capture(*m))
-                score += 100*PieceValues[type_of(pos.piece(m->to()))] - 
-                        10*PieceValues[type_of(pos.piece(m->from()))];
 
-            // if the move is a promotion, add a bonus to the score
-            // based on the value of the promoted piece
-            if (m->is_promotion()) {
-                PieceType promotedPT = type_of(promote_piece(pos.piece(m->from())));
-                score += 100 * (PieceValues[promotedPT] - 
-                        PieceValues[type_of(pos.piece(m->from()))] );
+        // the generated moves are captures, add the difference in piece values to the score
+        // this encourages capturing the most valuable piece with the least valuable piece
+        if constexpr (stage == CAPTURE_STAGE_INIT) {
+            score += 100*PieceValues[type_of(pos.piece(m->to()))]
+                   - 10* PieceValues[type_of(pos.piece(m->from()))];
+        }
+
+        // if we are in the evasion stage, we prioritize captures using the same logic as in the
+        // capture stage
+        if constexpr (stage == EVASION_STAGE_INIT) {
+            if (pos.is_capture(*m)) {
+                score += 100*PieceValues[type_of(pos.piece(m->to()))]
+                       - 10* PieceValues[type_of(pos.piece(m->from()))];
             }
+        }
+
+        // quiet moves are ordered by the history value of the move
+        if constexpr (stage == QUIET_STAGE_INIT) {
+            score += moveHistory[m->raw()];
         }
 
         valMove.value = score;
@@ -84,12 +92,16 @@ Move MovePicker::next_move() {
             stage++;
             Move moveList[MAX_MOVES];
             Move *end;
-            if (pos.checkers())
+            if (pos.checkers()) {
                 end = generate<EVASIONS>(pos, moveList);
-            else
+                scoredEnd = score<EVASION_STAGE_INIT>(scoredMoves, moveList, end);
+            }
+            else {
                 end = generate<CAPTURES>(pos, moveList);
+                scoredEnd = score<CAPTURE_STAGE_INIT>(scoredMoves, moveList, end);
+            }
+                
             curr = scoredMoves;
-            scoredEnd = score(scoredMoves, moveList, end);
             std::sort(scoredMoves, scoredEnd, [](const ValMove& a, const ValMove& b) {
                 return a.value > b.value;
             });
@@ -106,7 +118,7 @@ Move MovePicker::next_move() {
             Move moveList[MAX_MOVES];
             Move* end = generate<QUIET>(pos, moveList);
             curr = scoredMoves;
-            scoredEnd = score(scoredMoves, moveList, end);
+            scoredEnd = score<QUIET_STAGE_INIT>(scoredMoves, moveList, end);
             std::sort(scoredMoves, scoredEnd, [](const ValMove& a, const ValMove& b) {
                 return a.value > b.value;
             });
@@ -123,7 +135,7 @@ Move MovePicker::next_move() {
             Move moveList[MAX_MOVES];
             Move* end = generate<EVASIONS>(pos, moveList);
             curr = scoredMoves;
-            scoredEnd = score(scoredMoves, moveList, end);
+            scoredEnd = score<EVASION_STAGE_INIT>(scoredMoves, moveList, end);
             std::sort(scoredMoves, scoredEnd, [](const ValMove& a, const ValMove& b) {
                 return a.value > b.value;
             });

@@ -9,6 +9,7 @@
 #include "evaluate.h"
 #include "ttable.h"
 #include "opening_book.h"
+#include "history.h"
 
 namespace chr = std::chrono;
 
@@ -50,7 +51,8 @@ class Searcher {
             chr::milliseconds timeLimit=chr::milliseconds(600000),
             int maxDepth = 20
         );
-        int min_max(int depth, int ply = 0, int alpha = -INF_SCORE, int beta = INF_SCORE);
+        int min_max(int depth, int ply = 0, int alpha = -INF_SCORE, int beta = INF_SCORE, 
+                    Move lastMove = Move::null());
         int quiescence(int alpha, int beta);
 
         // for time contral
@@ -68,7 +70,9 @@ class Searcher {
 
         bool useOpeningBook;
         OpeningBook openingBook;
+
         TTable tt;
+        HistoryEntry moveHistory[NUM_COLORS][HISTORY_SIZE];
 
         Move bestMove;
         
