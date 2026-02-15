@@ -19,6 +19,15 @@ using namespace harukashogi;
 int main() {
     init();
 
+    int depth = 3;
+    int searchDepth;
+    int reduction;
+    for (int nMoves = 1; nMoves <= 300; nMoves++) {
+        reduction = 1 + std::log(nMoves) * std::log(depth-1) / 3;
+        searchDepth = depth - reduction;
+        std::cout << "nMoves: " << nMoves << " \t| searchDepth: " << searchDepth << std::endl;
+    }
+
     Searcher searcher(false);
 
     searcher.set_position();
