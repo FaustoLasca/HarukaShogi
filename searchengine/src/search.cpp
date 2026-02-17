@@ -122,19 +122,35 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
     if (ply == 0 && ttMove.is_null())
         ttMove = bestMove;
 
+    // null move pruning
+    // make a null move and search at reduced depth
+    // if the score is greater that beta, prune the search
+    int score, searchDepth;
+    if (!pos.checkers()) {
+        pos.make_null_move();
+        searchDepth = depth <= 3 ? 0 : depth - 3;
+        try {
+            score = -min_max(searchDepth, ply + 1, -beta, -beta + 1);
+        } catch (const TimeUpException& e) {
+            pos.unmake_null_move();
+            throw e;
+        }
+        pos.unmake_null_move();
+        if (score >= beta)
+            return score;
+    }
+
     // initialize the move picker
     MovePicker movePicker(pos, depth, moveHistory[pos.side_to_move()], ttMove);
 
     // loop through children nodes
     int bestScore = -INF_SCORE;
     Move nodeBestMove = Move::null();
-    int score;
     Move m;
 
     // variables for late move reductions
     int nMoves = 0;
     int reduction;
-    int searchDepth;
 
     while ((m = movePicker.next_move()) != Move::null()) {
         // late move reductions

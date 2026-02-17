@@ -90,6 +90,10 @@ class Position {
 		void make_move(Move m);
 		void unmake_move(Move m);
 
+		// null movee for null move pruning
+		void make_null_move();
+		void unmake_null_move();
+
 		Bitboard attackers_to(Square sq, Bitboard occupied) const;
 		Bitboard checkers() const { return si.front().checkersBB; }
 		Bitboard check_squares(PieceType pt) const {

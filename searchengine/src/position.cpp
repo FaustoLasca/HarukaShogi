@@ -447,6 +447,32 @@ void Position::unmake_move(Move m) {
 }
 
 
+// makes a null move.
+// this doesn't change the position, only the moving side, the game ply and related information
+void Position::make_null_move() {
+    sideToMove = ~sideToMove;
+    gamePly++;
+
+    // add a new state info to the list
+    // copy the current state info to the new one
+    si.push_front(StateInfo(si.front()));
+    StateInfo* newSI = &si.front();
+    newSI->capturedPT = NO_PIECE_TYPE;
+
+    // update the zobrist key by toggling the side to move
+    newSI->key ^= Zobrist::sideToMoveKey;
+}
+
+
+void Position::unmake_null_move() {
+    sideToMove = ~sideToMove;
+    gamePly--;
+
+    // remove the current state info from the list
+    si.pop_front();
+}
+
+
 bool Position::is_pseudo_legal(Move m) const {
     // TODO: might need to check if the move data is valid
     if (m.is_null())
