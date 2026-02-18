@@ -11,6 +11,7 @@ from ui.gui import Gui
 import haruka
 import haruka_v0_3
 import haruka_v0_4
+import haruka_v0_7
 
 
 SFEN_STRING = None
@@ -29,8 +30,6 @@ SFEN_STRING = None
 
 # SFEN_STRING = "ln6l/1r2gkg2/4psnp1/p1pps1p1p/1p3p3/P1P1S1P1P/1PSPP1N2/2G2G3/LNK4RL w BPbp 48"
 
-SFEN_STRING = "+Bn2g1k1l/2s2r1s1/ppp1pg1pp/5p3/2Bp3P1/2P1P3P/PP2SP+n2/K6R1/LNSG4L b pngPL 1"
-
 
 
 def start_controller(update_ui_queue: Queue, players: List[Player], sfen: str = None):
@@ -41,11 +40,11 @@ if __name__ == "__main__":
     update_ui_queue = Queue()
     move_request_queue = Queue()
     move_response_queue = Queue()
-
     players = [
         # MinMaxPlayer(SimpleEvaluator(), time_budget=1),
-        Haruka(time_limit=2000, useOpeningBook=True),
-        GuiPlayer(move_request_queue, move_response_queue),
+        Haruka(time_limit=1000, useOpeningBook=True),
+        Haruka(time_limit=1000, useOpeningBook=True, module=haruka_v0_7),
+        # GuiPlayer(move_request_queue, move_response_queue),
         # Haruka(time_limit=500, useOpeningBook=True, module=haruka_v0_4),
     ]
 

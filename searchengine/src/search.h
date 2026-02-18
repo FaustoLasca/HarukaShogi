@@ -73,6 +73,8 @@ class Searcher {
         TTable tt;
         HistoryEntry moveHistory[NUM_COLORS][HISTORY_SIZE];
 
+        int generation = 0;
+
         Move bestMove;
         
         int nodeCount;

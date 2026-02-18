@@ -15,6 +15,9 @@ namespace harukashogi {
 
 
 Move Searcher::search(chr::milliseconds timeLimit, int maxDepth) {
+    generation = pos.get_move_count();
+    tt.new_search(generation);
+
     if (useOpeningBook) {
         Move bookMove = openingBook.sample_move(pos.get_key());
         if (!bookMove.is_null()) {
@@ -88,9 +91,10 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
     nodeCount++;
 
     // probe the transposition table for an entry
-    std::tuple<bool, TTEntry*> result = tt.probe(pos.get_key());
+    std::tuple<bool, TTData, TTWriter> result = tt.probe(pos.get_key());
     bool ttHit = std::get<0>(result);
-    TTEntry* ttEntry = std::get<1>(result);
+    TTData ttData = std::get<1>(result);
+    TTWriter ttWriter = std::get<2>(result);
     // if an entry is found, check if the depth is equal or greater than the current depth
     // if it is, there are 3 possibilities to prune:
     // 1. PV_NODE  (exact score): return the score of the entry
@@ -98,21 +102,21 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
     // 2. ALL_NODE (upper bound): return the score if it is lower than alpha (already found better)
     Move ttMove = Move::null();
     if (ttHit) {
-        if (ttEntry->depth >= depth) {
+        if (ttData.depth >= depth) {
             // case 1: PV_NODE (exact score)
             // if the ply is 0 we risk making an illegal move with a type 1 collision
-            if (ttEntry->nodeType == PV_NODE && ply != 0) {
-                return ttEntry->score;
+            if (ttData.type == PV_NODE && ply != 0) {
+                return ttData.score;
             }
             // case 2: CUT_NODE (lower bound)
-            if (ttEntry->nodeType == CUT_NODE && ttEntry->score >= beta)
-                return ttEntry->score;
+            if (ttData.type == CUT_NODE && ttData.score >= beta)
+                return ttData.score;
             // case 3: ALL_NODE (upper bound)
-            if (ttEntry->nodeType == ALL_NODE && ttEntry->score < alpha)
-                return ttEntry->score;
+            if (ttData.type == ALL_NODE && ttData.score < alpha)
+                return ttData.score;
         }
 
-        ttMove = ttEntry->bestMove;
+        ttMove = ttData.bestMove;
     }
     // initialize the node type to ALL_NODE
     // if the entry is pruned, set the node type to CUT_NODE
@@ -209,21 +213,13 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
             }
 
             // update the transposition table entry
-            ttEntry->key = pos.get_key();
-            ttEntry->score = bestScore;
-            ttEntry->depth = depth;
-            ttEntry->nodeType = CUT_NODE;
-            ttEntry->bestMove = nodeBestMove;
+            ttWriter.write(pos.get_key(), bestScore, nodeBestMove, depth, CUT_NODE, generation);
 
             return bestScore;
         }
     }
 
-    ttEntry->key = pos.get_key();
-    ttEntry->score = bestScore;
-    ttEntry->depth = depth;
-    ttEntry->nodeType = nodeType;
-    ttEntry->bestMove = nodeBestMove;
+    ttWriter.write(pos.get_key(), bestScore, nodeBestMove, depth, nodeType, generation);
 
     return bestScore;
 }
