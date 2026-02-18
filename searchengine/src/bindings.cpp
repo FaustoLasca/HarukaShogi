@@ -16,7 +16,8 @@ PYBIND11_MODULE(haruka, m) {
             py::arg("time_limit"),
             py::arg("max_depth"),
             py::call_guard<py::gil_scoped_release>())
-        .def("print_stats", &Searcher::print_stats),
+        .def("print_stats", &Searcher::print_stats)
+        .def("set_log_level", &Searcher::set_log_level),
 
     m.def("perft", py::overload_cast<std::string, int>(&perft));
 

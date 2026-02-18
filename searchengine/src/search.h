@@ -1,7 +1,6 @@
 #ifndef SEARCH_H
 #define SEARCH_H
 
-#include <array>
 #include <chrono>
 #include <exception>
 
@@ -10,6 +9,7 @@
 #include "ttable.h"
 #include "opening_book.h"
 #include "history.h"
+#include "misc.h"
 
 namespace chr = std::chrono;
 
@@ -63,6 +63,7 @@ class Searcher {
 
         // utils
         void print_stats();
+        void set_log_level(LogLevel logLevel);
 
     private:
         Position pos;
@@ -82,6 +83,8 @@ class Searcher {
         chr::steady_clock::time_point startTime;
         chr::milliseconds timeLimit;
         bool timeUp;
+
+        LogLevel logLevel = ESSENTIAL;
 };
 
 

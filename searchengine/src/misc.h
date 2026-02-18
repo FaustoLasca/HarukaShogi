@@ -20,6 +20,14 @@ std::ostream& operator<<(std::ostream& os, Move m);
 void init();
 
 
+enum LogLevel : uint8_t {
+    SILENT,
+    ESSENTIAL,
+    INFO,
+    DEBUG,
+};
+
+
 } // namespace harukashogi
 
 #endif // MISC_H

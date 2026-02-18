@@ -21,7 +21,8 @@ Move Searcher::search(chr::milliseconds timeLimit, int maxDepth) {
     if (useOpeningBook) {
         Move bookMove = openingBook.sample_move(pos.get_key());
         if (!bookMove.is_null()) {
-            // std::cout << "Using opening book move: " << bookMove.to_string() << std::endl;
+            if (logLevel >= INFO)
+                std::cout << "Using opening book move: " << bookMove.to_string() << std::endl;
             return bookMove;
         }
     }
@@ -29,6 +30,7 @@ Move Searcher::search(chr::milliseconds timeLimit, int maxDepth) {
 
     iterative_deepening(timeLimit, maxDepth);
     Move move = get_best_move();
+
     return move;
 }
 
@@ -67,8 +69,9 @@ int Searcher::iterative_deepening(chr::milliseconds timeLimit, int maxDepth) {
     );
     int nodesPS = nodeCount / (timeTaken.count() / 1000.0);
 
-    // std::cout << "Evaluation: " << score << "\t Depth: " << depth - 1 << "\t Nodes: " << nodeCount
-    //           << "\t Time: " << timeTaken.count() << "ms" << "\t Nodes/s: " << nodesPS << std::endl;
+    if (logLevel >= INFO)
+        std::cout << "Evaluation: " << score << "\t Depth: " << depth - 1 << "\t Nodes: " << nodeCount
+                  << "\t Time: " << timeTaken.count() << "ms" << "\t Nodes/s: " << nodesPS << std::endl;
 
     return score;
 }
