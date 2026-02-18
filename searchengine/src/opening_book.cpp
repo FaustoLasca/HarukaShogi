@@ -30,12 +30,12 @@ Move OpeningBook::sample_move(uint64_t key) const {
 
     for (int i = 0; i < 3; i++) {
         counts[i] = it->get_count(i);
-        std::cout << "count " << i << ": " << (int)counts[i] << std::endl;
+        // std::cout << "count " << i << ": " << (int)counts[i] << std::endl;
         total_count += counts[i];
     }
 
     int rn = rng() % total_count;
-    std::cout << "rn: " << rn << std::endl;
+    // std::cout << "rn: " << rn << std::endl;
     for (int i = 0; i < 3; i++) {
         if (rn < counts[i]) {
             return Move(it->get_move_data(i));

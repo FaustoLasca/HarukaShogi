@@ -21,7 +21,7 @@ import haruka_v0_7
 def duel(sfen: str = None) -> dict:
 
     player1 = Haruka(time_limit=1000, useOpeningBook=True, module=haruka)
-    player2 = Haruka(time_limit=1000, useOpeningBook=True, module=haruka_v0_7)
+    player2 = Haruka(time_limit=1000, useOpeningBook=True, module=haruka)
 
     n_wins = [0, 0]
     errors = 0

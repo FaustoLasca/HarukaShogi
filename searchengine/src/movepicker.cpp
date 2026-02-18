@@ -53,6 +53,7 @@ ValMove* MovePicker::score(ValMove* scoredMoves, Move* moveList, Move* end) {
         // the generated moves are captures, add the difference in piece values to the score
         // this encourages capturing the most valuable piece with the least valuable piece
         if constexpr (stage == CAPTURE_STAGE_INIT) {
+            assert(pos.is_capture(*m));
             score += 100*PieceValues[type_of(pos.piece(m->to()))]
                    - 10* PieceValues[type_of(pos.piece(m->from()))];
         }
