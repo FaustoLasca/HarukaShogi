@@ -1,9 +1,7 @@
 #include <iostream>
-#include <algorithm>
 #include <chrono>
 
 #include "search.h"
-#include "movegen.h"
 #include "evaluate.h"
 #include "movepicker.h"
 #include "misc.h"
@@ -14,82 +12,44 @@ namespace chr = std::chrono;
 namespace harukashogi {
 
 
-Move Searcher::search(chr::milliseconds timeLimit, int maxDepth) {
-    generation = pos.get_move_count();
+void Worker::start_searching() {
+    generation++;
     tt.new_search();
 
-    if (useOpeningBook) {
-        Move bookMove = openingBook.sample_move(pos.get_key());
-        if (!bookMove.is_null()) {
-            if (logLevel >= INFO)
-                std::cout << "Using opening book move: " << bookMove.to_string() << std::endl;
-            return bookMove;
-        }
-    }
-        
-
-    iterative_deepening(timeLimit, maxDepth);
-    Move move = get_best_move();
-
-    return move;
-}
-
-std::string Searcher::search(int timeLimit, int maxDepth) {
-    Move bestMove = search(chr::milliseconds(timeLimit), maxDepth);
-    return bestMove.to_string();
-}
-
-
-int Searcher::iterative_deepening(chr::milliseconds timeLimit, int maxDepth) {
-    // set the time limit and start time
-    this->timeLimit = timeLimit;
     startTime = chr::steady_clock::now();
-    timeUp = false;
 
+    try {
+        iterative_deepening();
+    } catch (const TimeUpException& e) {}
+}
+
+
+void Worker::iterative_deepening() {
     // lower the move histories by 3/4, to shrink old values and make new values more important
     for (int i = 0; i < NUM_COLORS; i++)
         for (int j = 0; j < HISTORY_SIZE; j++)
             moveHistory[i][j] = moveHistory[i][j] * 3 / 4;
-
-    // initialize the required variables
-    int score = 0;
-    int depth;
+    
     // loop through the depths
-    for (depth = 1; depth <= maxDepth; depth++) {
-        try {
-            score = min_max(depth, 0);
-        } catch (const TimeUpException& e) {
-            // if the time is up, exit the loop
-            break;
-        }
+    for (int depth = 1; depth <= MAX_DEPTH; depth++) {
+        search<true>(depth, 0);
+        this->depth = depth;
     }
-
-    chr::milliseconds timeTaken = chr::duration_cast<chr::milliseconds>(
-        chr::steady_clock::now() - startTime
-    );
-    int nodesPS = nodeCount / (timeTaken.count() / 1000.0);
-
-    if (logLevel >= INFO)
-        std::cout << "Evaluation: " << score << "\t Depth: " << depth - 1 << "\t Nodes: " << nodeCount
-                  << "\t Time: " << timeTaken.count() << "ms" << "\t Nodes/s: " << nodesPS << std::endl;
-
-    return score;
 }
 
 
-int Searcher::min_max(int depth, int ply, int alpha, int beta) {
+template <bool isRoot>
+int Worker::search(int depth, int ply, int alpha, int beta) {
     // if the depth is 0, return the evaluation of the position
     if (pos.is_game_over()) {
         nodeCount++;
         return evaluate(pos);
     }
     else if (depth == 0)
-        return quiescence(alpha, beta);
+        return q_search(alpha, beta);
         
-
-    // if the time is up, throw an exception
-    if (is_time_up())
-        throw TimeUpException();
+    // throws an exception if the time is up
+    stop_check();
 
     nodeCount++;
 
@@ -108,7 +68,7 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
         if (ttData.depth >= depth) {
             // case 1: PV_NODE (exact score)
             // if the ply is 0 we risk making an illegal move with a type 1 collision
-            if (ttData.type == PV_NODE && ply != 0) {
+            if (ttData.type == PV_NODE && !isRoot) {
                 return ttData.score;
             }
             // case 2: CUT_NODE (lower bound)
@@ -126,7 +86,7 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
     // if a score >= alpha, set the node type to PV_NODE
     NodeType nodeType = ALL_NODE;
 
-    if (ply == 0 && ttMove.is_null())
+    if (isRoot && ttMove.is_null())
         ttMove = bestMove;
 
     // null move pruning
@@ -136,12 +96,7 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
     if (!pos.checkers()) {
         pos.make_null_move();
         searchDepth = depth <= 3 ? 0 : depth - 3;
-        try {
-            score = -min_max(searchDepth, ply + 1, -beta, -beta + 1);
-        } catch (const TimeUpException& e) {
-            pos.unmake_null_move();
-            throw e;
-        }
+        score = -search<false>(searchDepth, ply + 1, -beta, -beta + 1);
         pos.unmake_null_move();
         if (score >= beta)
             return score;
@@ -168,26 +123,14 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
         searchDepth = depth > 2 ? depth - reduction : depth - 1;
         
         pos.make_move(m);
-        // in case of time up, unmake the move before stopping
-        // the pos must be restored to the original position
-        try {
-            score = -min_max(searchDepth, ply + 1, -beta, -alpha);
-        } catch (const TimeUpException& e) {
-            pos.unmake_move(m);
-            throw e;
-        }
+        score = -search<false>(searchDepth, ply + 1, -beta, -alpha);
         pos.unmake_move(m);
 
         // if the score is greater than alpha, and the search depth is less than the full depth
         // perform a search at full depth
         if (score >= alpha && searchDepth < depth - 1) {
             pos.make_move(m);
-            try {
-                score = -min_max(depth - 1, ply + 1, -beta, -alpha);
-            } catch (const TimeUpException& e) {
-                pos.unmake_move(m);
-                throw e;
-            }
+            score = -search<false>(depth - 1, ply + 1, -beta, -alpha);
             pos.unmake_move(m);
         }
 
@@ -195,8 +138,12 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
         if (score > bestScore) {
             bestScore = score;
             nodeBestMove = m;
-            if (ply == 0)
+            // if the search is root, update the best move and evaluation of the worker
+            if constexpr (isRoot) {
                 bestMove = nodeBestMove;
+                eval = bestScore;
+            }
+                
         }
 
         // alpha-beta pruning
@@ -228,12 +175,11 @@ int Searcher::min_max(int depth, int ply, int alpha, int beta) {
 }
 
 
-int Searcher::quiescence(int alpha, int beta) {
+int Worker::q_search(int alpha, int beta) {
     nodeCount++;
 
-    // if the time is up, throw an exception
-    if (is_time_up())
-        throw TimeUpException();
+    // throws an exception to abort the search if the time is up
+    stop_check();
 
     int eval = evaluate(pos);
 
@@ -254,7 +200,7 @@ int Searcher::quiescence(int alpha, int beta) {
     Move m;
     while ((m = movePicker.next_move()) != Move::null()) {
         pos.make_move(m);
-        score = -quiescence(-beta, -alpha);
+        score = -q_search(-beta, -alpha);
         pos.unmake_move(m);
 
         if (score > bestScore) {
@@ -271,15 +217,13 @@ int Searcher::quiescence(int alpha, int beta) {
 }
 
 
-bool Searcher::is_time_up() {
-    if (timeUp) return true;
-
+void Worker::stop_check() {
     timeUp = (std::chrono::steady_clock::now() - startTime) > timeLimit;
-    return timeUp;
+    if (timeUp) throw TimeUpException();
 }
 
 
-void Searcher::set_position(std::string sfen) {
+void Worker::set_position(std::string sfen) {
     pos = Position();
     pos.set(sfen);
 
@@ -290,11 +234,6 @@ void Searcher::set_position(std::string sfen) {
     for (int i = 0; i < NUM_COLORS; i++)
         for (int j = 0; j < HISTORY_SIZE; j++)
             moveHistory[i][j] = 0;
-}
-
-
-void Searcher::print_stats() {
-    tt.print_stats();
 }
 
 
