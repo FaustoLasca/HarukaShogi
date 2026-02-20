@@ -63,7 +63,7 @@ class TTable {
         // If the entry was not found, the pointer is to the location for the new entry.
         std::tuple<bool, TTData, TTWriter> probe(uint64_t key);
 
-        void new_search(int generation);
+        void new_search();
 
         void print_stats() const;
         

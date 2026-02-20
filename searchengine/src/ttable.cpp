@@ -108,8 +108,10 @@ std::tuple<bool, TTData, TTWriter> TTable::probe(uint64_t key) {
 }
 
 
-void TTable::new_search(int generation) {
-    generation8 = generation % NUM_GENERATIONS + 1;
+void TTable::new_search() {
+    generation8++;
+    if (generation8 == 0)
+        generation8 = 1;
 }
 
 

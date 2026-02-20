@@ -16,7 +16,7 @@ namespace harukashogi {
 
 Move Searcher::search(chr::milliseconds timeLimit, int maxDepth) {
     generation = pos.get_move_count();
-    tt.new_search(generation);
+    tt.new_search();
 
     if (useOpeningBook) {
         Move bookMove = openingBook.sample_move(pos.get_key());
