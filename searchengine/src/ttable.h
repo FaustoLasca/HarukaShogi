@@ -42,13 +42,13 @@ struct TTEntry;
 
 class TTWriter {
     public:
-        void write(uint64_t key, int16_t score, Move bestMove, uint8_t depth, NodeType type,
-                   int generation);
+        void write(uint64_t key, int16_t score, Move bestMove, uint8_t depth, NodeType type);
 
-        TTWriter(TTEntry* entry) : entry(entry) {}
+        TTWriter(TTEntry* entry, uint8_t gen8) : entry(entry), gen8(gen8) {}
     
     private:
         TTEntry* entry;
+        uint8_t gen8;
 };
 
 

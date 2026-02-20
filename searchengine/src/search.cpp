@@ -13,7 +13,6 @@ namespace harukashogi {
 
 
 void Worker::start_searching() {
-    generation++;
     tt.new_search();
 
     startTime = chr::steady_clock::now();
@@ -163,13 +162,13 @@ int Worker::search(int depth, int ply, int alpha, int beta) {
             }
 
             // update the transposition table entry
-            ttWriter.write(pos.get_key(), bestScore, nodeBestMove, depth, CUT_NODE, generation);
+            ttWriter.write(pos.get_key(), bestScore, nodeBestMove, depth, CUT_NODE);
 
             return bestScore;
         }
     }
 
-    ttWriter.write(pos.get_key(), bestScore, nodeBestMove, depth, nodeType, generation);
+    ttWriter.write(pos.get_key(), bestScore, nodeBestMove, depth, nodeType);
 
     return bestScore;
 }

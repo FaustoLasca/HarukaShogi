@@ -71,7 +71,6 @@ class Worker {
 
         // shared elements
         TTable& tt;
-        int generation = 0;
 };
 
 

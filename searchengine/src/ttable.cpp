@@ -59,9 +59,8 @@ struct Cluster {
 };
 
 
-void TTWriter::write(uint64_t key, int16_t score, Move bestMove, uint8_t depth, NodeType type,
-                     int generation) {
-    entry->write(key, score, bestMove, depth, type, generation);
+void TTWriter::write(uint64_t key, int16_t score, Move bestMove, uint8_t depth, NodeType type) {
+    entry->write(key, score, bestMove, depth, type, gen8);
 }
 
 
@@ -88,7 +87,7 @@ std::tuple<bool, TTData, TTWriter> TTable::probe(uint64_t key) {
     for (size_t i = 0; i < CLUSTER_SIZE; i++) {
         if (entries[i].matches(key) && !entries[i].is_empty()) {
             hits++;
-            return {true, entries[i].read(), TTWriter(&entries[i])};
+            return {true, entries[i].read(), TTWriter(&entries[i], generation8)};
         }
     }
 
@@ -98,13 +97,13 @@ std::tuple<bool, TTData, TTWriter> TTable::probe(uint64_t key) {
     for (size_t i = 0; i < CLUSTER_SIZE; i++) {
         // return the first empty entry
         if (entries[i].is_empty())
-            return {false, TTData(), TTWriter(&entries[i])};
+            return {false, TTData(), TTWriter(&entries[i], generation8)};
         if (relativeAge(entries[i].generation8) < relativeAge(replace->generation8))
             replace = &entries[i];
     }
     
     collisions++;
-    return {false, TTData(), TTWriter(replace)};
+    return {false, TTData(), TTWriter(replace, generation8)};
 }
 
 
