@@ -42,10 +42,9 @@ if __name__ == "__main__":
     move_response_queue = Queue()
     players = [
         # MinMaxPlayer(SimpleEvaluator(), time_budget=1),
-        Haruka(time_limit=1000, useOpeningBook=True),
-        Haruka(time_limit=1000, useOpeningBook=True, module=haruka_v0_7),
-        # GuiPlayer(move_request_queue, move_response_queue),
-        # Haruka(time_limit=500, useOpeningBook=True, module=haruka_v0_4),
+        Haruka(time_limit=2000, useOpeningBook=True),
+        GuiPlayer(move_request_queue, move_response_queue),
+        # Haruka(time_limit=1000, useOpeningBook=True, module=haruka_v0_7),
     ]
 
     controller_thread = threading.Thread(
