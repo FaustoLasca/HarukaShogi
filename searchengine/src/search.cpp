@@ -236,4 +236,26 @@ void Worker::set_position(std::string sfen) {
 }
 
 
+Searcher::Searcher(bool useOpeningBook) : useOpeningBook(useOpeningBook) {
+    worker = std::make_unique<Worker>(tt);
+}
+
+
+void Searcher::set_position(std::string sfen) {
+    worker->set_position(sfen);
+}
+
+
+Move Searcher::search(int timeLimit, int depth) {
+    worker->timeLimit = chr::milliseconds(timeLimit);
+    worker->start_searching();
+    return worker->bestMove;
+}
+
+
+void Searcher::print_stats() {
+    tt.print_stats();
+}
+
+
 } // namespace harukashogi

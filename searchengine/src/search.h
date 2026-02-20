@@ -74,6 +74,27 @@ class Worker {
 };
 
 
+// TODO: TEMPORARY SEARCHER CLASS
+//       HAS TO BE REMOVED/REFACTORED AFTER IMPLEMENTING PARALLEL SEARCH
+class Searcher {
+    public:
+        Searcher(bool useOpeningBook = false);
+
+        void set_position(
+            std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
+        );
+
+        Move search(int timeLimit, int depth);
+
+        void print_stats();
+
+    private:
+        bool useOpeningBook;
+        std::unique_ptr<Worker> worker;
+        TTable tt;
+};
+
+
 } // namespace harukashogi
 
 #endif // SEARCH_H
