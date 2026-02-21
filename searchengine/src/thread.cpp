@@ -66,6 +66,12 @@ void Thread::exit() {
 }
 
 
+bool Thread::is_searching() {
+    std::unique_lock<std::mutex> lock(mutex);
+    return searchingFlag || searchFlag;
+}
+
+
 void Thread::wait_search_finished() {
     std::unique_lock<std::mutex> lock(mutex);
     cv.wait(lock, [this] { return !searchingFlag && !searchFlag; });

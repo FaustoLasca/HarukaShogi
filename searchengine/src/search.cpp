@@ -1,10 +1,9 @@
-#include <iostream>
 #include <chrono>
+#include <cmath>
 
 #include "search.h"
 #include "evaluate.h"
 #include "movepicker.h"
-#include "misc.h"
 
 
 namespace chr = std::chrono;
@@ -12,7 +11,7 @@ namespace chr = std::chrono;
 namespace harukashogi {
 
 
-void Worker::start_searching() {
+void Worker::search() {
     tt.new_search();
 
     startTime = chr::steady_clock::now();
@@ -237,7 +236,7 @@ void Worker::set_position(std::string sfen) {
 
 
 Searcher::Searcher(bool useOpeningBook) : useOpeningBook(useOpeningBook) {
-    worker = std::make_unique<Worker>(tt);
+    worker = std::make_unique<Worker>(tt, 0);
 }
 
 
@@ -249,6 +248,7 @@ void Searcher::set_position(std::string sfen) {
 Move Searcher::search(int timeLimit, int depth) {
     worker->timeLimit = chr::milliseconds(timeLimit);
     worker->start_searching();
+    worker->wait_search_finished();
     return worker->bestMove;
 }
 

@@ -22,6 +22,7 @@ class Thread {
         void start_searching();
         void abort_search();
         void exit();
+        bool is_searching();
         // blocking function to wait for the thread to finish searching
         void wait_search_finished();
 
