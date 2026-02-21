@@ -236,7 +236,7 @@ void Worker::set_position(std::string sfen) {
 
 
 Searcher::Searcher(bool useOpeningBook) : useOpeningBook(useOpeningBook) {
-    worker = std::make_unique<Worker>(tt, 0);
+    worker = std::make_unique<Worker>(0, tt);
 }
 
 

@@ -28,7 +28,7 @@ constexpr int MAX_DEPTH = 20;
 
 class Worker : public Thread {
     public:
-        Worker(TTable& tt, size_t id) : Thread(id), tt(tt) {}
+        Worker(size_t id, TTable& tt) : Thread(id), tt(tt) {}
 
         void set_position(
             std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"

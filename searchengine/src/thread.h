@@ -5,6 +5,7 @@
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
+#include <vector>
 
 namespace harukashogi {
 
@@ -37,12 +38,11 @@ class Thread {
         // used by the Worker, so needs to be protected.
         size_t threadId;
 
-    private:
-        std::thread thread;
+        private:
         // mutex and condition variable to synchronize the thread
         std::mutex mutex;
         std::condition_variable cv;
-
+        
         // flags to control the thread
         // search: set to true when the thread is signaled to start searching, set to false when 
         //         the thread is signaled to stop searching.
@@ -55,6 +55,42 @@ class Thread {
         // always read and written while holding the mutex, no need to be atomic.
         bool exitFlag = false;
         bool searchingFlag = false;
+
+        std::thread thread;
+};
+
+
+template <typename T>
+concept ThreadType = std::derived_from<T, Thread>;
+
+
+template <ThreadType T>
+class ThreadPool {
+    public:
+        // C++ black magic to pass arguments to the constructor of the threads in the pool
+        template <typename... Args>
+        ThreadPool(size_t numThreads, Args&&... args) {
+            for (size_t i = 0; i < numThreads; i++)
+                threads.push_back(std::make_unique<T>(i, std::forward<Args>(args)...));
+        }
+        
+        // same functions as the Thread class, but for the entire thread pool
+        void start_searching() { for (auto& thread : threads) thread->start_searching(); }
+        void abort_search() { for (auto& thread : threads) thread->abort_search(); }
+        void exit() { for (auto& thread : threads) thread->exit(); }
+        bool is_searching() {
+            for (auto& thread : threads)
+                if (thread->is_searching()) return true;
+            return false;
+        }
+        void wait_search_finished() { for (auto& thread : threads) thread->wait_search_finished(); }
+
+        // operator to access the threads in the pool
+        T& operator[](size_t index) { return *threads[index]; }
+        size_t size() const { return threads.size(); }
+
+    private:
+        std::vector<std::unique_ptr<T>> threads;
 };
 
 
