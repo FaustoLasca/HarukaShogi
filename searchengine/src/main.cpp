@@ -18,13 +18,17 @@ using namespace harukashogi;
 
 
 class TestThread : public Thread {
-    using Thread::Thread;
+    public:
+        TestThread(size_t id, int a, int b) : Thread(id), a(a), b(b) {}
 
     private:
         void search() override {
             std::this_thread::sleep_for(std::chrono::milliseconds(std::rand() % 1000));
             std::cout << "Thread " << threadId << " is searching" << std::endl;
+            std::cout << "a: " << a << ", b: " << b << std::endl;
         }
+
+        int a, b;
 };
 
 
@@ -40,9 +44,9 @@ int main() {
 
     searcher.print_stats();
 
-    // ThreadPool<TestThread> pool(4);
-    // pool.start_searching();
-    // pool.wait_search_finished();
+    ThreadPool<TestThread> pool(4, 1, 2);
+    pool.start_searching();
+    pool.wait_search_finished();
 
     return 0;
 }
