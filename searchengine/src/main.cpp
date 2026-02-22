@@ -35,16 +35,33 @@ class TestThread : public Thread {
 int main() {
     init();
 
-    Searcher searcher;
+    // Searcher searcher;
+    // searcher.set_position();
+
+    // searcher.search(1000, 20);
+
+    // searcher.print_stats();
+
+    // SearchManager searchManager(8);
+
+    // searchManager.set_position("ln6l/1r2gkg2/4psnp1/p1pps1p1p/1p3p3/P1P1S1P1P/1PSPP1N2/2G2G3/LNK4RL w BPbp 48");
+
+    // searchManager.start_searching();
+    // std::this_thread::sleep_for(std::chrono::milliseconds(2000));
+    // searchManager.abort_search();
+    // searchManager.wait_search_finished();
+
+    // SearchInfo results = searchManager.get_results();
+    // std::cout << "Results:    " << results.bestMove << std::endl;
+    // std::cout << "Evaluation: " << results.eval << std::endl;
+    // std::cout << "Depth:      " << results.depth << std::endl;
+    // std::cout << "Node count: " << results.nodeCount << std::endl;
+    // searchManager.print_stats();
+
+    Searcher searcher(true);
     searcher.set_position();
-
-    searcher.search(1000, 20);
-
+    std::cout << searcher.search(1000, 20) << std::endl;
     searcher.print_stats();
-
-    ThreadPool<TestThread> pool(3, 1, 2);
-    pool.start_searching();
-    pool.wait_search_finished();
 
     return 0;
 }

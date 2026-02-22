@@ -65,7 +65,7 @@ void TTWriter::write(uint64_t key, int16_t score, Move bestMove, uint8_t depth, 
 
 
 // 100 MB transposition table size
-constexpr size_t TT_MB_SIZE = 100;
+constexpr size_t TT_MB_SIZE = 200;
 constexpr size_t TT_SIZE = TT_MB_SIZE * 1024 * 1024 / sizeof(Cluster);
 
 

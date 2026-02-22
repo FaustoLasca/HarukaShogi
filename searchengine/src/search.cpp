@@ -230,13 +230,27 @@ void Worker::set_position(std::string sfen) {
 }
 
 
-Searcher::Searcher(bool useOpeningBook) : useOpeningBook(useOpeningBook) {
-    worker = std::make_unique<Worker>(0, tt);
+void SearchManager::set_position(std::string sfen) {
+    for (auto& thread : threads)
+        thread->set_position(sfen);
+}
+
+
+SearchInfo SearchManager::get_results() {
+    assert(!threads.is_searching());
+    // return the results of the first thread for now
+    // TODO: implement some form of thread voting
+    return threads[0].info;
+}
+
+
+void SearchManager::print_stats() {
+    tt.print_stats();
 }
 
 
 void Searcher::set_position(std::string sfen) {
-    worker->set_position(sfen);
+    searchManager.set_position(sfen);
     pos.set(sfen);
 }
 
@@ -248,11 +262,13 @@ Move Searcher::search(chr::milliseconds timeLimit, int depth) {
             return move;
     }
 
-    worker->start_searching();
+    searchManager.start_searching();
     std::this_thread::sleep_for(timeLimit);
-    worker->abort_search();
-    worker->wait_search_finished();
-    return worker->info.bestMove;
+    searchManager.abort_search();
+    searchManager.wait_search_finished();
+    SearchInfo results =  searchManager.get_results();
+    std::cout << "eval: " << results.eval << " - depth: " << results.depth << " - node count: " << results.nodeCount << std::endl;
+    return results.bestMove;
 }
 
 
@@ -266,7 +282,7 @@ void Searcher::print_stats() {
     // std::cout << "Depth:      " << worker->info.depth << std::endl;
     // std::cout << "Node count: " << worker->info.nodeCount << std::endl;
     std::cout << "TT stats:   " << std::endl;
-    tt.print_stats();
+    searchManager.print_stats();
 }
 
 

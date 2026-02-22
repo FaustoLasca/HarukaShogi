@@ -37,7 +37,7 @@ constexpr int MAX_DEPTH = 20;
 
 class Worker : public Thread {
     public:
-        Worker(size_t id, TTable& tt) : Thread(id), tt(tt) {}
+        Worker(size_t id, TTable& tt) : Thread(id), tt(tt), threadId(id) {}
 
         void set_position(
             std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
@@ -64,6 +64,32 @@ class Worker : public Thread {
 
         // shared elements
         TTable& tt;
+
+        size_t threadId;
+};
+
+
+class SearchManager {
+    public:
+        SearchManager(size_t numThreads) : threads(numThreads, tt) {}
+
+        void set_position(
+            std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
+        );
+
+        // functions to start and stop the search
+        void start_searching() { threads.start_searching(); }
+        void abort_search() { threads.abort_search(); }
+        void wait_search_finished() { threads.wait_search_finished(); }
+        
+        // function to get the results of the search
+        SearchInfo get_results();
+
+        void print_stats();
+
+    private:
+        TTable tt;
+        ThreadPool<Worker> threads;
 };
 
 
@@ -71,7 +97,7 @@ class Worker : public Thread {
 //       HAS TO BE REMOVED/REFACTORED AFTER IMPLEMENTING PARALLEL SEARCH
 class Searcher {
     public:
-        Searcher(bool useOpeningBook = false);
+        Searcher(bool useOpeningBook = false) : useOpeningBook(useOpeningBook), searchManager(16) {}
 
         void set_position(
             std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
@@ -87,8 +113,7 @@ class Searcher {
         bool useOpeningBook;
         OpeningBook openingBook;
 
-        std::unique_ptr<Worker> worker;
-        TTable tt;
+        SearchManager searchManager;
 };
 
 

@@ -44,8 +44,8 @@ if __name__ == "__main__":
     players = [
         # MinMaxPlayer(SimpleEvaluator(), time_budget=1),
         # GuiPlayer(move_request_queue, move_response_queue),
-        Haruka(time_limit=1000, useOpeningBook=True),
-        Haruka(time_limit=1000, useOpeningBook=True, module=haruka_v0_8),
+        Haruka(time_limit=2000, useOpeningBook=True),
+        Haruka(time_limit=2000, useOpeningBook=True, module=haruka_v0_8),
     ]
 
     controller_thread = threading.Thread(
