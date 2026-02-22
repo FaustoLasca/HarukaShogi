@@ -4,6 +4,7 @@
 #include "search.h"
 #include "evaluate.h"
 #include "movepicker.h"
+#include "misc.h"
 
 
 namespace chr = std::chrono;
@@ -13,8 +14,6 @@ namespace harukashogi {
 
 void Worker::search() {
     tt.new_search();
-
-    startTime = chr::steady_clock::now();
 
     try {
         iterative_deepening();
@@ -31,7 +30,7 @@ void Worker::iterative_deepening() {
     // loop through the depths
     for (int depth = 1; depth <= MAX_DEPTH; depth++) {
         search<true>(depth, 0);
-        this->depth = depth;
+        info.depth = depth;
     }
 }
 
@@ -40,16 +39,17 @@ template <bool isRoot>
 int Worker::search(int depth, int ply, int alpha, int beta) {
     // if the depth is 0, return the evaluation of the position
     if (pos.is_game_over()) {
-        nodeCount++;
+        info.nodeCount++;
         return evaluate(pos);
     }
     else if (depth == 0)
         return q_search(alpha, beta);
         
     // throws an exception if the time is up
-    stop_check();
+    if (is_search_aborted())
+        throw TimeUpException();
 
-    nodeCount++;
+    info.nodeCount++;
 
     // probe the transposition table for an entry
     std::tuple<bool, TTData, TTWriter> result = tt.probe(pos.get_key());
@@ -85,7 +85,7 @@ int Worker::search(int depth, int ply, int alpha, int beta) {
     NodeType nodeType = ALL_NODE;
 
     if (isRoot && ttMove.is_null())
-        ttMove = bestMove;
+        ttMove = info.bestMove;
 
     // null move pruning
     // make a null move and search at reduced depth
@@ -138,8 +138,8 @@ int Worker::search(int depth, int ply, int alpha, int beta) {
             nodeBestMove = m;
             // if the search is root, update the best move and evaluation of the worker
             if constexpr (isRoot) {
-                bestMove = nodeBestMove;
-                eval = bestScore;
+                info.bestMove = nodeBestMove;
+                info.eval = bestScore;
             }
                 
         }
@@ -174,10 +174,11 @@ int Worker::search(int depth, int ply, int alpha, int beta) {
 
 
 int Worker::q_search(int alpha, int beta) {
-    nodeCount++;
+    info.nodeCount++;
 
-    // throws an exception to abort the search if the time is up
-    stop_check();
+    // throws an exception to abort the search
+    if (is_search_aborted())
+        throw TimeUpException();
 
     int eval = evaluate(pos);
 
@@ -215,18 +216,12 @@ int Worker::q_search(int alpha, int beta) {
 }
 
 
-void Worker::stop_check() {
-    timeUp = (std::chrono::steady_clock::now() - startTime) > timeLimit;
-    if (timeUp) throw TimeUpException();
-}
-
-
 void Worker::set_position(std::string sfen) {
     pos = Position();
     pos.set(sfen);
 
-    bestMove = Move::null();
-    nodeCount = 0;
+    info.bestMove = Move::null();
+    info.nodeCount = 0;
 
     // when setting a new position, reset the move history
     for (int i = 0; i < NUM_COLORS; i++)
@@ -246,14 +241,20 @@ void Searcher::set_position(std::string sfen) {
 
 
 Move Searcher::search(int timeLimit, int depth) {
-    worker->timeLimit = chr::milliseconds(timeLimit);
     worker->start_searching();
+    std::this_thread::sleep_for(std::chrono::milliseconds(timeLimit));
+    worker->abort_search();
     worker->wait_search_finished();
-    return worker->bestMove;
+    return worker->info.bestMove;
 }
 
 
 void Searcher::print_stats() {
+    std::cout << "Best move:  " << worker->info.bestMove << std::endl;
+    std::cout << "Evaluation: " << worker->info.eval << std::endl;
+    std::cout << "Depth:      " << worker->info.depth << std::endl;
+    std::cout << "Node count: " << worker->info.nodeCount << std::endl;
+    std::cout << "TT stats:   " << std::endl;
     tt.print_stats();
 }
 

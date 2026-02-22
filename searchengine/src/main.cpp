@@ -38,13 +38,11 @@ int main() {
     Searcher searcher;
     searcher.set_position();
 
-    Move move = searcher.search(1000, 20);
-
-    std::cout << "Best move:  " << move << std::endl;
+    searcher.search(1000, 20);
 
     searcher.print_stats();
 
-    ThreadPool<TestThread> pool(4, 1, 2);
+    ThreadPool<TestThread> pool(3, 1, 2);
     pool.start_searching();
     pool.wait_search_finished();
 
