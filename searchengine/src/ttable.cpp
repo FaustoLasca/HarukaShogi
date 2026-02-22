@@ -59,14 +59,13 @@ struct Cluster {
 };
 
 
-void TTWriter::write(uint64_t key, int16_t score, Move bestMove, uint8_t depth, NodeType type,
-                     int generation) {
-    entry->write(key, score, bestMove, depth, type, generation);
+void TTWriter::write(uint64_t key, int16_t score, Move bestMove, uint8_t depth, NodeType type) {
+    entry->write(key, score, bestMove, depth, type, gen8);
 }
 
 
 // 100 MB transposition table size
-constexpr size_t TT_MB_SIZE = 100;
+constexpr size_t TT_MB_SIZE = 200;
 constexpr size_t TT_SIZE = TT_MB_SIZE * 1024 * 1024 / sizeof(Cluster);
 
 
@@ -88,7 +87,7 @@ std::tuple<bool, TTData, TTWriter> TTable::probe(uint64_t key) {
     for (size_t i = 0; i < CLUSTER_SIZE; i++) {
         if (entries[i].matches(key) && !entries[i].is_empty()) {
             hits++;
-            return {true, entries[i].read(), TTWriter(&entries[i])};
+            return {true, entries[i].read(), TTWriter(&entries[i], generation8)};
         }
     }
 
@@ -98,18 +97,20 @@ std::tuple<bool, TTData, TTWriter> TTable::probe(uint64_t key) {
     for (size_t i = 0; i < CLUSTER_SIZE; i++) {
         // return the first empty entry
         if (entries[i].is_empty())
-            return {false, TTData(), TTWriter(&entries[i])};
+            return {false, TTData(), TTWriter(&entries[i], generation8)};
         if (relativeAge(entries[i].generation8) < relativeAge(replace->generation8))
             replace = &entries[i];
     }
     
     collisions++;
-    return {false, TTData(), TTWriter(replace)};
+    return {false, TTData(), TTWriter(replace, generation8)};
 }
 
 
-void TTable::new_search(int generation) {
-    generation8 = generation % NUM_GENERATIONS + 1;
+void TTable::new_search() {
+    generation8++;
+    if (generation8 == 0)
+        generation8 = 1;
 }
 
 
