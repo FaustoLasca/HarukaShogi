@@ -9,6 +9,7 @@
 #include "ttable.h"
 #include "history.h"
 #include "thread.h"
+#include "opening_book.h"
 
 namespace chr = std::chrono;
 
@@ -76,12 +77,16 @@ class Searcher {
             std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
         );
 
-        Move search(int timeLimit, int depth);
+        Move search(chr::milliseconds timeLimit, int depth);
+        std::string search(int timeLimit, int depth);
 
         void print_stats();
 
     private:
+        Position pos;
         bool useOpeningBook;
+        OpeningBook openingBook;
+
         std::unique_ptr<Worker> worker;
         TTable tt;
 };

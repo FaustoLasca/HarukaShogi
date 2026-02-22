@@ -237,23 +237,34 @@ Searcher::Searcher(bool useOpeningBook) : useOpeningBook(useOpeningBook) {
 
 void Searcher::set_position(std::string sfen) {
     worker->set_position(sfen);
+    pos.set(sfen);
 }
 
 
-Move Searcher::search(int timeLimit, int depth) {
+Move Searcher::search(chr::milliseconds timeLimit, int depth) {
+    if (useOpeningBook) {
+        Move move = openingBook.sample_move(pos.get_key());
+        if (!move.is_null())
+            return move;
+    }
+
     worker->start_searching();
-    std::this_thread::sleep_for(std::chrono::milliseconds(timeLimit));
+    std::this_thread::sleep_for(timeLimit);
     worker->abort_search();
     worker->wait_search_finished();
     return worker->info.bestMove;
 }
 
 
+std::string Searcher::search(int timeLimit, int depth) {
+    return search(chr::milliseconds(timeLimit), depth).to_string();
+}
+
 void Searcher::print_stats() {
-    std::cout << "Best move:  " << worker->info.bestMove << std::endl;
-    std::cout << "Evaluation: " << worker->info.eval << std::endl;
-    std::cout << "Depth:      " << worker->info.depth << std::endl;
-    std::cout << "Node count: " << worker->info.nodeCount << std::endl;
+    // std::cout << "Best move:  " << worker->info.bestMove << std::endl;
+    // std::cout << "Evaluation: " << worker->info.eval << std::endl;
+    // std::cout << "Depth:      " << worker->info.depth << std::endl;
+    // std::cout << "Node count: " << worker->info.nodeCount << std::endl;
     std::cout << "TT stats:   " << std::endl;
     tt.print_stats();
 }
