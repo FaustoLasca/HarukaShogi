@@ -1,8 +1,10 @@
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 
 #include "search.h"
 #include "evaluate.h"
+#include "movegen.h"
 #include "movepicker.h"
 #include "misc.h"
 
@@ -66,12 +68,9 @@ void Worker::iterative_deepening() {
 
 template <bool isRoot>
 int Worker::search(int depth, int ply, int alpha, int beta) {
+
     // if the depth is 0, return the evaluation of the position
-    if (pos.is_game_over()) {
-        info.nodeCount++;
-        return evaluate(pos);
-    }
-    else if (depth == 0)
+    if (pos.is_game_over() || depth == 0)
         return q_search(alpha, beta);
         
     // throws an exception if the time is up
@@ -107,6 +106,7 @@ int Worker::search(int depth, int ply, int alpha, int beta) {
 
         ttMove = ttData.bestMove;
     }
+
     // initialize the node type to ALL_NODE
     // if the entry is pruned, set the node type to CUT_NODE
     // if a score >= alpha, set the node type to PV_NODE
@@ -118,7 +118,7 @@ int Worker::search(int depth, int ply, int alpha, int beta) {
     // null move pruning
     // make a null move and search at reduced depth
     // if the score is greater that beta, prune the search
-    int score, searchDepth;
+    int searchDepth, score;
     if (!pos.checkers()) {
         pos.make_null_move();
         searchDepth = depth <= 3 ? 0 : depth - 3;
@@ -259,6 +259,8 @@ void Worker::set_position(std::string sfen) {
 
 
 void SearchManager::set_position(std::string sfen) {
+    pos.set(sfen);
+
     for (auto& thread : threads)
         thread->set_position(sfen);
 }
@@ -266,9 +268,44 @@ void SearchManager::set_position(std::string sfen) {
 
 SearchInfo SearchManager::get_results() {
     assert(!threads.is_searching());
-    // return the results of the first thread for now
-    // TODO: implement some form of thread voting
-    return threads[0].info;
+    
+    SearchInfo results;
+
+    for (auto& thread : threads) {
+        // sum of the node counts of all threads
+        results.nodeCount += thread->info.nodeCount;
+        // average of the evaluations of all threads
+        // (not accurate but close enough)
+        results.eval += thread->info.eval;
+        // max depth of all threads
+        results.depth = std::max(results.depth, thread->info.depth);
+    }
+    results.eval /= threads.size();
+
+    // threads vote for the best move
+    // generate the legal moves to constrain votes to valid moves only, to avoid illegal moves
+    // from corrupted TT reads (rare but possible)
+    Move moveList[MAX_MOVES];
+    Move* end = generate<LEGAL>(pos, moveList);
+    int nLegal = end - moveList;
+
+    int votes[MAX_MOVES] = {};
+    // std::cout << "results:" << std::endl;
+    for (auto& thread : threads) {
+        Move* found = std::find(moveList, end, thread->info.bestMove);
+        if (found != end)
+            votes[found - moveList] += 1 << thread->info.depth;
+
+        // std::cout << "depth: " << thread->info.depth
+        //           << " - move: " << thread->info.bestMove 
+        //           << " - eval: " << thread->info.eval << std::endl;
+    }
+
+    // get the best move depending on the vote values
+    if (nLegal > 0)
+        results.bestMove = moveList[std::max_element(votes, votes + nLegal) - votes];
+
+    return results;
 }
 
 

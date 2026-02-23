@@ -88,6 +88,8 @@ class SearchManager {
         void print_stats();
 
     private:
+        Position pos;
+
         TTable tt;
         ThreadPool<Worker> threads;
 };
