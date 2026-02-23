@@ -145,7 +145,7 @@ int Worker::search(int depth, int ply, int alpha, int beta) {
         // if we have explored more than LMR_N_MOVES moves, lower the depth by 1
         // if the search score returned is higher than alpha, research at full depth
         nMoves++;
-        reduction = 1 + std::log(nMoves) * std::log(depth - 1) / 3;
+        reduction = 1 + std::log(nMoves) * std::log(depth - 1) * 2 / 5;
         searchDepth = depth > 2 ? depth - reduction : depth - 1;
         
         pos.make_move(m);
@@ -332,7 +332,9 @@ Move Searcher::search(chr::milliseconds timeLimit, int depth) {
     searchManager.abort_search();
     searchManager.wait_search_finished();
     SearchInfo results =  searchManager.get_results();
-    // std::cout << "eval: " << results.eval << " - depth: " << results.depth << " - node count: " << results.nodeCount << std::endl;
+    // std::cout << "eval: " << results.eval 
+    //           << " - depth: " << results.depth 
+    //           << " - node count: " << results.nodeCount << std::endl;
     return results.bestMove;
 }
 
@@ -342,10 +344,6 @@ std::string Searcher::search(int timeLimit, int depth) {
 }
 
 void Searcher::print_stats() {
-    // std::cout << "Best move:  " << worker->info.bestMove << std::endl;
-    // std::cout << "Evaluation: " << worker->info.eval << std::endl;
-    // std::cout << "Depth:      " << worker->info.depth << std::endl;
-    // std::cout << "Node count: " << worker->info.nodeCount << std::endl;
     std::cout << "TT stats:   " << std::endl;
     searchManager.print_stats();
 }

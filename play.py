@@ -13,6 +13,7 @@ import haruka_v0_3
 import haruka_v0_4
 import haruka_v0_7
 import haruka_v0_8
+import haruka_v0_10
 
 
 SFEN_STRING = None
@@ -45,7 +46,7 @@ if __name__ == "__main__":
         # MinMaxPlayer(SimpleEvaluator(), time_budget=1),
         # GuiPlayer(move_request_queue, move_response_queue),
         Haruka(time_limit=2000, useOpeningBook=True),
-        Haruka(time_limit=2000, useOpeningBook=True, module=haruka_v0_8),
+        Haruka(time_limit=2000, useOpeningBook=True, module=haruka_v0_10),
     ]
 
     controller_thread = threading.Thread(

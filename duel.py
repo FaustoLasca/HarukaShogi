@@ -18,12 +18,13 @@ import haruka_v0_6
 import haruka_v0_7
 import haruka_v0_8
 import haruka_v0_9
+import haruka_v0_10
 
 
 def duel(sfen: str = None) -> dict:
 
-    player1 = Haruka(time_limit=100, useOpeningBook=True, module=haruka)
-    player2 = Haruka(time_limit=100, useOpeningBook=True, module=haruka_v0_9)
+    player1 = Haruka(time_limit=50, useOpeningBook=True, module=haruka)
+    player2 = Haruka(time_limit=50, useOpeningBook=True, module=haruka_v0_10)
 
     n_wins = [0, 0]
     errors = 0
@@ -64,7 +65,7 @@ if __name__ == "__main__":
     n = len(STARTING_POSITIONS)
 
     pool = mp.Pool(processes=NUM_PROCESSES)
-    results = pool.map(duel, [None for _ in range(50)])
+    results = pool.map(duel, [None for _ in range(100)])
     pool.close()
 
     result = {}
