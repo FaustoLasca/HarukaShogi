@@ -55,7 +55,7 @@ class Worker : public Thread {
         template <bool isRoot>
         int search(int depth, int ply = 0, int alpha = -INF_SCORE, int beta = INF_SCORE);
         // quiescence search, called by the main search
-        int q_search(int alpha, int beta);
+        int q_search(int alpha = -INF_SCORE, int beta = INF_SCORE);
 
         // the elements exclusive to the worker
         Position pos;

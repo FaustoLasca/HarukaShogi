@@ -21,6 +21,8 @@ void Worker::search() {
 }
 
 
+constexpr int ASPIRATION_DELTA = 500;
+
 void Worker::iterative_deepening() {
     // lower the move histories by 3/4, to shrink old values and make new values more important
     for (int i = 0; i < NUM_COLORS; i++)
@@ -31,9 +33,31 @@ void Worker::iterative_deepening() {
             }
         }
     
+    int old_score = q_search();
+    int score;
+    int alpha, beta;
+    int deltaMult = 1;
+    
     // loop through the depths
     for (int depth = 1; depth <= MAX_DEPTH; depth++) {
-        search<true>(depth, 0);
+        // aspiration window loop
+        while (true) {
+            alpha = std::max(old_score - ASPIRATION_DELTA * deltaMult, -INF_SCORE);
+            beta  = std::min(old_score + ASPIRATION_DELTA * deltaMult,  INF_SCORE);
+            score = search<true>(depth, 0, alpha, beta);
+
+            // if the score is within the aspiration window, break the loop
+            if (score > alpha && score < beta)
+                break;
+
+            // otherwise, increase the delta multiplier by a factor of 2 and search again
+            deltaMult *= 100;
+        }
+
+        // set the necessary values for the next iteration of the aspiration window loop
+        old_score = score;
+        deltaMult = 1;
+
         info.depth = depth;
     }
 }
