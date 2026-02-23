@@ -22,6 +22,7 @@ void Worker::search() {
 
 
 constexpr int ASPIRATION_DELTA = 500;
+constexpr int ASPIRATION_DELTA_MULT = 100;
 
 void Worker::iterative_deepening() {
     // lower the move histories by 3/4, to shrink old values and make new values more important
@@ -51,7 +52,7 @@ void Worker::iterative_deepening() {
                 break;
 
             // otherwise, increase the delta multiplier by a factor of 2 and search again
-            deltaMult *= 100;
+            deltaMult *= ASPIRATION_DELTA_MULT;
         }
 
         // set the necessary values for the next iteration of the aspiration window loop
