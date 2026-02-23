@@ -17,12 +17,13 @@ import haruka_v0_5
 import haruka_v0_6
 import haruka_v0_7
 import haruka_v0_8
+import haruka_v0_9
 
 
 def duel(sfen: str = None) -> dict:
 
     player1 = Haruka(time_limit=100, useOpeningBook=True, module=haruka)
-    player2 = Haruka(time_limit=100, useOpeningBook=True, module=haruka_v0_8)
+    player2 = Haruka(time_limit=100, useOpeningBook=True, module=haruka_v0_9)
 
     n_wins = [0, 0]
     errors = 0
@@ -56,7 +57,7 @@ def duel(sfen: str = None) -> dict:
 
 
 
-NUM_PROCESSES = 2
+NUM_PROCESSES = 4
 
 if __name__ == "__main__":
 

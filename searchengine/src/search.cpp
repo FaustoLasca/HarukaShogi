@@ -24,8 +24,12 @@ void Worker::search() {
 void Worker::iterative_deepening() {
     // lower the move histories by 3/4, to shrink old values and make new values more important
     for (int i = 0; i < NUM_COLORS; i++)
-        for (int j = 0; j < HISTORY_SIZE; j++)
+        for (int j = 0; j < HISTORY_SIZE; j++) {
             moveHistory[i][j] = moveHistory[i][j] * 3 / 4;
+            if (j%64 == threadId) {
+                moveHistory[i][j] = moveHistory[i][j] + 1;
+            }
+        }
     
     // loop through the depths
     for (int depth = 1; depth <= MAX_DEPTH; depth++) {
@@ -66,9 +70,8 @@ int Worker::search(int depth, int ply, int alpha, int beta) {
         if (ttData.depth >= depth) {
             // case 1: PV_NODE (exact score)
             // if the ply is 0 we risk making an illegal move with a type 1 collision
-            if (ttData.type == PV_NODE && !isRoot) {
+            if (!isRoot && ttData.type == PV_NODE)
                 return ttData.score;
-            }
             // case 2: CUT_NODE (lower bound)
             if (ttData.type == CUT_NODE && ttData.score >= beta)
                 return ttData.score;
@@ -267,7 +270,7 @@ Move Searcher::search(chr::milliseconds timeLimit, int depth) {
     searchManager.abort_search();
     searchManager.wait_search_finished();
     SearchInfo results =  searchManager.get_results();
-    std::cout << "eval: " << results.eval << " - depth: " << results.depth << " - node count: " << results.nodeCount << std::endl;
+    // std::cout << "eval: " << results.eval << " - depth: " << results.depth << " - node count: " << results.nodeCount << std::endl;
     return results.bestMove;
 }
 
