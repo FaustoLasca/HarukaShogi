@@ -17,6 +17,8 @@ namespace harukashogi {
 void Worker::search() {
     tt.new_search();
 
+    info = SearchInfo();
+
     try {
         iterative_deepening();
     } catch (const TimeUpException& e) {}
@@ -247,9 +249,6 @@ int Worker::q_search(int alpha, int beta) {
 void Worker::set_position(std::string sfen) {
     pos = Position();
     pos.set(sfen);
-
-    info.bestMove = Move::null();
-    info.nodeCount = 0;
 
     // when setting a new position, reset the move history
     for (int i = 0; i < NUM_COLORS; i++)

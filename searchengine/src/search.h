@@ -81,6 +81,8 @@ class SearchManager {
         void start_searching() { threads.start_searching(); }
         void abort_search() { threads.abort_search(); }
         void wait_search_finished() { threads.wait_search_finished(); }
+
+        bool is_searching() { return threads.is_searching(); }
         
         // function to get the results of the search
         SearchInfo get_results();
