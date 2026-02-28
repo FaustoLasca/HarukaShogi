@@ -1,20 +1,17 @@
 #ifndef ENGINE_H
 #define ENGINE_H
 
-#include <queue>
-#include <string>
-#include <string_view>
-#include <vector>
-
-#include "types.h"
 #include "search.h"
+#include "misc.h"
 
 namespace harukashogi {
 
 
 class USIEngine {
     public:
-        USIEngine(int numThreads) : searchManager(numThreads) {}
+        USIEngine(int numThreads) : searchManager(numThreads) {
+            init();
+        }
 
         void run();
 

@@ -15,13 +15,51 @@ namespace harukashogi {
 
 
 void Worker::search() {
-    tt.new_search();
+    if (is_master()) {
+        // the master thread handles the search limits
+        if (limits.moveTime.count() > 0)
+            stopTime = limits.startTime + limits.moveTime;
+        // TODO: handle the other limits
+        else
+            stopTime = limits.startTime + chr::seconds(5);
 
+        // inform the transposition table that a new search has started
+        tt.new_search();
+
+        // start the searching of the slaves
+        threads.slaves_start_searching();
+    }
+    
     info = SearchInfo();
-
+    pos.set(rootPos.sfen());
     try {
         iterative_deepening();
     } catch (const TimeUpException& e) {}
+
+    // the master thread waits for the slaves to finish searching and collects the results
+    if (is_master()) {
+        threads.wait_search_finished_slaves();
+        
+        // threads vote for the best move
+        // generate the legal moves to constrain votes to valid moves only, to avoid illegal moves
+        // from corrupted TT reads (rare but possible)
+        Move bestMove;
+        Move moveList[MAX_MOVES];
+        Move* end = generate<LEGAL>(rootPos, moveList);
+        int nLegal = end - moveList;
+
+        int votes[MAX_MOVES] = {};
+        for (auto& thread : threads) {
+            Move* found = std::find(moveList, end, thread->info.bestMove);
+            if (found != end)
+                votes[found - moveList] += 1 << thread->info.depth;
+        }
+
+        // get the best move depending on the vote values
+        bestMove = moveList[std::max_element(votes, votes + nLegal) - votes];
+
+        std::cout << "bestmove " << bestMove << std::endl;
+    }
 }
 
 
@@ -76,8 +114,7 @@ int Worker::search(int depth, int ply, int alpha, int beta) {
         return q_search(alpha, beta);
         
     // throws an exception if the time is up
-    if (is_search_aborted())
-        throw TimeUpException();
+    stop_check();
 
     info.nodeCount++;
 
@@ -246,9 +283,20 @@ int Worker::q_search(int alpha, int beta) {
 }
 
 
+void Worker::stop_check() {
+    if (is_search_aborted())
+        throw TimeUpException();
+
+    // the master thread aborts the search for all threads if the time is up
+    if (is_master() && !limits.infinite && chr::steady_clock::now() >= stopTime) {
+        threads.abort_search();
+        throw TimeUpException();
+    }
+}
+
+
 void Worker::set_position(std::string sfen) {
-    pos = Position();
-    pos.set(sfen);
+    rootPos.set(sfen);
 
     // when setting a new position, reset the move history
     for (int i = 0; i < NUM_COLORS; i++)

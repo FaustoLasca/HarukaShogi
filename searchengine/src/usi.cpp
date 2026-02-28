@@ -1,4 +1,4 @@
-#include "engine.h"
+#include "usi.h"
 #include "misc.h"
 
 namespace harukashogi {
@@ -98,29 +98,26 @@ void USIEngine::go(std::istringstream& cmdStream) {
     std::string token;
     cmdStream >> token;
 
+    SearchLimits limits;
+
     // blocking search for the given time limit and print bestmove
     if (token == "movetime") {
-        searchManager.start_searching();
         cmdStream >> token;
-        std::this_thread::sleep_for(chr::milliseconds(std::stoi(token)));
-        searchManager.abort_search();
-        searchManager.wait_search_finished();
-        SearchInfo results = searchManager.get_results();
-        std::cout << "bestmove " << results.bestMove.to_string() << std::endl;
+        limits.moveTime = chr::milliseconds(std::stoi(token));
     }
 
     // starts searching. A stop command will be sent when the search is finished.
-    else if (token == "infinite") {
-        searchManager.start_searching();
-    }
+    else if (token == "infinite")
+        limits.infinite = true;
+
+    searchManager.set_limits(limits);
+    searchManager.start_searching();
 }
 
 
 void USIEngine::stop() {
     searchManager.abort_search();
     searchManager.wait_search_finished();
-    SearchInfo results = searchManager.get_results();
-    std::cout << "bestmove " << results.bestMove.to_string() << std::endl;
 }
 
 

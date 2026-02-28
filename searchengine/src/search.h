@@ -10,6 +10,7 @@
 #include "history.h"
 #include "thread.h"
 #include "opening_book.h"
+#include "types.h"
 
 namespace chr = std::chrono;
 
@@ -32,16 +33,41 @@ struct SearchInfo {
 };
 
 
+struct SearchLimits {
+    SearchLimits() : 
+        startTime(chr::steady_clock::now()),
+        time{chr::milliseconds(0), chr::milliseconds(0)},
+        inc{chr::milliseconds(0), chr::milliseconds(0)},
+        byoyomi(0), moveTime(0),
+        depth(0), nodes(0), movesToGo(0),
+        infinite(false), ponder(false) {}
+
+    chr::time_point<chr::steady_clock> startTime;
+    chr::milliseconds time[NUM_COLORS], inc[NUM_COLORS], byoyomi, moveTime;
+    int depth, nodes, movesToGo;
+    bool infinite, ponder;
+};
+
+
 constexpr int MAX_DEPTH = 20;
 
 
 class Worker : public Thread {
     public:
-        Worker(size_t id, TTable& tt) : Thread(id), tt(tt), threadId(id) {}
+        Worker(size_t id, TTable& tt, ThreadPool<Worker>& threads) : 
+            Thread(id),
+            tt(tt),
+            threads(threads) {}
 
         void set_position(
             std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
         );
+
+        void set_limits(const SearchLimits& limits) {
+            // only the master thread uses the limits
+            assert(is_master());
+            this->limits = limits;
+        };
 
         // struct containing the results and stats of the search
         SearchInfo info;
@@ -57,21 +83,28 @@ class Worker : public Thread {
         // quiescence search, called by the main search
         int q_search(int alpha = -INF_SCORE, int beta = INF_SCORE);
 
+        // checks if the time is up and throws an exception if it is
+        void stop_check();
+
         // the elements exclusive to the worker
-        Position pos;
+        Position pos, rootPos;
 
         HistoryEntry moveHistory[NUM_COLORS][HISTORY_SIZE];
 
         // shared elements
         TTable& tt;
 
-        size_t threadId;
+        // only used by the master thread
+        // horrendous but necessary to access the thread pool from the master thread
+        ThreadPool<Worker>& threads;
+        SearchLimits limits;
+        chr::time_point<chr::steady_clock> stopTime;
 };
 
 
 class SearchManager {
     public:
-        SearchManager(size_t numThreads) : threads(numThreads, tt) {}
+        SearchManager(size_t numThreads) : threads(numThreads, tt, threads) {}
 
         void set_position(
             std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
@@ -86,6 +119,8 @@ class SearchManager {
         
         // function to get the results of the search
         SearchInfo get_results();
+
+        void set_limits(const SearchLimits& limits) { threads.master().set_limits(limits); }
 
         void print_stats();
 
