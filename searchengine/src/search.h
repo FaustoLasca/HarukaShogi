@@ -29,7 +29,7 @@ struct SearchInfo {
     Move bestMove = Move::null();
     int eval = 0;
     int depth = 0;
-    int nodeCount = 0;
+    uint64_t nodeCount = 0;
     chr::time_point<chr::steady_clock> startTime = chr::steady_clock::now();
 };
 
@@ -45,7 +45,8 @@ struct SearchLimits {
 
     chr::time_point<chr::steady_clock> startTime;
     chr::milliseconds time[NUM_COLORS], inc[NUM_COLORS], byoyomi, moveTime;
-    int depth, nodes, movesToGo;
+    uint64_t nodes;
+    int depth, movesToGo;
     bool infinite, ponder;
 };
 
@@ -109,37 +110,6 @@ class Worker : public Thread {
         OutputManager& outputManager;
         SearchLimits limits;
         chr::time_point<chr::steady_clock> stopTime;
-};
-
-
-class SearchManager {
-    public:
-        SearchManager(size_t numThreads, OutputManager& outputManager) : 
-            threads(numThreads, tt, threads, outputManager) {}
-
-        void set_position(
-            std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
-        );
-
-        // functions to start and stop the search
-        void start_searching() { threads.start_searching(); }
-        void abort_search() { threads.abort_search(); }
-        void wait_search_finished() { threads.wait_search_finished(); }
-
-        bool is_searching() { return threads.is_searching(); }
-        
-        // function to get the results of the search
-        SearchInfo get_results();
-
-        void set_limits(const SearchLimits& limits) { threads.master().set_limits(limits); }
-
-        void print_stats();
-
-    private:
-        Position pos;
-
-        TTable tt;
-        ThreadPool<Worker> threads;
 };
 
 

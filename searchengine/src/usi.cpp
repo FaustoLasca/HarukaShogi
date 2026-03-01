@@ -65,59 +65,89 @@ void USIEngine::isready() {
 
 
 void USIEngine::position(std::istringstream& cmdStream) {
-    std::string position, token;
+    std::string sfen, token;
+    std::vector<std::string> moves;
+
     cmdStream >> token;
 
     // set the initial position
     if (token == "startpos")
-        position = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
+        sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
     else if (token == "sfen") {
         for (int i = 0; i < 3; ++i) {
             cmdStream >> token;
-            position += token + " ";
+            sfen += token + " ";
         }
     }
-    Position pos;
-    pos.set(position);
 
     // make the moves if provided
     cmdStream >> token;
     if (token == "moves") {
         while (cmdStream >> token) {
-            Move move = move_from_string(token);
-            pos.make_move(move);
+            moves.push_back(token);
         }
     }
 
-    // set the search manager's position
-    searchManager.set_position(pos.sfen());
+    engine.set_position(sfen, moves);
 }
 
 
 void USIEngine::go(std::istringstream& cmdStream) {
     std::string token;
-    cmdStream >> token;
 
     SearchLimits limits;
 
-    // blocking search for the given time limit and print bestmove
-    if (token == "movetime") {
-        cmdStream >> token;
-        limits.moveTime = chr::milliseconds(std::stoi(token));
+    while (cmdStream >> token) {
+        if (token == "movetime") {
+            cmdStream >> token;
+            limits.moveTime = chr::milliseconds(std::stoi(token));
+        }
+        if (token == "infinite")
+            limits.infinite = true;
+
+        if (token == "ponder")
+            limits.ponder = true;
+
+        if (token == "btime") {
+            cmdStream >> token;
+            limits.time[BLACK] = chr::milliseconds(std::stoi(token));
+        }
+        if (token == "wtime") {
+            cmdStream >> token;
+            limits.time[WHITE] = chr::milliseconds(std::stoi(token));
+        }
+        if (token == "binc") {
+            cmdStream >> token;
+            limits.inc[BLACK] = chr::milliseconds(std::stoi(token));
+        }
+        if (token == "winc") {
+            cmdStream >> token;
+            limits.inc[WHITE] = chr::milliseconds(std::stoi(token));
+        }
+        if (token == "byoyomi") {
+            cmdStream >> token;
+            limits.byoyomi = chr::milliseconds(std::stoi(token));
+        }
+        if (token == "depth") {
+            cmdStream >> token;
+            limits.depth = std::stoi(token);
+        }
+        if (token == "nodes") {
+            cmdStream >> token;
+            limits.nodes = std::stoull(token);
+        }
+        if (token == "movestogo") {
+            cmdStream >> token;
+            limits.movesToGo = std::stoi(token);
+        }
     }
 
-    // starts searching. A stop command will be sent when the search is finished.
-    else if (token == "infinite")
-        limits.infinite = true;
-
-    searchManager.set_limits(limits);
-    searchManager.start_searching();
+    engine.go(limits);
 }
 
 
 void USIEngine::stop() {
-    searchManager.abort_search();
-    searchManager.wait_search_finished();
+    engine.stop();
 }
 
 

@@ -1,8 +1,9 @@
-#ifndef ENGINE_H
-#define ENGINE_H
+#ifndef USI_H
+#define USI_H
 
 #include "search.h"
-#include "misc.h"
+#include "engine.h"
+
 
 namespace harukashogi {
 
@@ -11,17 +12,12 @@ class USIManager : public OutputManager {
     public:
         void on_best_move(Move bestMove, Move ponderMove) override;
         void on_iter(const SearchInfo& info) override;
-    
-    private:
-        std::atomic<bool> debug = false;
 };
 
 
 class USIEngine {
     public:
-        USIEngine(int numThreads) : searchManager(numThreads, usiManager) {
-            init();
-        }
+        USIEngine(int numThreads) : engine(usiManager) {}
 
         void run();
 
@@ -41,7 +37,7 @@ class USIEngine {
         // void quit();
 
         USIManager usiManager;
-        SearchManager searchManager;
+        Engine engine;
 };
 
 

@@ -48,6 +48,7 @@ add_executable(test_types
     src/movepicker.cpp
     src/thread.cpp
     src/usi.cpp
+    src/engine.cpp
 )
 target_include_directories(test_types PRIVATE include)
 

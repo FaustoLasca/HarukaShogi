@@ -6,7 +6,6 @@
 #include "evaluate.h"
 #include "movegen.h"
 #include "movepicker.h"
-#include "misc.h"
 
 
 namespace chr = std::chrono;
@@ -14,14 +13,36 @@ namespace chr = std::chrono;
 namespace harukashogi {
 
 
+constexpr chr::milliseconds MAX_MOVETIME = chr::milliseconds(5000);
+
+
 void Worker::search() {
     if (is_master()) {
         // the master thread handles the search limits
+
+        // exact search time
         if (limits.moveTime.count() > 0)
             stopTime = limits.startTime + limits.moveTime;
-        // TODO: handle the other limits
+        // if there are moves before the first time control, set the stop time to 2 seconds
+        else if (limits.movesToGo > 0)
+            stopTime = limits.startTime + MAX_MOVETIME;
+        // with normal time contral
+        else if ((limits.time[BLACK].count() > 0 && limits.time[WHITE].count() > 0) ||
+                 (limits.inc[BLACK].count()  > 0 && limits.inc[WHITE].count() > 0)) {
+            chr::milliseconds time = limits.time[pos.side_to_move()];
+            chr::milliseconds inc = limits.inc[pos.side_to_move()];
+
+            chr::milliseconds total = std::max(time/30 + inc/2, limits.byoyomi);
+            total = std::min(total, MAX_MOVETIME);
+
+            stopTime = limits.startTime + total;
+        }
+        // with byoyomi time control
+        else if (limits.byoyomi.count() > 0)
+            stopTime = limits.startTime + limits.byoyomi;
+        // with infinite time control
         else
-            stopTime = limits.startTime + chr::seconds(5);
+            stopTime = limits.startTime + chr::minutes(10);
 
         // inform the transposition table that a new search has started
         tt.new_search();
@@ -292,8 +313,17 @@ void Worker::stop_check() {
     if (is_search_aborted())
         throw AbortSearchException();
 
+    if (is_master() && limits.nodes > 0 && info.nodeCount >= limits.nodes) {
+        std::cout << "nodes limit reached" << std::endl;
+        std::cout << "node count:  " << info.nodeCount << std::endl;
+        std::cout << "nodes limit: " << limits.nodes << std::endl;
+        threads.abort_search();
+        throw AbortSearchException();
+    }
+        
+
     // the master thread aborts the search for all threads if the time is up
-    if (is_master() && !limits.infinite && chr::steady_clock::now() >= stopTime) {
+    if (is_master() && !limits.infinite && !limits.ponder && chr::steady_clock::now() >= stopTime) {
         threads.abort_search();
         throw AbortSearchException();
     }
@@ -308,97 +338,6 @@ void Worker::set_position(std::string sfen) {
         for (int j = 0; j < HISTORY_SIZE; j++)
             moveHistory[i][j] = 0;
 }
-
-
-void SearchManager::set_position(std::string sfen) {
-    pos.set(sfen);
-
-    for (auto& thread : threads)
-        thread->set_position(sfen);
-}
-
-
-SearchInfo SearchManager::get_results() {
-    assert(!threads.is_searching());
-    
-    SearchInfo results;
-
-    for (auto& thread : threads) {
-        // sum of the node counts of all threads
-        results.nodeCount += thread->info.nodeCount;
-        // average of the evaluations of all threads
-        // (not accurate but close enough)
-        results.eval += thread->info.eval;
-        // max depth of all threads
-        results.depth = std::max(results.depth, thread->info.depth);
-    }
-    results.eval /= threads.size();
-
-    // threads vote for the best move
-    // generate the legal moves to constrain votes to valid moves only, to avoid illegal moves
-    // from corrupted TT reads (rare but possible)
-    Move moveList[MAX_MOVES];
-    Move* end = generate<LEGAL>(pos, moveList);
-    int nLegal = end - moveList;
-
-    int votes[MAX_MOVES] = {};
-    // std::cout << "results:" << std::endl;
-    for (auto& thread : threads) {
-        Move* found = std::find(moveList, end, thread->info.bestMove);
-        if (found != end)
-            votes[found - moveList] += 1 << thread->info.depth;
-
-        // std::cout << "depth: " << thread->info.depth
-        //           << " - move: " << thread->info.bestMove 
-        //           << " - eval: " << thread->info.eval << std::endl;
-    }
-
-    // get the best move depending on the vote values
-    if (nLegal > 0)
-        results.bestMove = moveList[std::max_element(votes, votes + nLegal) - votes];
-
-    return results;
-}
-
-
-void SearchManager::print_stats() {
-    tt.print_stats();
-}
-
-
-// void Searcher::set_position(std::string sfen) {
-//     searchManager.set_position(sfen);
-//     pos.set(sfen);
-// }
-
-
-// Move Searcher::search(chr::milliseconds timeLimit, int depth) {
-//     if (useOpeningBook) {
-//         Move move = openingBook.sample_move(pos.get_key());
-//         if (!move.is_null())
-//             return move;
-//     }
-
-//     searchManager.start_searching();
-//     std::this_thread::sleep_for(timeLimit);
-//     searchManager.abort_search();
-//     searchManager.wait_search_finished();
-//     SearchInfo results =  searchManager.get_results();
-//     // std::cout << "eval: " << results.eval 
-//     //           << " - depth: " << results.depth 
-//     //           << " - node count: " << results.nodeCount << std::endl;
-//     return results.bestMove;
-// }
-
-
-// std::string Searcher::search(int timeLimit, int depth) {
-//     return search(chr::milliseconds(timeLimit), depth).to_string();
-// }
-
-// void Searcher::print_stats() {
-//     std::cout << "TT stats:   " << std::endl;
-//     searchManager.print_stats();
-// }
 
 
 } // namespace harukashogi
