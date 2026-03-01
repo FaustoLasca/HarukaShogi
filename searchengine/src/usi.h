@@ -7,9 +7,19 @@
 namespace harukashogi {
 
 
+class USIManager : public OutputManager {
+    public:
+        void on_best_move(Move bestMove, Move ponderMove) override;
+        void on_iter(const SearchInfo& info) override;
+    
+    private:
+        std::atomic<bool> debug = false;
+};
+
+
 class USIEngine {
     public:
-        USIEngine(int numThreads) : searchManager(numThreads) {
+        USIEngine(int numThreads) : searchManager(numThreads, usiManager) {
             init();
         }
 
@@ -30,6 +40,7 @@ class USIEngine {
         void gameover(std::istringstream& cmdStream);
         // void quit();
 
+        USIManager usiManager;
         SearchManager searchManager;
 };
 

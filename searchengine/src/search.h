@@ -17,7 +17,7 @@ namespace chr = std::chrono;
 namespace harukashogi {
 
 
-class TimeUpException : public std::exception {
+class AbortSearchException : public std::exception {
     public:
         const char* what() const noexcept override {
             return "Time limit exceeded";
@@ -30,6 +30,7 @@ struct SearchInfo {
     int eval = 0;
     int depth = 0;
     int nodeCount = 0;
+    chr::time_point<chr::steady_clock> startTime = chr::steady_clock::now();
 };
 
 
@@ -49,15 +50,23 @@ struct SearchLimits {
 };
 
 
+class OutputManager {
+    public:
+        virtual void on_best_move(Move bestMove, Move ponderMove) = 0;
+        virtual void on_iter(const SearchInfo& info) = 0;
+};
+
+
 constexpr int MAX_DEPTH = 20;
 
 
 class Worker : public Thread {
     public:
-        Worker(size_t id, TTable& tt, ThreadPool<Worker>& threads) : 
+        Worker(size_t id, TTable& tt, ThreadPool<Worker>& threads, OutputManager& outputManager) : 
             Thread(id),
             tt(tt),
-            threads(threads) {}
+            threads(threads),
+            outputManager(outputManager) {}
 
         void set_position(
             std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
@@ -97,6 +106,7 @@ class Worker : public Thread {
         // only used by the master thread
         // horrendous but necessary to access the thread pool from the master thread
         ThreadPool<Worker>& threads;
+        OutputManager& outputManager;
         SearchLimits limits;
         chr::time_point<chr::steady_clock> stopTime;
 };
@@ -104,7 +114,8 @@ class Worker : public Thread {
 
 class SearchManager {
     public:
-        SearchManager(size_t numThreads) : threads(numThreads, tt, threads) {}
+        SearchManager(size_t numThreads, OutputManager& outputManager) : 
+            threads(numThreads, tt, threads, outputManager) {}
 
         void set_position(
             std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
@@ -129,30 +140,6 @@ class SearchManager {
 
         TTable tt;
         ThreadPool<Worker> threads;
-};
-
-
-// TODO: TEMPORARY SEARCHER CLASS
-//       HAS TO BE REMOVED/REFACTORED AFTER IMPLEMENTING PARALLEL SEARCH
-class Searcher {
-    public:
-        Searcher(bool useOpeningBook = false) : useOpeningBook(useOpeningBook), searchManager(8) {}
-
-        void set_position(
-            std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
-        );
-
-        Move search(chr::milliseconds timeLimit, int depth);
-        std::string search(int timeLimit, int depth);
-
-        void print_stats();
-
-    private:
-        Position pos;
-        bool useOpeningBook;
-        OpeningBook openingBook;
-
-        SearchManager searchManager;
 };
 
 

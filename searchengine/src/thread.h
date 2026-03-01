@@ -67,6 +67,8 @@ class Thread {
 
 template <typename T>
 class ThreadPool {
+    static_assert(std::derived_from<T, Thread>, "T must derive from Thread");
+
     public:
         // C++ black magic to pass arguments to the constructor of the threads in the pool
         template <typename... Args>

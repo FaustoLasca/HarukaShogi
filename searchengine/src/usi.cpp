@@ -121,4 +121,25 @@ void USIEngine::stop() {
 }
 
 
+void USIManager::on_best_move(Move bestMove, Move ponderMove) {
+    std::cout << "bestmove " << bestMove << std::endl;
+}
+
+void USIManager::on_iter(const SearchInfo& info) {
+    auto time = chr::duration_cast<chr::milliseconds>(
+        chr::steady_clock::now() - info.startTime
+    );
+    // avoid division by zero
+    long elapsed = std::max(time.count(), long(1));
+    long nps = info.nodeCount * long(1000) / elapsed;
+
+    std::cout << "info "
+              << "depth " << info.depth << " "
+              << "score cp " << info.eval << " "
+              << "time "  << time.count() << " "
+              << "nodes " << info.nodeCount << " "
+              << "nps " << nps << std::endl;
+}
+
+
 } // namespace harukashogi

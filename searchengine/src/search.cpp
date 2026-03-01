@@ -34,7 +34,7 @@ void Worker::search() {
     pos.set(rootPos.sfen());
     try {
         iterative_deepening();
-    } catch (const TimeUpException& e) {}
+    } catch (const AbortSearchException& e) {}
 
     // the master thread waits for the slaves to finish searching and collects the results
     if (is_master()) {
@@ -58,7 +58,7 @@ void Worker::search() {
         // get the best move depending on the vote values
         bestMove = moveList[std::max_element(votes, votes + nLegal) - votes];
 
-        std::cout << "bestmove " << bestMove << std::endl;
+        outputManager.on_best_move(bestMove, Move::null());
     }
 }
 
@@ -102,6 +102,11 @@ void Worker::iterative_deepening() {
         deltaMult = 1;
 
         info.depth = depth;
+
+        // the master thread outputs the search info
+        if (is_master()) {
+            outputManager.on_iter(info);
+        }
     }
 }
 
@@ -245,7 +250,7 @@ int Worker::q_search(int alpha, int beta) {
 
     // throws an exception to abort the search
     if (is_search_aborted())
-        throw TimeUpException();
+        throw AbortSearchException();
 
     int eval = evaluate(pos);
 
@@ -285,12 +290,12 @@ int Worker::q_search(int alpha, int beta) {
 
 void Worker::stop_check() {
     if (is_search_aborted())
-        throw TimeUpException();
+        throw AbortSearchException();
 
     // the master thread aborts the search for all threads if the time is up
     if (is_master() && !limits.infinite && chr::steady_clock::now() >= stopTime) {
         threads.abort_search();
-        throw TimeUpException();
+        throw AbortSearchException();
     }
 }
 
@@ -361,39 +366,39 @@ void SearchManager::print_stats() {
 }
 
 
-void Searcher::set_position(std::string sfen) {
-    searchManager.set_position(sfen);
-    pos.set(sfen);
-}
+// void Searcher::set_position(std::string sfen) {
+//     searchManager.set_position(sfen);
+//     pos.set(sfen);
+// }
 
 
-Move Searcher::search(chr::milliseconds timeLimit, int depth) {
-    if (useOpeningBook) {
-        Move move = openingBook.sample_move(pos.get_key());
-        if (!move.is_null())
-            return move;
-    }
+// Move Searcher::search(chr::milliseconds timeLimit, int depth) {
+//     if (useOpeningBook) {
+//         Move move = openingBook.sample_move(pos.get_key());
+//         if (!move.is_null())
+//             return move;
+//     }
 
-    searchManager.start_searching();
-    std::this_thread::sleep_for(timeLimit);
-    searchManager.abort_search();
-    searchManager.wait_search_finished();
-    SearchInfo results =  searchManager.get_results();
-    // std::cout << "eval: " << results.eval 
-    //           << " - depth: " << results.depth 
-    //           << " - node count: " << results.nodeCount << std::endl;
-    return results.bestMove;
-}
+//     searchManager.start_searching();
+//     std::this_thread::sleep_for(timeLimit);
+//     searchManager.abort_search();
+//     searchManager.wait_search_finished();
+//     SearchInfo results =  searchManager.get_results();
+//     // std::cout << "eval: " << results.eval 
+//     //           << " - depth: " << results.depth 
+//     //           << " - node count: " << results.nodeCount << std::endl;
+//     return results.bestMove;
+// }
 
 
-std::string Searcher::search(int timeLimit, int depth) {
-    return search(chr::milliseconds(timeLimit), depth).to_string();
-}
+// std::string Searcher::search(int timeLimit, int depth) {
+//     return search(chr::milliseconds(timeLimit), depth).to_string();
+// }
 
-void Searcher::print_stats() {
-    std::cout << "TT stats:   " << std::endl;
-    searchManager.print_stats();
-}
+// void Searcher::print_stats() {
+//     std::cout << "TT stats:   " << std::endl;
+//     searchManager.print_stats();
+// }
 
 
 } // namespace harukashogi
