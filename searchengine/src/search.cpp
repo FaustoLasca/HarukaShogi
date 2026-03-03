@@ -28,7 +28,8 @@ void Worker::search() {
             stopTime = limits.startTime + MAX_MOVETIME;
         // with normal time contral
         else if ((limits.time[BLACK].count() > 0 && limits.time[WHITE].count() > 0) ||
-                 (limits.inc[BLACK].count()  > 0 && limits.inc[WHITE].count() > 0)) {
+                 (limits.inc[BLACK].count()  > 0 && limits.inc[WHITE].count() > 0)  ||
+                 limits.byoyomi.count() > 0) {
             chr::milliseconds time = limits.time[pos.side_to_move()];
             chr::milliseconds inc = limits.inc[pos.side_to_move()];
 
@@ -37,9 +38,6 @@ void Worker::search() {
 
             stopTime = limits.startTime + total;
         }
-        // with byoyomi time control
-        else if (limits.byoyomi.count() > 0)
-            stopTime = limits.startTime + limits.byoyomi;
         // with infinite time control
         else
             stopTime = limits.startTime + chr::minutes(10);
