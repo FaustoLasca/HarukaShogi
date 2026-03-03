@@ -6,6 +6,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <vector>
+#include <functional>
 
 namespace harukashogi {
 
@@ -61,10 +62,6 @@ class Thread {
 };
 
 
-// template <typename T>
-// concept ThreadType = std::derived_from<T, Thread>;
-
-
 template <typename T>
 class ThreadPool {
     static_assert(std::derived_from<T, Thread>, "T must derive from Thread");
@@ -72,9 +69,18 @@ class ThreadPool {
     public:
         // C++ black magic to pass arguments to the constructor of the threads in the pool
         template <typename... Args>
-        ThreadPool(size_t numThreads, Args&&... args) {
+        ThreadPool(Args&&... args) {
+            auto savedArgs = std::tuple<Args...>(std::forward<Args>(args)...);
+            threadFactory = [savedArgs](size_t id) {
+                return std::make_unique<T>(id, std::get<Args>(savedArgs)...);
+            };
+            resize(1);
+        }
+
+        void resize(size_t numThreads) {
+            threads.resize(numThreads);
             for (size_t i = 0; i < numThreads; i++)
-                threads.push_back(std::make_unique<T>(i, std::forward<Args>(args)...));
+                threads[i] = threadFactory(i);
         }
         
         // same functions as the Thread class, but for the entire thread pool
@@ -108,6 +114,8 @@ class ThreadPool {
 
     private:
         std::vector<std::unique_ptr<T>> threads;
+
+        std::function<std::unique_ptr<T>(size_t)> threadFactory;
 };
 
 

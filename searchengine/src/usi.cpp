@@ -22,8 +22,8 @@ void USIEngine::run() {
         else if (token == "isready")
             isready();
 
-        // else if (token == "setoption")
-        //     setoption(cmdStream);
+        else if (token == "setoption")
+            setoption(cmdStream);
 
         // else if (token == "ucinewgame")
         //     usinewgame();
@@ -54,8 +54,30 @@ void USIEngine::usi() {
               << "id author Fausto Lasca" << std::endl;
 
     // TODO: add options
+    std::cout << "option name USI_Hash type spin default 16 min 1 max 1024\n";
+    std::cout << "option name Threads type spin default 1 min 1 max 128\n";
 
     std::cout << "usiok" << std::endl;
+}
+
+
+void USIEngine::setoption(std::istringstream& cmdStream) {
+    std::string token, name, _;
+    
+    while (cmdStream >> token) {
+        if (token == "name") {
+            cmdStream >> name;
+        }
+
+        else if (token == "value") {
+            cmdStream >> token;
+            if (name == "USI_Hash")
+                engine.resize_tt(std::stoi(token));
+            else if (name == "Threads")
+                engine.resize_threadpool(std::stoi(token));
+            name.clear();
+        }
+    }
 }
 
 

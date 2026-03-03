@@ -57,6 +57,8 @@ class TTable {
         TTable();
         ~TTable();
 
+        void resize(size_t size);
+
         // probe the transposition table for an entry
         // returns a tuple with a boolean indicating if the entry was found
         // and a pointer to the entry.
@@ -69,7 +71,9 @@ class TTable {
         
     private:
         std::unique_ptr<Cluster[]> table;
-        size_t index(uint64_t key, uint64_t ttSize) const;
+        size_t size;
+
+        size_t index(uint64_t key) const;
         uint8_t relativeAge(uint8_t generation8) const;
 
         uint8_t generation8 = 0;
