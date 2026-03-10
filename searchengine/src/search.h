@@ -90,7 +90,7 @@ class Worker : public Thread {
 
         void search() override;
 
-        Worker& get_best_thread() const;
+        const Worker& get_best_thread();
 
         // iteratively performs searches at increasing depths
         void iterative_deepening();

@@ -60,38 +60,40 @@ void Worker::search() {
     // the master thread waits for the slaves to finish searching and collects the results
     if (is_master()) {
         threads.wait_search_finished_slaves();
-        
-        // threads vote for the best move
-        // generate the legal moves to constrain votes to valid moves only, to avoid illegal moves
-        // from corrupted TT reads (rare but possible)
-        // Move bestMove;
-        // Move moveList[MAX_MOVES];
-        // Move* end = generate<LEGAL>(rootPos, moveList);
-        // int nLegal = end - moveList;
 
-        // int votes[MAX_MOVES] = {};
-        // for (auto& thread : threads) {
-        //     Move* found = std::find(moveList, end, thread->info.pv[0]);
-        //     if (found != end)
-        //         votes[found - moveList] += 1 << thread->info.depth;
-        // }
-
-        // // get the best move depending on the vote values
-        // bestMove = moveList[std::max_element(votes, votes + nLegal) - votes];
-
-        // outputManager.on_best_move(bestMove, Move::null());
-
-        Worker& bestThread = get_best_thread();
+        const Worker& bestThread = get_best_thread();
         outputManager.on_best_move(bestThread.info.pv[0], bestThread.info.pv[1]);
     }
 }
 
 
-Worker& Worker::get_best_thread() const {
-    // only the master thread can get the best thread
+const Worker& Worker::get_best_thread() {
     assert(is_master());
 
-    return threads[0];
+    Move moveList[MAX_MOVES];
+    Move* end = generate<LEGAL>(rootPos, moveList);
+
+    int votes[MAX_MOVES] = {};
+    for (size_t i = 0; i < threads.size(); i++) {
+        Move* found = std::find(moveList, end, threads[i].info.pv[0]);
+        if (found != end)
+            votes[found - moveList] += 1 << threads[i].info.depth;
+    }
+
+    int bestVote = -1;
+    size_t bestIdx = 0;
+    for (size_t i = 0; i < threads.size(); i++) {
+        Move* found = std::find(moveList, end, threads[i].info.pv[0]);
+        if (found == end)
+            continue;
+        int v = votes[found - moveList];
+        if (v > bestVote) {
+            bestVote = v;
+            bestIdx = i;
+        }
+    }
+
+    return threads[bestIdx];
 }
 
 

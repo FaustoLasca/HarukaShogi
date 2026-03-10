@@ -107,7 +107,7 @@ class ThreadPool {
         T& master() { return *threads[0]; } // returns the master thread
 
         // operator to access the threads in the pool
-        T& operator[](size_t index) { return *threads[index]; }
+        const T& operator[](size_t index) const { return *threads[index]; }
         size_t size() const { return threads.size(); }
         auto begin() { return threads.begin(); }
         auto end() { return threads.end(); }
