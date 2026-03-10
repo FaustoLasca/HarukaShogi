@@ -174,7 +174,10 @@ void USIEngine::stop() {
 
 
 void USIManager::on_best_move(Move bestMove, Move ponderMove) {
-    std::cout << "bestmove " << bestMove << std::endl;
+    std::cout << "bestmove " << bestMove;
+    if (!ponderMove.is_null())
+        std::cout << " ponder " << ponderMove;
+    std::cout << std::endl;
 }
 
 void USIManager::on_iter(const SearchInfo& info) {
@@ -185,12 +188,21 @@ void USIManager::on_iter(const SearchInfo& info) {
     long elapsed = std::max(time.count(), long(1));
     long nps = info.nodeCount * long(1000) / elapsed;
 
-    std::cout << "info "
-              << "depth " << info.depth << " "
-              << "score cp " << info.eval << " "
-              << "time "  << time.count() << " "
-              << "nodes " << info.nodeCount << " "
-              << "nps " << nps << std::endl;
+    std::cout << "info"
+              << " depth " << info.depth
+              << " score cp " << info.eval
+              << " time "  << time.count()
+              << " nodes " << info.nodeCount
+              << " nps " << nps;
+
+    std::cout << " pv";
+    for (auto m : info.pv) {
+        if (m.is_null())
+            break;
+        std::cout << " " << m;
+    }
+    
+    std::cout << std::endl;
 }
 
 

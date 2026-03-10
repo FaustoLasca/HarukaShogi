@@ -6,6 +6,7 @@
 #include "evaluate.h"
 #include "movegen.h"
 #include "movepicker.h"
+#include "misc.h"
 
 
 namespace chr = std::chrono;
@@ -50,6 +51,7 @@ void Worker::search() {
     }
     
     info = SearchInfo();
+    empty_stack();
     pos.set(rootPos.sfen());
     try {
         iterative_deepening();
@@ -62,23 +64,34 @@ void Worker::search() {
         // threads vote for the best move
         // generate the legal moves to constrain votes to valid moves only, to avoid illegal moves
         // from corrupted TT reads (rare but possible)
-        Move bestMove;
-        Move moveList[MAX_MOVES];
-        Move* end = generate<LEGAL>(rootPos, moveList);
-        int nLegal = end - moveList;
+        // Move bestMove;
+        // Move moveList[MAX_MOVES];
+        // Move* end = generate<LEGAL>(rootPos, moveList);
+        // int nLegal = end - moveList;
 
-        int votes[MAX_MOVES] = {};
-        for (auto& thread : threads) {
-            Move* found = std::find(moveList, end, thread->info.bestMove);
-            if (found != end)
-                votes[found - moveList] += 1 << thread->info.depth;
-        }
+        // int votes[MAX_MOVES] = {};
+        // for (auto& thread : threads) {
+        //     Move* found = std::find(moveList, end, thread->info.pv[0]);
+        //     if (found != end)
+        //         votes[found - moveList] += 1 << thread->info.depth;
+        // }
 
-        // get the best move depending on the vote values
-        bestMove = moveList[std::max_element(votes, votes + nLegal) - votes];
+        // // get the best move depending on the vote values
+        // bestMove = moveList[std::max_element(votes, votes + nLegal) - votes];
 
-        outputManager.on_best_move(bestMove, Move::null());
+        // outputManager.on_best_move(bestMove, Move::null());
+
+        Worker& bestThread = get_best_thread();
+        outputManager.on_best_move(bestThread.info.pv[0], bestThread.info.pv[1]);
     }
+}
+
+
+Worker& Worker::get_best_thread() const {
+    // only the master thread can get the best thread
+    assert(is_master());
+
+    return threads[0];
 }
 
 
@@ -106,7 +119,7 @@ void Worker::iterative_deepening() {
         while (true) {
             alpha = std::max(old_score - ASPIRATION_DELTA * deltaMult, -INF_SCORE);
             beta  = std::min(old_score + ASPIRATION_DELTA * deltaMult,  INF_SCORE);
-            score = search<true>(depth, 0, alpha, beta);
+            score = search<true>(stack, depth, alpha, beta);
 
             // if the score is within the aspiration window, break the loop
             if (score > alpha && score < beta)
@@ -131,7 +144,7 @@ void Worker::iterative_deepening() {
 
 
 template <bool isRoot>
-int Worker::search(int depth, int ply, int alpha, int beta) {
+int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
 
     // if the depth is 0, return the evaluation of the position
     if (pos.is_game_over() || depth == 0)
@@ -176,7 +189,7 @@ int Worker::search(int depth, int ply, int alpha, int beta) {
     NodeType nodeType = ALL_NODE;
 
     if (isRoot && ttMove.is_null())
-        ttMove = info.bestMove;
+        ttMove = info.pv[0];
 
     // null move pruning
     // make a null move and search at reduced depth
@@ -185,7 +198,7 @@ int Worker::search(int depth, int ply, int alpha, int beta) {
     if (!pos.checkers()) {
         pos.make_null_move();
         searchDepth = depth <= 3 ? 0 : depth - 3;
-        score = -search<false>(searchDepth, ply + 1, -beta, -beta + 1);
+        score = -search<false>(stack+1, searchDepth, -beta, -beta + 1);
         pos.unmake_null_move();
         if (score >= beta)
             return score;
@@ -196,7 +209,7 @@ int Worker::search(int depth, int ply, int alpha, int beta) {
 
     // loop through children nodes
     int bestScore = -INF_SCORE;
-    Move nodeBestMove = Move::null();
+    stack->pv.fill(Move::null());
     Move m;
 
     // variables for late move reductions
@@ -212,24 +225,26 @@ int Worker::search(int depth, int ply, int alpha, int beta) {
         searchDepth = depth > 2 ? depth - reduction : depth - 1;
         
         pos.make_move(m);
-        score = -search<false>(searchDepth, ply + 1, -beta, -alpha);
+        score = -search<false>(stack+1, searchDepth, -beta, -alpha);
         pos.unmake_move(m);
 
         // if the score is greater than alpha, and the search depth is less than the full depth
         // perform a search at full depth
         if (score >= alpha && searchDepth < depth - 1) {
+            searchDepth = depth - 1;
             pos.make_move(m);
-            score = -search<false>(depth - 1, ply + 1, -beta, -alpha);
+            score = -search<false>(stack+1, searchDepth, -beta, -alpha);
             pos.unmake_move(m);
         }
 
         // update best score and the pv table
         if (score > bestScore) {
             bestScore = score;
-            nodeBestMove = m;
+            stack->pv[0] = m;
+            std::copy((stack+1)->pv.begin(), (stack+1)->pv.end()-1, stack->pv.begin() + 1);
             // if the search is root, update the best move and evaluation of the worker
             if constexpr (isRoot) {
-                info.bestMove = nodeBestMove;
+                info.pv = stack->pv;
                 info.eval = bestScore;
             }
                 
@@ -252,13 +267,13 @@ int Worker::search(int depth, int ply, int alpha, int beta) {
             }
 
             // update the transposition table entry
-            ttWriter.write(pos.get_key(), bestScore, nodeBestMove, depth, CUT_NODE);
+            ttWriter.write(pos.get_key(), bestScore, stack->pv[0], depth, CUT_NODE);
 
             return bestScore;
         }
     }
 
-    ttWriter.write(pos.get_key(), bestScore, nodeBestMove, depth, nodeType);
+    ttWriter.write(pos.get_key(), bestScore, stack->pv[0], depth, nodeType);
 
     return bestScore;
 }
@@ -335,6 +350,14 @@ void Worker::set_position(std::string sfen) {
     for (int i = 0; i < NUM_COLORS; i++)
         for (int j = 0; j < HISTORY_SIZE; j++)
             moveHistory[i][j] = 0;
+}
+
+
+void Worker::empty_stack() {
+    for (int i = 0; i < MAX_DEPTH; i++) {
+        stack[i].ply = i;
+        stack[i].pv.fill(Move::null());
+    }
 }
 
 

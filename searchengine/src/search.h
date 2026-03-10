@@ -9,7 +9,6 @@
 #include "ttable.h"
 #include "history.h"
 #include "thread.h"
-#include "opening_book.h"
 #include "types.h"
 
 namespace chr = std::chrono;
@@ -25,12 +24,21 @@ class AbortSearchException : public std::exception {
 };
 
 
+constexpr int MAX_DEPTH = 20;
+
+
 struct SearchInfo {
-    Move bestMove = Move::null();
+    std::array<Move, MAX_DEPTH> pv;
     int eval = 0;
     int depth = 0;
     uint64_t nodeCount = 0;
     chr::time_point<chr::steady_clock> startTime = chr::steady_clock::now();
+};
+
+
+struct StackEntry {
+    std::array<Move, MAX_DEPTH> pv;
+    int ply;
 };
 
 
@@ -58,9 +66,6 @@ class OutputManager {
 };
 
 
-constexpr int MAX_DEPTH = 20;
-
-
 class Worker : public Thread {
     public:
         Worker(size_t id, TTable& tt, ThreadPool<Worker>& threads, OutputManager& outputManager) : 
@@ -85,11 +90,13 @@ class Worker : public Thread {
 
         void search() override;
 
+        Worker& get_best_thread() const;
+
         // iteratively performs searches at increasing depths
         void iterative_deepening();
         // the main search function
         template <bool isRoot>
-        int search(int depth, int ply = 0, int alpha = -INF_SCORE, int beta = INF_SCORE);
+        int search(StackEntry* stack, int depth, int alpha = -INF_SCORE, int beta = INF_SCORE);
         // quiescence search, called by the main search
         int q_search(int alpha = -INF_SCORE, int beta = INF_SCORE);
 
@@ -100,6 +107,9 @@ class Worker : public Thread {
         Position pos, rootPos;
 
         HistoryEntry moveHistory[NUM_COLORS][HISTORY_SIZE];
+
+        StackEntry stack[MAX_DEPTH];
+        void empty_stack();
 
         // shared elements
         TTable& tt;
