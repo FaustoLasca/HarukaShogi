@@ -109,8 +109,8 @@ class ThreadPool {
         // operator to access the threads in the pool
         const T& operator[](size_t index) const { return *threads[index]; }
         size_t size() const { return threads.size(); }
-        auto begin() { return threads.begin(); }
-        auto end() { return threads.end(); }
+        auto begin() const { return threads.begin(); }
+        auto end() const { return threads.end(); }
 
     private:
         std::vector<std::unique_ptr<T>> threads;

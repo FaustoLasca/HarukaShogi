@@ -81,19 +81,19 @@ const Worker& Worker::get_best_thread() {
     }
 
     int bestVote = -1;
-    size_t bestIdx = 0;
-    for (size_t i = 0; i < threads.size(); i++) {
-        Move* found = std::find(moveList, end, threads[i].info.pv[0]);
+    const Worker* bestThread = threads.begin()->get();
+    for (auto& thread : threads) {
+        Move* found = std::find(moveList, end, thread->info.pv[0]);
         if (found == end)
             continue;
         int v = votes[found - moveList];
         if (v > bestVote) {
             bestVote = v;
-            bestIdx = i;
+            bestThread = thread.get();
         }
     }
 
-    return threads[bestIdx];
+    return *bestThread;
 }
 
 
