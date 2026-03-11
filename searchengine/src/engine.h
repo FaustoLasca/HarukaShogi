@@ -20,7 +20,7 @@ class Engine {
         void set_position(const std::string& sfen, const std::vector<std::string>& moves);
         void go(const SearchLimits& limits);
         void stop();
-        // void ponderhit();
+        void ponderhit();
 
     private:
         Position pos;

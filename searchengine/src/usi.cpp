@@ -37,8 +37,8 @@ void USIEngine::run() {
         else if (token == "stop")
             stop();
 
-        // else if (token == "ponderhit")
-        //     ponderhit();
+        else if (token == "ponderhit")
+            ponderhit();
 
         // else if (token == "gameover")
         //     gameover(cmdStream);
@@ -170,6 +170,11 @@ void USIEngine::go(std::istringstream& cmdStream) {
 
 void USIEngine::stop() {
     engine.stop();
+}
+
+
+void USIEngine::ponderhit() {
+    engine.ponderhit();
 }
 
 

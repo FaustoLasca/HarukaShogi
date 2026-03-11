@@ -23,8 +23,13 @@ void Engine::go(const SearchLimits& limits) {
 
 
 void Engine::stop() {
-    threads.abort_search();
+    threads.master().set_stop(true);
     threads.wait_search_finished();
+}
+
+
+void Engine::ponderhit() {
+    threads.master().set_ponderhit(true);
 }
 
 

@@ -6,7 +6,6 @@
 #include "evaluate.h"
 #include "movegen.h"
 #include "movepicker.h"
-#include "misc.h"
 
 
 namespace chr = std::chrono;
@@ -19,8 +18,10 @@ constexpr chr::milliseconds MAX_MOVETIME = chr::milliseconds(5000);
 
 void Worker::search() {
     if (is_master()) {
-        // the master thread handles the search limits
+        stop = false;
+        ponderhit = false;
 
+        // the master thread handles the search limits
         // exact search time
         if (limits.moveTime.count() > 0)
             stopTime = limits.startTime + limits.moveTime;
@@ -61,6 +62,11 @@ void Worker::search() {
     if (is_master()) {
         threads.wait_search_finished_slaves();
 
+        // keep searching if still pondering or infinite time control
+        // busy wait loop
+        while ((limits.infinite && !stop) || (limits.ponder && !ponderhit && !stop)) {}
+
+        // don't output the best move if stopping a pondering search
         const Worker& bestThread = get_best_thread();
         outputManager.on_best_move(bestThread.info.pv[0], bestThread.info.pv[1]);
     }
@@ -328,19 +334,32 @@ void Worker::stop_check() {
     if (is_search_aborted())
         throw AbortSearchException();
 
-    if (is_master() && limits.nodes > 0 && info.nodeCount >= limits.nodes) {
+    if (!is_master())
+        return;
+
+    if (stop.load(std::memory_order_relaxed)) {
+        threads.abort_search();
+        throw AbortSearchException();
+    }
+
+    if (limits.nodes > 0 && info.nodeCount >= limits.nodes) {
         std::cout << "nodes limit reached" << std::endl;
         std::cout << "node count:  " << info.nodeCount << std::endl;
         std::cout << "nodes limit: " << limits.nodes << std::endl;
         threads.abort_search();
         throw AbortSearchException();
     }
-        
+    
+    // time up
+    if (!limits.infinite && chr::steady_clock::now() >= stopTime) {
+        // if still pondering keep searching
+        if (!(limits.ponder && !ponderhit.load(std::memory_order_relaxed))) {
+            threads.abort_search();
+            throw AbortSearchException();
+        }
 
-    // the master thread aborts the search for all threads if the time is up
-    if (is_master() && !limits.infinite && !limits.ponder && chr::steady_clock::now() >= stopTime) {
-        threads.abort_search();
-        throw AbortSearchException();
+        // threads.abort_search();
+        // throw AbortSearchException();
     }
 }
 

@@ -78,10 +78,19 @@ class Worker : public Thread {
             std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
         );
 
+        // master thread only
         void set_limits(const SearchLimits& limits) {
             // only the master thread uses the limits
             assert(is_master());
             this->limits = limits;
+        };
+        void set_stop(bool stop) {
+            assert(is_master());
+            this->stop = stop;
+        }
+        void set_ponderhit(bool ponderhit) {
+            assert(is_master());
+            this->ponderhit = ponderhit;
         };
 
         // struct containing the results and stats of the search
@@ -119,6 +128,8 @@ class Worker : public Thread {
         ThreadPool<Worker>& threads;
         OutputManager& outputManager;
         SearchLimits limits;
+        std::atomic<bool> stop = false;
+        std::atomic<bool> ponderhit = false;
         chr::time_point<chr::steady_clock> stopTime;
 };
 
