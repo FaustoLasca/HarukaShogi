@@ -17,7 +17,13 @@ void Engine::set_position(const std::string& sfen, const std::vector<std::string
 
 
 void Engine::go(const SearchLimits& limits) {
+    // wait for the previous search to finish
+    // avoids race condition when returning immediately after ponderhit
+    threads.wait_search_finished();
+
     threads.master().set_limits(limits);
+    threads.master().set_stop(false);
+    threads.master().set_ponderhit(false);
     threads.start_searching();
 }
 

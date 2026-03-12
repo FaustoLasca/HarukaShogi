@@ -50,8 +50,7 @@ void Thread::start_searching() {
 void Thread::abort_search() {
     // if the thread is searching, set the search flag to false and notify the thread
     std::unique_lock<std::mutex> lock(mutex);
-    if (searchingFlag)
-        searchFlag = false;
+    searchFlag = false;
 }
 
 

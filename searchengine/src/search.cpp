@@ -18,9 +18,6 @@ constexpr chr::milliseconds MAX_MOVETIME = chr::milliseconds(5000);
 
 void Worker::search() {
     if (is_master()) {
-        stop = false;
-        ponderhit = false;
-
         // the master thread handles the search limits
         // exact search time
         if (limits.moveTime.count() > 0)
@@ -60,11 +57,18 @@ void Worker::search() {
 
     // the master thread waits for the slaves to finish searching and collects the results
     if (is_master()) {
-        threads.wait_search_finished_slaves();
-
+        
         // keep searching if still pondering or infinite time control
         // busy wait loop
         while ((limits.infinite && !stop) || (limits.ponder && !ponderhit && !stop)) {}
+
+        // wait for the slaves to finish searching
+        // if thread has geen stopped in an infinite or pondering search, abort the search
+        // for the slaves (edge case)
+        if (stop || ponderhit) {
+            threads.abort_search();
+        }
+        threads.wait_search_finished_slaves();
 
         // don't output the best move if stopping a pondering search
         const Worker& bestThread = get_best_thread();
@@ -357,9 +361,6 @@ void Worker::stop_check() {
             threads.abort_search();
             throw AbortSearchException();
         }
-
-        // threads.abort_search();
-        // throw AbortSearchException();
     }
 }
 
