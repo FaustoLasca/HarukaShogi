@@ -102,8 +102,6 @@ void USIEngine::position(std::istringstream& cmdStream) {
         }
     }
 
-    std::cout << "position: " << sfen << std::endl;
-
     // make the moves if provided
     cmdStream >> token;
     if (token == "moves") {

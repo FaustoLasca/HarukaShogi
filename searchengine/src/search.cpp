@@ -29,8 +29,8 @@ void Worker::search() {
         else if ((limits.time[BLACK].count() > 0 && limits.time[WHITE].count() > 0) ||
                  (limits.inc[BLACK].count()  > 0 && limits.inc[WHITE].count() > 0)  ||
                  limits.byoyomi.count() > 0) {
-            chr::milliseconds time = limits.time[pos.side_to_move()];
-            chr::milliseconds inc = limits.inc[pos.side_to_move()];
+            chr::milliseconds time = limits.time[rootPos.side_to_move()];
+            chr::milliseconds inc = limits.inc[rootPos.side_to_move()];
 
             chr::milliseconds total = std::max(time/30 + inc/2, limits.byoyomi);
             total = std::min(total, MAX_MOVETIME);
