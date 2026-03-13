@@ -130,6 +130,7 @@ class Worker : public Thread {
         SearchLimits limits;
         std::atomic<bool> stop = false;
         std::atomic<bool> ponderhit = false;
+        chr::milliseconds searchTime;
         chr::time_point<chr::steady_clock> stopTime;
 };
 

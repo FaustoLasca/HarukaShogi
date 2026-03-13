@@ -21,10 +21,10 @@ void Worker::search() {
         // the master thread handles the search limits
         // exact search time
         if (limits.moveTime.count() > 0)
-            stopTime = limits.startTime + limits.moveTime;
+            searchTime = limits.moveTime;
         // if there are moves before the first time control, set the stop time to 2 seconds
         else if (limits.movesToGo > 0)
-            stopTime = limits.startTime + MAX_MOVETIME;
+            searchTime = MAX_MOVETIME;
         // with normal time contral
         else if ((limits.time[BLACK].count() > 0 && limits.time[WHITE].count() > 0) ||
                  (limits.inc[BLACK].count()  > 0 && limits.inc[WHITE].count() > 0)  ||
@@ -32,14 +32,15 @@ void Worker::search() {
             chr::milliseconds time = limits.time[rootPos.side_to_move()];
             chr::milliseconds inc = limits.inc[rootPos.side_to_move()];
 
-            chr::milliseconds total = std::max(time/30 + inc/2, limits.byoyomi);
-            total = std::min(total, MAX_MOVETIME);
-
-            stopTime = limits.startTime + total;
+            searchTime = std::max(time/30 + inc/2, limits.byoyomi);
+            searchTime = std::min(searchTime, MAX_MOVETIME);
         }
         // with infinite time control
         else
-            stopTime = limits.startTime + chr::minutes(10);
+            searchTime = chr::minutes(10);
+
+        if (!limits.ponder)
+            stopTime = limits.startTime + searchTime;
 
         // inform the transposition table that a new search has started
         tt.new_search();
@@ -347,6 +348,11 @@ void Worker::stop_check() {
         throw AbortSearchException();
     }
 
+    if (limits.ponder && ponderhit.load(std::memory_order_relaxed)) {
+        limits.ponder = false;
+        stopTime = chr::steady_clock::now() + searchTime;
+    }
+
     if (limits.nodes > 0 && info.nodeCount >= limits.nodes) {
         std::cout << "nodes limit reached" << std::endl;
         std::cout << "node count:  " << info.nodeCount << std::endl;
@@ -356,12 +362,9 @@ void Worker::stop_check() {
     }
     
     // time up
-    if (!limits.infinite && chr::steady_clock::now() >= stopTime) {
-        // if still pondering keep searching
-        if (!(limits.ponder && !ponderhit.load(std::memory_order_relaxed))) {
-            threads.abort_search();
-            throw AbortSearchException();
-        }
+    if (!limits.infinite && !limits.ponder && chr::steady_clock::now() >= stopTime) {
+        threads.abort_search();
+        throw AbortSearchException();
     }
 }
 
