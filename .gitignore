@@ -3,4 +3,5 @@
 */.cache/
 */build/
 */build*/
+engines
 searchengine/src/book_generation/csv_parser
