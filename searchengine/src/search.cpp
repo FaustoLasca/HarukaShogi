@@ -72,6 +72,7 @@ void Worker::search() {
 
         // don't output the best move if stopping a pondering search
         const Worker& bestThread = get_best_thread();
+        outputManager.on_iter(bestThread.info);
         outputManager.on_best_move(bestThread.info.pv[0], bestThread.info.pv[1]);
     }
 }

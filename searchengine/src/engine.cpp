@@ -24,6 +24,7 @@ void Engine::go(const SearchLimits& limits) {
     threads.master().set_limits(limits);
     threads.master().set_stop(false);
     threads.master().set_ponderhit(false);
+    
     threads.start_searching();
 }
 

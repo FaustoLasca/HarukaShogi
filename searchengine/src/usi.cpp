@@ -96,11 +96,13 @@ void USIEngine::position(std::istringstream& cmdStream) {
     if (token == "startpos")
         sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
     else if (token == "sfen") {
-        for (int i = 0; i < 3; ++i) {
+        for (int i = 0; i < 4; ++i) {
             cmdStream >> token;
             sfen += token + " ";
         }
     }
+
+    std::cout << "position: " << sfen << std::endl;
 
     // make the moves if provided
     cmdStream >> token;
