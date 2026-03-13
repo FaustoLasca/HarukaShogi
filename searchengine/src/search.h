@@ -113,7 +113,7 @@ class Worker : public Thread {
         void stop_check();
 
         // the elements exclusive to the worker
-        Position pos, rootPos;
+        Position searchPos, rootPos;
 
         HistoryEntry moveHistory[NUM_COLORS][HISTORY_SIZE];
 

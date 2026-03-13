@@ -50,7 +50,7 @@ void Worker::search() {
     
     info = SearchInfo();
     empty_stack();
-    pos.set(rootPos.sfen());
+    searchPos.set(rootPos.sfen());
     try {
         iterative_deepening();
     } catch (const AbortSearchException& e) {}
@@ -160,7 +160,7 @@ template <bool isRoot>
 int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
 
     // if the depth is 0, return the evaluation of the position
-    if (pos.is_game_over() || depth == 0)
+    if (searchPos.is_game_over() || depth == 0)
         return q_search(alpha, beta);
         
     // throws an exception if the time is up
@@ -169,7 +169,7 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
     info.nodeCount++;
 
     // probe the transposition table for an entry
-    std::tuple<bool, TTData, TTWriter> result = tt.probe(pos.get_key());
+    std::tuple<bool, TTData, TTWriter> result = tt.probe(searchPos.get_key());
     bool ttHit = std::get<0>(result);
     TTData ttData = std::get<1>(result);
     TTWriter ttWriter = std::get<2>(result);
@@ -208,17 +208,17 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
     // make a null move and search at reduced depth
     // if the score is greater that beta, prune the search
     int searchDepth, score;
-    if (!pos.checkers()) {
-        pos.make_null_move();
+    if (!searchPos.checkers()) {
+        searchPos.make_null_move();
         searchDepth = depth <= 3 ? 0 : depth - 3;
         score = -search<false>(stack+1, searchDepth, -beta, -beta + 1);
-        pos.unmake_null_move();
+        searchPos.unmake_null_move();
         if (score >= beta)
             return score;
     }
 
     // initialize the move picker
-    MovePicker movePicker(pos, depth, moveHistory[pos.side_to_move()], ttMove);
+    MovePicker movePicker(searchPos, depth, moveHistory[searchPos.side_to_move()], ttMove);
 
     // loop through children nodes
     int bestScore = -INF_SCORE;
@@ -237,17 +237,17 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
         reduction = 1 + std::log(nMoves) * std::log(depth - 1) * 2 / 5;
         searchDepth = depth > 2 ? depth - reduction : depth - 1;
         
-        pos.make_move(m);
+        searchPos.make_move(m);
         score = -search<false>(stack+1, searchDepth, -beta, -alpha);
-        pos.unmake_move(m);
+        searchPos.unmake_move(m);
 
         // if the score is greater than alpha, and the search depth is less than the full depth
         // perform a search at full depth
         if (score >= alpha && searchDepth < depth - 1) {
             searchDepth = depth - 1;
-            pos.make_move(m);
+            searchPos.make_move(m);
             score = -search<false>(stack+1, searchDepth, -beta, -alpha);
-            pos.unmake_move(m);
+            searchPos.unmake_move(m);
         }
 
         // update best score and the pv table
@@ -276,17 +276,17 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
             // update the move history to add a bonus for the move
             if (!m.is_null()) {
                 int bonus = depth * depth;
-                moveHistory[pos.side_to_move()][m.raw()] << bonus;
+                moveHistory[searchPos.side_to_move()][m.raw()] << bonus;
             }
 
             // update the transposition table entry
-            ttWriter.write(pos.get_key(), bestScore, stack->pv[0], depth, CUT_NODE);
+            ttWriter.write(searchPos.get_key(), bestScore, stack->pv[0], depth, CUT_NODE);
 
             return bestScore;
         }
     }
 
-    ttWriter.write(pos.get_key(), bestScore, stack->pv[0], depth, nodeType);
+    ttWriter.write(searchPos.get_key(), bestScore, stack->pv[0], depth, nodeType);
 
     return bestScore;
 }
@@ -299,11 +299,11 @@ int Worker::q_search(int alpha, int beta) {
     if (is_search_aborted())
         throw AbortSearchException();
 
-    int eval = evaluate(pos);
+    int eval = evaluate(searchPos);
 
     if (eval >= beta)
         return eval;
-    if (pos.is_game_over())
+    if (searchPos.is_game_over())
         return eval;
 
     int bestScore = eval;
@@ -311,15 +311,15 @@ int Worker::q_search(int alpha, int beta) {
         alpha = eval;
 
     // initialize the move picker
-    MovePicker movePicker(pos, 0, moveHistory[pos.side_to_move()]);
+    MovePicker movePicker(searchPos, 0, moveHistory[searchPos.side_to_move()]);
 
     // search through the scored captures
     int score;
     Move m;
     while ((m = movePicker.next_move()) != Move::null()) {
-        pos.make_move(m);
+        searchPos.make_move(m);
         score = -q_search(-beta, -alpha);
-        pos.unmake_move(m);
+        searchPos.unmake_move(m);
 
         if (score > bestScore) {
             bestScore = score;
