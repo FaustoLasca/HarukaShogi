@@ -21,6 +21,13 @@ void Engine::go(const SearchLimits& limits) {
     // avoids race condition when returning immediately after ponderhit
     threads.wait_search_finished();
 
+    // sample a move from the opening book
+    Move move = openingBook.sample_move(pos.get_key());
+    if (move != Move::null()) {
+        outputManager.on_best_move(move, Move::null());
+        return;
+    }
+
     threads.master().set_limits(limits);
     threads.master().set_stop(false);
     threads.master().set_ponderhit(false);

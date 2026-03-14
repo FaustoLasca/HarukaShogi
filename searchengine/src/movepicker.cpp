@@ -27,7 +27,7 @@ MovePicker::MovePicker(Position& pos, int depth, HistoryEntry* moveHistory, Move
     }
  
     // if the depth is 0 or less, we are in quiescence
-    else if (depth <= 0)
+    if (depth <= 0)
         stage = QUIESCENCE_STAGE_INIT;
     // if there are checkers, we are in evasion
     else if (pos.checkers())

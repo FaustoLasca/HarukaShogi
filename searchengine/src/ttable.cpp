@@ -1,4 +1,5 @@
 #include <iostream>
+#include <atomic>
 
 #include "ttable.h"
 
@@ -13,16 +14,16 @@ constexpr uint8_t NUM_GENERATIONS = 255;
 // an entry in the transposition table
 // 80 bits, 10 bytes in total
 struct TTEntry {
-    uint16_t key_low;
-    uint16_t key_high;
-    int16_t score;
-    Move bestMove;
+    std::atomic<uint16_t> key_low;
+    std::atomic<uint16_t> key_high;
+    std::atomic<int16_t> score;
+    std::atomic<Move> bestMove;
     // the first 6 bits are for the depth
     // the last 2 bits are for the node type
-    uint8_t depthAndNodeType;
+    std::atomic<uint8_t> depthAndNodeType;
     // the generation is a number between 1 and 255
     // this is because 0 is reserved for empty entries
-    uint8_t generation8;
+    std::atomic<uint8_t> generation8;
 
     TTData read() const {
         return TTData(score, bestMove, depthAndNodeType & DEPTH_MASK,

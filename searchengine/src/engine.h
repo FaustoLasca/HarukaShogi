@@ -3,13 +3,17 @@
 
 #include "search.h"
 #include "misc.h"
+#include "opening_book.h"
 
 namespace harukashogi {
 
 
 class Engine {
     public:
-        Engine(OutputManager& outputManager) : threads(tt, threads, outputManager) {
+        Engine(OutputManager& outputManager) : 
+            outputManager(outputManager),
+            threads(tt, threads, outputManager) 
+        {
             init();
         }
 
@@ -26,6 +30,8 @@ class Engine {
         Position pos;
         TTable tt;
         ThreadPool<Worker> threads;
+        OutputManager& outputManager;
+        OpeningBook openingBook;
 };
 
 

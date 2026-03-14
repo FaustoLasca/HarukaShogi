@@ -345,6 +345,23 @@ class Move {
         static constexpr Move null() { return Move(0); }
         constexpr bool is_null() const { return *this == null(); }
 
+        constexpr bool is_valid() const {
+            if (to() >= NUM_SQUARES)
+                return false;
+            if (is_drop()) {
+                if (dropped() >= NUM_UNPROMOTED_PIECE_TYPES || dropped() == KING)
+                    return false;
+                if (is_promotion())
+                    return false;
+            }
+            if (!is_drop()) {
+                if (from() >= NUM_SQUARES)
+                    return false;
+            }
+                
+            return true;
+        }
+
         constexpr bool is_drop() const { return (data & 0x60u) == 0x60u; }
 
         constexpr Square from() const {

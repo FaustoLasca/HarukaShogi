@@ -14,6 +14,8 @@ namespace harukashogi {
 
 
 constexpr chr::milliseconds MAX_MOVETIME = chr::milliseconds(2000);
+constexpr chr::milliseconds MIN_MOVETIME = chr::milliseconds(10);
+constexpr chr::milliseconds MOVETIME_OVERHEAD = chr::milliseconds(800);
 
 
 void Worker::search() {
@@ -26,14 +28,14 @@ void Worker::search() {
         else if (limits.movesToGo > 0)
             searchTime = MAX_MOVETIME;
         // with normal time contral
-        else if ((limits.time[BLACK].count() > 0 && limits.time[WHITE].count() > 0) ||
-                 (limits.inc[BLACK].count()  > 0 && limits.inc[WHITE].count() > 0)  ||
+        else if (limits.time[BLACK].count() > 0 || limits.time[WHITE].count() > 0 ||
+                 limits.inc[BLACK].count()  > 0 || limits.inc[WHITE].count() > 0  ||
                  limits.byoyomi.count() > 0) {
             chr::milliseconds time = limits.time[rootPos.side_to_move()];
             chr::milliseconds inc = limits.inc[rootPos.side_to_move()];
 
-            searchTime = std::max(time/30 + inc/2, limits.byoyomi);
-            searchTime = std::min(searchTime, MAX_MOVETIME);
+            searchTime = std::max(time/30 + inc/2, limits.byoyomi) - MOVETIME_OVERHEAD;
+            searchTime = std::clamp(searchTime, MIN_MOVETIME, MAX_MOVETIME);
         }
         // with infinite time control
         else
@@ -159,6 +161,7 @@ void Worker::iterative_deepening() {
 
 template <bool isRoot>
 int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
+    stack->pv.fill(Move::null());
 
     // if the depth is 0, return the evaluation of the position
     if (searchPos.is_game_over() || depth == 0)
@@ -223,7 +226,6 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
 
     // loop through children nodes
     int bestScore = -INF_SCORE;
-    stack->pv.fill(Move::null());
     Move m;
 
     // variables for late move reductions
