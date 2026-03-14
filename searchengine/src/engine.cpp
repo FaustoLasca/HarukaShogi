@@ -23,7 +23,7 @@ void Engine::go(const SearchLimits& limits) {
 
     // sample a move from the opening book
     Move move = openingBook.sample_move(pos.get_key());
-    if (move != Move::null()) {
+    if (!limits.ponder && move != Move::null()) {
         outputManager.on_best_move(move, Move::null());
         return;
     }
