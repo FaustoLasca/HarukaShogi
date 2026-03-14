@@ -56,6 +56,7 @@ void USIEngine::usi() {
     // TODO: add options
     std::cout << "option name USI_Hash type spin default 16 min 1 max 1024\n";
     std::cout << "option name Threads type spin default 1 min 1 max 128\n";
+    std::cout << "option name MoveOverhead type spin default 0 min 0 max 2000\n";
 
     std::cout << "usiok" << std::endl;
 }
@@ -75,6 +76,8 @@ void USIEngine::setoption(std::istringstream& cmdStream) {
                 engine.resize_tt(std::stoi(token));
             else if (name == "Threads")
                 engine.resize_threadpool(std::stoi(token));
+            else if (name == "MoveOverhead")
+                engine.set_move_overhead(std::stoi(token));
             name.clear();
         }
     }

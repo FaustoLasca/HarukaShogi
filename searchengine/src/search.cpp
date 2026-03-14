@@ -15,7 +15,6 @@ namespace harukashogi {
 
 constexpr chr::milliseconds MAX_MOVETIME = chr::milliseconds(2000);
 constexpr chr::milliseconds MIN_MOVETIME = chr::milliseconds(10);
-constexpr chr::milliseconds MOVETIME_OVERHEAD = chr::milliseconds(800);
 
 
 void Worker::search() {
@@ -34,7 +33,7 @@ void Worker::search() {
             chr::milliseconds time = limits.time[rootPos.side_to_move()];
             chr::milliseconds inc = limits.inc[rootPos.side_to_move()];
 
-            searchTime = std::max(time/30 + inc/2, limits.byoyomi) - MOVETIME_OVERHEAD;
+            searchTime = std::max(time/30 + inc/2, limits.byoyomi) - moveOverhead;
             searchTime = std::clamp(searchTime, MIN_MOVETIME, MAX_MOVETIME);
         }
         // with infinite time control

@@ -17,8 +17,10 @@ class Engine {
             init();
         }
 
+        // options
         void resize_tt(size_t size) { tt.resize(size); }
         void resize_threadpool(size_t numThreads) { threads.resize(numThreads); }
+        void set_move_overhead(int overhead) { threads.master().set_move_overhead(overhead); }
 
         // void new_game();
         void set_position(const std::string& sfen, const std::vector<std::string>& moves);

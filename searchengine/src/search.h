@@ -93,6 +93,12 @@ class Worker : public Thread {
             this->ponderhit = ponderhit;
         };
 
+        // options
+        void set_move_overhead(int overhead) {
+            assert(is_master());
+            this->moveOverhead = chr::milliseconds(overhead);
+        }
+
         // struct containing the results and stats of the search
         SearchInfo info;
     private:
@@ -130,6 +136,7 @@ class Worker : public Thread {
         SearchLimits limits;
         std::atomic<bool> stop = false;
         std::atomic<bool> ponderhit = false;
+        chr::milliseconds moveOverhead = chr::milliseconds(0);
         chr::milliseconds searchTime;
         chr::time_point<chr::steady_clock> stopTime;
 };
