@@ -13,7 +13,7 @@ namespace chr = std::chrono;
 namespace harukashogi {
 
 
-constexpr chr::milliseconds MAX_MOVETIME = chr::milliseconds(5000);
+constexpr chr::milliseconds MAX_MOVETIME = chr::milliseconds(2000);
 
 
 void Worker::search() {
