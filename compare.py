@@ -4,6 +4,7 @@ import time
 import multiprocessing as mp
 import threading
 import queue
+import math
 
 
 class EngineTimeout(Exception):
@@ -125,8 +126,11 @@ if __name__ == "__main__":
     path1 = "searchengine/build/HarukaShogi"
     path2 = "engines/HarukaShogi_v011"
 
-    pool = mp.Pool(processes=30)
+    MAX_GAMES = 3000
+    NUM_PROCESSES = 30
 
+    pool = mp.Pool(processes=NUM_PROCESSES)
+        
     results = {
         "win": 0,
         "loss": 0,
@@ -134,14 +138,26 @@ if __name__ == "__main__":
         "error": 0,
     }
 
-    args = [(path1, path2, 30000, False) for _ in range(150)] + \
-           [(path1, path2, 30000, True) for _ in range(150)]
 
-    outcomes = pool.starmap(play_game, args)
+    for i in range(math.floor(MAX_GAMES/(NUM_PROCESSES*10))):
 
-    for result in outcomes:
-        results[result] += 1
+        args = [(path1, path2, 30000, False) for _ in range(NUM_PROCESSES*5)] + \
+            [(path1, path2, 30000, True) for _ in range(NUM_PROCESSES*5)]
+
+        outcomes = pool.starmap(play_game, args)
+
+        for result in outcomes:
+            results[result] += 1
+
+        win_ratio = (results["win"] + results["draw"] * 0.5) / (results["win"] + results["loss"] + results["draw"])
+        elo_delta = 400 * math.log10(win_ratio / (1 - win_ratio))
+        los = 0.5 * (1 + math.erf((results["win"] - results["loss"]) / math.sqrt(2*results["win"] + 2*results["loss"])))
+
+        print(f"RESULTS AFTER {i*NUM_PROCESSES*10} GAMES")
+        print(f"wins - draws - losses - errors:   {results["win"]} - {results["draw"]} - {results["loss"]} - {results["error"]}")
+        print(f"Win ratio:                        {win_ratio}")
+        print(f"Elo delta:                        {elo_delta}")
+        print(f"Likelyhoodd of Superiority (LOS): {los}")
+        print("---------------------------------------------------")
 
     pool.close()
-
-    print(results)

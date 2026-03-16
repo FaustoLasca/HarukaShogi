@@ -250,8 +250,12 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
         // if we have explored more than LMR_N_MOVES moves, lower the depth by 1
         // if the search score returned is higher than alpha, research at full depth
         nMoves++;
-        reduction = 1 + REDUCTION_TABLE[nMoves][depth-1];
-        searchDepth = depth > 2 ? depth - reduction : depth - 1;
+        if (depth > 2 && !searchPos.gives_check(m) && !searchPos.checkers()) {
+            reduction = 1 + REDUCTION_TABLE[nMoves][depth-1];
+        }
+        else reduction = 1;
+        
+        searchDepth = depth - reduction;
         
         searchPos.make_move(m);
         score = -search<false>(stack+1, searchDepth, -beta, -alpha);
