@@ -14,10 +14,10 @@ namespace harukashogi {
 // CUT_NODE: (eval higher than beta, pruned) lowerbound score
 // ALL_NODE: (eval lower than alpha) upperbound score
 //          (children could have been pruned)
-enum NodeType : uint8_t {
-    PV_NODE,
-    CUT_NODE,
-    ALL_NODE
+enum TTEntryType : uint8_t {
+    PV_ENTRY,
+    CUT_ENTRY,
+    ALL_ENTRY
 };
 
 
@@ -28,10 +28,10 @@ struct TTData {
     int16_t score = 0;
     Move bestMove = Move::null();
     uint8_t depth = 0;
-    NodeType type = ALL_NODE;
+    TTEntryType type = ALL_ENTRY;
 
     TTData() = default;
-    TTData(int16_t score, Move bestMove, uint8_t depth, NodeType type) :
+    TTData(int16_t score, Move bestMove, uint8_t depth, TTEntryType type) :
         score(score), bestMove(bestMove), depth(depth), type(type) {}
 };
 
@@ -42,7 +42,7 @@ struct TTEntry;
 
 class TTWriter {
     public:
-        void write(uint64_t key, int16_t score, Move bestMove, uint8_t depth, NodeType type);
+        void write(uint64_t key, int16_t score, Move bestMove, uint8_t depth, TTEntryType type);
 
         TTWriter(TTEntry* entry, uint8_t gen8) : entry(entry), gen8(gen8) {}
     

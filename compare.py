@@ -124,7 +124,7 @@ def play_game(path1, path2, max_time, reverse):
 
 if __name__ == "__main__":
     path1 = "searchengine/build/HarukaShogi"
-    path2 = "engines/HarukaShogi_v011"
+    path2 = "engines/HarukaShogi_v012"
 
     MAX_GAMES = 3000
     NUM_PROCESSES = 30
@@ -139,10 +139,10 @@ if __name__ == "__main__":
     }
 
 
-    for i in range(math.floor(MAX_GAMES/(NUM_PROCESSES*10))):
+    for i in range(math.floor(MAX_GAMES/(NUM_PROCESSES*8))):
 
-        args = [(path1, path2, 30000, False) for _ in range(NUM_PROCESSES*5)] + \
-            [(path1, path2, 30000, True) for _ in range(NUM_PROCESSES*5)]
+        args = [(path1, path2, 30000, False) for _ in range(NUM_PROCESSES*4)] + \
+            [(path1, path2, 30000, True) for _ in range(NUM_PROCESSES*4)]
 
         outcomes = pool.starmap(play_game, args)
 
@@ -153,7 +153,7 @@ if __name__ == "__main__":
         elo_delta = 400 * math.log10(win_ratio / (1 - win_ratio))
         los = 0.5 * (1 + math.erf((results["win"] - results["loss"]) / math.sqrt(2*results["win"] + 2*results["loss"])))
 
-        print(f"RESULTS AFTER {i*NUM_PROCESSES*10} GAMES")
+        print(f"RESULTS AFTER {(i+1)*NUM_PROCESSES*8} GAMES")
         print(f"wins - draws - losses - errors:   {results["win"]} - {results["draw"]} - {results["loss"]} - {results["error"]}")
         print(f"Win ratio:                        {win_ratio}")
         print(f"Elo delta:                        {elo_delta}")

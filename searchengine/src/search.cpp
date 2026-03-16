@@ -148,7 +148,7 @@ void Worker::iterative_deepening() {
         while (true) {
             alpha = std::max(old_score - ASPIRATION_DELTA * deltaMult, -INF_SCORE);
             beta  = std::min(old_score + ASPIRATION_DELTA * deltaMult,  INF_SCORE);
-            score = search<true>(stack, depth, alpha, beta);
+            score = search<ROOT_NODE>(stack, depth, alpha, beta);
 
             // if the score is within the aspiration window, break the loop
             if (score > alpha && score < beta)
@@ -172,7 +172,7 @@ void Worker::iterative_deepening() {
 }
 
 
-template <bool isRoot>
+template <NodeType searchType>
 int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
     stack->pv.fill(Move::null());
 
@@ -185,6 +185,8 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
 
     info.nodeCount++;
 
+    constexpr NodeType nodeType = searchType == ROOT_NODE ? PV_NODE : searchType;
+
     // probe the transposition table for an entry
     std::tuple<bool, TTData, TTWriter> result = tt.probe(searchPos.get_key());
     bool ttHit = std::get<0>(result);
@@ -192,21 +194,21 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
     TTWriter ttWriter = std::get<2>(result);
     // if an entry is found, check if the depth is equal or greater than the current depth
     // if it is, there are 3 possibilities to prune:
-    // 1. PV_NODE  (exact score): return the score of the entry
-    // 3. CUT_NODE (lower bound): return the score if it is greater than beta (pruned)
-    // 2. ALL_NODE (upper bound): return the score if it is lower than alpha (already found better)
+    // 1. PV_ENTRY  (exact score): return the score of the entry
+    // 3. CUT_ENTRY (lower bound): return the score if it is greater than beta (pruned)
+    // 2. ALL_ENTRY (upper bound): return the score if it is lower than alpha (already found better)
     Move ttMove = Move::null();
     if (ttHit) {
-        if (ttData.depth >= depth) {
-            // case 1: PV_NODE (exact score)
+        if (ttData.depth >= depth && nodeType != PV_NODE) {
+            // case 1: PV_ENTRY (exact score)
             // if the ply is 0 we risk making an illegal move with a type 1 collision
-            if (!isRoot && ttData.type == PV_NODE)
+            if (ttData.type == PV_ENTRY)
                 return ttData.score;
-            // case 2: CUT_NODE (lower bound)
-            if (ttData.type == CUT_NODE && ttData.score >= beta)
+            // case 2: CUT_ENTRY (lower bound)
+            if (ttData.type == CUT_ENTRY && ttData.score >= beta)
                 return ttData.score;
-            // case 3: ALL_NODE (upper bound)
-            if (ttData.type == ALL_NODE && ttData.score < alpha)
+            // case 3: ALL_ENTRY (upper bound)
+            if (ttData.type == ALL_ENTRY && ttData.score < alpha)
                 return ttData.score;
         }
 
@@ -216,9 +218,9 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
     // initialize the node type to ALL_NODE
     // if the entry is pruned, set the node type to CUT_NODE
     // if a score >= alpha, set the node type to PV_NODE
-    NodeType nodeType = ALL_NODE;
+    TTEntryType entryType = ALL_ENTRY;
 
-    if (isRoot && ttMove.is_null())
+    if (searchType == ROOT_NODE && ttMove.is_null())
         ttMove = info.pv[0];
 
     // null move pruning
@@ -228,7 +230,7 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
     if (!searchPos.checkers()) {
         searchPos.make_null_move();
         searchDepth = depth <= 3 ? 0 : depth - 3;
-        score = -search<false>(stack+1, searchDepth, -beta, -beta + 1);
+        score = -search<NON_PV_NODE>(stack+1, searchDepth, -beta, -beta + 1);
         searchPos.unmake_null_move();
         if (score >= beta)
             return score;
@@ -258,25 +260,36 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
         searchDepth = depth - reduction;
         
         searchPos.make_move(m);
-        score = -search<false>(stack+1, searchDepth, -beta, -alpha);
-        searchPos.unmake_move(m);
-
-        // if the score is greater than alpha, and the search depth is less than the full depth
-        // perform a search at full depth
-        if (score >= alpha && searchDepth < depth - 1) {
-            searchDepth = depth - 1;
-            searchPos.make_move(m);
-            score = -search<false>(stack+1, searchDepth, -beta, -alpha);
-            searchPos.unmake_move(m);
+        // Princpal Variation Search (PVS)
+        // If we are in a PV node, search only the first node with a full alpha beta window,
+        // the other moves are searched as NON_PV nodes with null window between alpha and alpha+1.
+        // If the search fails high (and thus returns a score > alpha), research with a full window.
+        if (nMoves == 1) {
+            score = -search<nodeType>(stack+1, depth - 1, -beta, -alpha);
         }
+        else {
+            score = -search<NON_PV_NODE>(stack+1, searchDepth, -alpha-1, -alpha);
+            // If the search fails high and the searchdepth was reduced,
+            // first search at full depth while keeping the null window.
+            if (score > alpha && searchDepth < depth - 1) {
+                score = -search<NON_PV_NODE>(stack+1, depth - 1, -alpha-1, -alpha);
+            }
+            // If it still fails high in a PV node, search at full depth with a full window.
+            if (score > alpha && nodeType == PV_NODE) {
+                score = -search<PV_NODE>(stack+1, depth - 1, -beta, -alpha);
+            }
+        }
+        searchPos.unmake_move(m);
 
         // update best score and the pv table
         if (score > bestScore) {
             bestScore = score;
-            stack->pv[0] = m;
-            std::copy((stack+1)->pv.begin(), (stack+1)->pv.end()-1, stack->pv.begin() + 1);
+            if constexpr (nodeType == PV_NODE) {
+                stack->pv[0] = m;
+                std::copy((stack+1)->pv.begin(), (stack+1)->pv.end()-1, stack->pv.begin() + 1);
+            }
             // if the search is root, update the best move and evaluation of the worker
-            if constexpr (isRoot) {
+            if constexpr (searchType == ROOT_NODE) {
                 info.pv = stack->pv;
                 info.eval = bestScore;
             }
@@ -287,7 +300,7 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
         // if the score is greater than alpha, update alpha
         if (score >= alpha) {
             alpha = score;
-            nodeType = PV_NODE;
+            entryType = PV_ENTRY;
         }
 
         // if alpha is greater than beta, prune the search
@@ -300,13 +313,13 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
             }
 
             // update the transposition table entry
-            ttWriter.write(searchPos.get_key(), bestScore, stack->pv[0], depth, CUT_NODE);
+            ttWriter.write(searchPos.get_key(), bestScore, stack->pv[0], depth, CUT_ENTRY);
 
             return bestScore;
         }
     }
 
-    ttWriter.write(searchPos.get_key(), bestScore, stack->pv[0], depth, nodeType);
+    ttWriter.write(searchPos.get_key(), bestScore, stack->pv[0], depth, entryType);
 
     return bestScore;
 }

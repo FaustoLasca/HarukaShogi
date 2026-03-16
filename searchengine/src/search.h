@@ -71,6 +71,12 @@ class OutputManager {
 };
 
 
+enum NodeType {
+    PV_NODE,
+    NON_PV_NODE,
+    ROOT_NODE,
+};
+
 class Worker : public Thread {
     public:
         Worker(size_t id, TTable& tt, ThreadPool<Worker>& threads, OutputManager& outputManager) : 
@@ -115,7 +121,7 @@ class Worker : public Thread {
         // iteratively performs searches at increasing depths
         void iterative_deepening();
         // the main search function
-        template <bool isRoot>
+        template <NodeType nodeType>
         int search(StackEntry* stack, int depth, int alpha = -INF_SCORE, int beta = INF_SCORE);
         // quiescence search, called by the main search
         int q_search(int alpha = -INF_SCORE, int beta = INF_SCORE);

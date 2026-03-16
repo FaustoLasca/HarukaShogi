@@ -27,10 +27,10 @@ struct TTEntry {
 
     TTData read() const {
         return TTData(score, bestMove, depthAndNodeType & DEPTH_MASK,
-                      NodeType(depthAndNodeType >> DEPTH_BITS));
+                      TTEntryType(depthAndNodeType >> DEPTH_BITS));
     }
 
-    void write(uint64_t key, int16_t score, Move bestMove, uint8_t depth, NodeType type,
+    void write(uint64_t key, int16_t score, Move bestMove, uint8_t depth, TTEntryType type,
                int generation) {
         this->key_low = uint16_t(key);
         this->key_high = uint16_t(key >> 16);
@@ -60,7 +60,7 @@ struct Cluster {
 };
 
 
-void TTWriter::write(uint64_t key, int16_t score, Move bestMove, uint8_t depth, NodeType type) {
+void TTWriter::write(uint64_t key, int16_t score, Move bestMove, uint8_t depth, TTEntryType type) {
     entry->write(key, score, bestMove, depth, type, gen8);
 }
 
