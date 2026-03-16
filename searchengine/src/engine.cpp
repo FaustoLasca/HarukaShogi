@@ -4,6 +4,13 @@
 namespace harukashogi {
 
 
+void init() {
+    Bitboards::init();
+    Position::init();
+    Search::init();
+}
+
+
 void Engine::set_position(const std::string& sfen, const std::vector<std::string>& moves) {
     pos.set(sfen);
     for (const auto& move : moves) {

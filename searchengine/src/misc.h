@@ -20,9 +20,6 @@ std::ostream& operator<<(std::ostream& os, Move m);
 Move move_from_string(const std::string& move_str);
 
 
-void init();
-
-
 enum LogLevel : uint8_t {
     SILENT,
     ESSENTIAL,

@@ -13,6 +13,18 @@ namespace chr = std::chrono;
 namespace harukashogi {
 
 
+int REDUCTION_TABLE[MAX_MOVES][MAX_DEPTH];
+
+
+void Search::init() {
+    for (int nMoves = 0; nMoves < MAX_MOVES; nMoves++) {
+        for (int depth = 0; depth < MAX_DEPTH; depth++) {
+            REDUCTION_TABLE[nMoves][depth] = std::log(nMoves) * std::log(depth) * 2 / 5;
+        }
+    }
+}
+
+
 constexpr chr::milliseconds MAX_MOVETIME = chr::milliseconds(2000);
 constexpr chr::milliseconds MIN_MOVETIME = chr::milliseconds(10);
 
@@ -127,9 +139,11 @@ void Worker::iterative_deepening() {
     int score;
     int alpha, beta;
     int deltaMult = 1;
+
+    int startingDepth = 1 + threadId % 4;
     
     // loop through the depths
-    for (int depth = 1; depth <= MAX_DEPTH; depth++) {
+    for (int depth = startingDepth; depth <= MAX_DEPTH; depth++) {
         // aspiration window loop
         while (true) {
             alpha = std::max(old_score - ASPIRATION_DELTA * deltaMult, -INF_SCORE);
@@ -236,7 +250,7 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
         // if we have explored more than LMR_N_MOVES moves, lower the depth by 1
         // if the search score returned is higher than alpha, research at full depth
         nMoves++;
-        reduction = 1 + std::log(nMoves) * std::log(depth - 1) * 2 / 5;
+        reduction = 1 + REDUCTION_TABLE[nMoves][depth-1];
         searchDepth = depth > 2 ? depth - reduction : depth - 1;
         
         searchPos.make_move(m);

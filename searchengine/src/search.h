@@ -16,6 +16,11 @@ namespace chr = std::chrono;
 namespace harukashogi {
 
 
+namespace Search {
+    void init();
+}
+
+
 class AbortSearchException : public std::exception {
     public:
         const char* what() const noexcept override {

@@ -2,10 +2,12 @@
 #define ENGINE_H
 
 #include "search.h"
-#include "misc.h"
 #include "opening_book.h"
 
 namespace harukashogi {
+
+
+void init();
 
 
 class Engine {

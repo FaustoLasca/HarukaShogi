@@ -1,16 +1,8 @@
 #include <sstream>
 
 #include "misc.h"
-#include "bitboard.h"
-#include "position.h"
 
 namespace harukashogi {
-
-
-void init() {
-    Bitboards::init();
-    Position::init();
-}
 
 
 std::ostream& operator<<(std::ostream& os, Square sq) {
