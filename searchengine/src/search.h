@@ -89,6 +89,9 @@ class Worker : public Thread {
             std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
         );
 
+        // clears the move histories, usually called when starting a new game
+        void clear();
+
         // master thread only
         void set_limits(const SearchLimits& limits) {
             // only the master thread uses the limits
@@ -132,7 +135,7 @@ class Worker : public Thread {
         // the elements exclusive to the worker
         Position searchPos, rootPos;
 
-        HistoryEntry moveHistory[NUM_COLORS][HISTORY_SIZE];
+        HistoryEntry moveHistory[NUM_COLORS][HISTORY_SIZE] = {};
 
         StackEntry stack[MAX_DEPTH];
         void empty_stack();

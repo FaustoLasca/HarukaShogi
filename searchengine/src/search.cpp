@@ -130,6 +130,7 @@ void Worker::iterative_deepening() {
     for (int i = 0; i < NUM_COLORS; i++)
         for (int j = 0; j < HISTORY_SIZE; j++) {
             moveHistory[i][j] = moveHistory[i][j] * 3 / 4;
+            // noise to slightly change the threads' move ordering
             if (j%64 == threadId) {
                 moveHistory[i][j] = moveHistory[i][j] + 1;
             }
@@ -401,13 +402,17 @@ void Worker::stop_check() {
 }
 
 
-void Worker::set_position(std::string sfen) {
-    rootPos.set(sfen);
-
-    // when setting a new position, reset the move history
+void Worker::clear() {
+    // clear the main history
     for (int i = 0; i < NUM_COLORS; i++)
         for (int j = 0; j < HISTORY_SIZE; j++)
             moveHistory[i][j] = 0;
+}
+
+
+void Worker::set_position(std::string sfen) {
+    rootPos.set(sfen);
+    searchPos.set(sfen);
 }
 
 

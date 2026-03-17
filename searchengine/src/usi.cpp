@@ -25,8 +25,8 @@ void USIEngine::run() {
         else if (token == "setoption")
             setoption(cmdStream);
 
-        // else if (token == "ucinewgame")
-        //     usinewgame();
+        else if (token == "ucinewgame")
+            usinewgame();
         
         else if (token == "position")
             position(cmdStream);
@@ -57,6 +57,7 @@ void USIEngine::usi() {
     std::cout << "option name USI_Hash type spin default 16 min 1 max 1024\n";
     std::cout << "option name Threads type spin default 1 min 1 max 128\n";
     std::cout << "option name MoveOverhead type spin default 0 min 0 max 2000\n";
+    std::cout << "option name USI_OwnBook type check default true\n";
 
     std::cout << "usiok" << std::endl;
 }
@@ -78,6 +79,8 @@ void USIEngine::setoption(std::istringstream& cmdStream) {
                 engine.resize_threadpool(std::stoi(token));
             else if (name == "MoveOverhead")
                 engine.set_move_overhead(std::stoi(token));
+            else if (name == "USI_OwnBook")
+                engine.set_own_book(token == "true");
             name.clear();
         }
     }
@@ -88,6 +91,10 @@ void USIEngine::isready() {
     std::cout << "readyok" << std::endl;
 }
 
+
+void USIEngine::usinewgame() {
+    engine.new_game();
+}
 
 void USIEngine::position(std::istringstream& cmdStream) {
     std::string sfen, token;

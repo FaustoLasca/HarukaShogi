@@ -88,6 +88,9 @@ def play_game(path1, path2, max_time, reverse):
 
     time_left = {BLACK: max_time, WHITE: max_time}
 
+    engine["black"].send("newgame")
+    engine["white"].send("newgame")
+
     num_moves = 0
     while num_moves < 500:
         if board.is_game_over():
@@ -124,7 +127,7 @@ def play_game(path1, path2, max_time, reverse):
 
 if __name__ == "__main__":
     path1 = "searchengine/build/HarukaShogi"
-    path2 = "engines/HarukaShogi_v012"
+    path2 = "engines/HarukaShogi_v013"
 
     MAX_GAMES = 3000
     NUM_PROCESSES = 30
@@ -139,25 +142,41 @@ if __name__ == "__main__":
     }
 
 
-    for i in range(math.floor(MAX_GAMES/(NUM_PROCESSES*8))):
+    for i in range(math.floor(MAX_GAMES/(NUM_PROCESSES*10))):
 
-        args = [(path1, path2, 30000, False) for _ in range(NUM_PROCESSES*4)] + \
-            [(path1, path2, 30000, True) for _ in range(NUM_PROCESSES*4)]
+        args = [(path1, path2, 30000, False) for _ in range(NUM_PROCESSES*5)] + \
+            [(path1, path2, 30000, True) for _ in range(NUM_PROCESSES*5)]
 
         outcomes = pool.starmap(play_game, args)
 
-        for result in outcomes:
-            results[result] += 1
+        for outcome in outcomes:
+            results[outcome] += 1
 
-        win_ratio = (results["win"] + results["draw"] * 0.5) / (results["win"] + results["loss"] + results["draw"])
-        elo_delta = 400 * math.log10(win_ratio / (1 - win_ratio))
+        N = results["win"] + results["loss"] + results["draw"]
+        w = results["win"] / N
+        l = results["loss"] / N
+        d = results["draw"] / N
+
+        win_ratio = (results["win"] + results["draw"] * 0.5) / N
+
+        var = w * (1 - win_ratio)**2 + d * (0.5 - win_ratio)**2 + l * (-win_ratio)**2
+        se = math.sqrt(var / N)
+
+        # ~95% confidence interval
+        p_lo = max(win_ratio - 2*se, 0.0001)
+        p_hi = min(win_ratio + 2*se, 0.9999)
+
+        elo = 400 * math.log10(win_ratio / (1 - win_ratio))
+        elo_lo = 400 * math.log10(p_lo / (1 - p_lo))
+        elo_hi = 400 * math.log10(p_hi / (1 - p_hi))
+
         los = 0.5 * (1 + math.erf((results["win"] - results["loss"]) / math.sqrt(2*results["win"] + 2*results["loss"])))
 
-        print(f"RESULTS AFTER {(i+1)*NUM_PROCESSES*8} GAMES")
+        print(f"RESULTS AFTER {(i+1)*NUM_PROCESSES*10} GAMES")
         print(f"wins - draws - losses - errors:   {results["win"]} - {results["draw"]} - {results["loss"]} - {results["error"]}")
-        print(f"Win ratio:                        {win_ratio}")
-        print(f"Elo delta:                        {elo_delta}")
-        print(f"Likelyhoodd of Superiority (LOS): {los}")
+        print(f"Win ratio:                        {win_ratio:.3f}")
+        print(f"Elo delta:                        {round(elo)} [{round(elo_lo)} , {round(elo_hi)}]")
+        print(f"Likelyhoodd of Superiority (LOS): {los:.3f}")
         print("---------------------------------------------------")
 
     pool.close()

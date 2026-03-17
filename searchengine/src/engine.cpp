@@ -11,6 +11,13 @@ void init() {
 }
 
 
+void Engine::new_game() {
+    for (auto& thread : threads) {
+        thread->clear();
+    }
+}
+
+
 void Engine::set_position(const std::string& sfen, const std::vector<std::string>& moves) {
     pos.set(sfen);
     for (const auto& move : moves) {
@@ -29,10 +36,12 @@ void Engine::go(const SearchLimits& limits) {
     threads.wait_search_finished();
 
     // sample a move from the opening book
-    Move move = openingBook.sample_move(pos.get_key());
-    if (!limits.ponder && move != Move::null()) {
-        outputManager.on_best_move(move, Move::null());
-        return;
+    if (ownBook) {
+        Move move = openingBook.sample_move(pos.get_key());
+        if (!limits.ponder && move != Move::null()) {
+            outputManager.on_best_move(move, Move::null());
+            return;
+        }
     }
 
     threads.master().set_limits(limits);
