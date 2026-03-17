@@ -126,10 +126,10 @@ constexpr int ASPIRATION_DELTA = 500;
 constexpr int ASPIRATION_DELTA_MULT = 100;
 
 void Worker::iterative_deepening() {
-    // lower the move histories by 3/4, to shrink old values and make new values more important
+    // shrink old values of the move history to make new values more important
     for (int i = 0; i < NUM_COLORS; i++)
         for (int j = 0; j < HISTORY_SIZE; j++) {
-            moveHistory[i][j] = moveHistory[i][j] * 3 / 4;
+            moveHistory[i][j] = moveHistory[i][j] / 8;
             // noise to slightly change the threads' move ordering
             if (j%64 == threadId) {
                 moveHistory[i][j] = moveHistory[i][j] + 1;

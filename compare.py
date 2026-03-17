@@ -126,7 +126,7 @@ def play_game(path1, path2, max_time, reverse):
 
 
 if __name__ == "__main__":
-    path1 = "searchengine/build/HarukaShogi"
+    path1 = "engines/HarukaShogi_v014"
     path2 = "engines/HarukaShogi_v013"
 
     MAX_GAMES = 3000
