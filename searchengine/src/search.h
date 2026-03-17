@@ -83,7 +83,9 @@ class Worker : public Thread {
             Thread(id),
             tt(tt),
             threads(threads),
-            outputManager(outputManager) {}
+            outputManager(outputManager) {
+            clear();
+        }
 
         void set_position(
             std::string sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
@@ -135,7 +137,7 @@ class Worker : public Thread {
         // the elements exclusive to the worker
         Position searchPos, rootPos;
 
-        HistoryEntry moveHistory[NUM_COLORS][HISTORY_SIZE] = {};
+        HistoryEntry moveHistory[NUM_COLORS][HISTORY_SIZE];
 
         StackEntry stack[MAX_DEPTH];
         void empty_stack();
