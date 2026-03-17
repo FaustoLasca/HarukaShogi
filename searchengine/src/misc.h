@@ -17,7 +17,7 @@ std::ostream& operator<<(std::ostream& os, Square t);
 std::ostream& operator<<(std::ostream& os, Move m);
 
 
-void init();
+Move move_from_string(const std::string& move_str);
 
 
 enum LogLevel : uint8_t {

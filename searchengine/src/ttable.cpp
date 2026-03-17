@@ -1,4 +1,5 @@
 #include <iostream>
+#include <atomic>
 
 #include "ttable.h"
 
@@ -26,10 +27,10 @@ struct TTEntry {
 
     TTData read() const {
         return TTData(score, bestMove, depthAndNodeType & DEPTH_MASK,
-                      NodeType(depthAndNodeType >> DEPTH_BITS));
+                      TTEntryType(depthAndNodeType >> DEPTH_BITS));
     }
 
-    void write(uint64_t key, int16_t score, Move bestMove, uint8_t depth, NodeType type,
+    void write(uint64_t key, int16_t score, Move bestMove, uint8_t depth, TTEntryType type,
                int generation) {
         this->key_low = uint16_t(key);
         this->key_high = uint16_t(key >> 16);
@@ -59,18 +60,21 @@ struct Cluster {
 };
 
 
-void TTWriter::write(uint64_t key, int16_t score, Move bestMove, uint8_t depth, NodeType type) {
+void TTWriter::write(uint64_t key, int16_t score, Move bestMove, uint8_t depth, TTEntryType type) {
     entry->write(key, score, bestMove, depth, type, gen8);
 }
 
 
-// 100 MB transposition table size
-constexpr size_t TT_MB_SIZE = 200;
-constexpr size_t TT_SIZE = TT_MB_SIZE * 1024 * 1024 / sizeof(Cluster);
+// resize the transposition table to the given size in MB
+void TTable::resize(size_t size) {
+    size_t numClusters = size * 1024 * 1024 / sizeof(Cluster);
+    table = std::make_unique<Cluster[]>(numClusters);
+    this->size = numClusters;
+}
 
 
 TTable::TTable() {
-    table = std::make_unique<Cluster[]>(TT_SIZE);
+    resize(16);
 }
 
 TTable::~TTable() = default;
@@ -81,7 +85,7 @@ uint8_t TTable::relativeAge(uint8_t gen) const {
 }
 
 std::tuple<bool, TTData, TTWriter> TTable::probe(uint64_t key) {
-    TTEntry* entries = table[index(key, TT_SIZE)].entries;
+    TTEntry* entries = table[index(key)].entries;
 
     // loop through the cluster and 
     for (size_t i = 0; i < CLUSTER_SIZE; i++) {
@@ -116,14 +120,14 @@ void TTable::new_search() {
 
 void TTable::print_stats() const {
     int count = 0;
-    for (size_t i = 0; i < TT_SIZE; i++) {
+    for (size_t i = 0; i < size; i++) {
         for (size_t j = 0; j < CLUSTER_SIZE; j++) {
             if (!table[i].entries[j].is_empty())
                 count++;
         }
     }
     
-    std::cout << "TT Size:    " << TT_SIZE * CLUSTER_SIZE << std::endl;
+    std::cout << "TT Size:    " << size * CLUSTER_SIZE << std::endl;
     std::cout << "Occupied:   " << count << std::endl;
     std::cout << "Hits:       " << hits << std::endl;
     std::cout << "Collisions: " << collisions << std::endl;
@@ -132,8 +136,8 @@ void TTable::print_stats() const {
 
 // fast modulo hashing using multiplication and bit shift
 // returns a number in the range [0, ttSize)
-size_t TTable::index(uint64_t key, uint64_t ttSize) const {
-    return (__uint128_t(key) * __uint128_t(ttSize)) >> 64;
+size_t TTable::index(uint64_t key) const {
+    return (__uint128_t(key) * __uint128_t(size)) >> 64;
 }
 
 

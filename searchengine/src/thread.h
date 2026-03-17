@@ -6,6 +6,7 @@
 #include <mutex>
 #include <condition_variable>
 #include <vector>
+#include <functional>
 
 namespace harukashogi {
 
@@ -37,8 +38,9 @@ class Thread {
 
         // used by the Worker, so needs to be protected.
         size_t threadId;
+        bool is_master() const { return threadId == 0; }
 
-        private:
+    private:
         // mutex and condition variable to synchronize the thread
         std::mutex mutex;
         std::condition_variable cv;
@@ -61,21 +63,34 @@ class Thread {
 
 
 template <typename T>
-concept ThreadType = std::derived_from<T, Thread>;
-
-
-template <ThreadType T>
 class ThreadPool {
+    static_assert(std::derived_from<T, Thread>, "T must derive from Thread");
+
     public:
         // C++ black magic to pass arguments to the constructor of the threads in the pool
         template <typename... Args>
-        ThreadPool(size_t numThreads, Args&&... args) {
+        ThreadPool(Args&&... args) {
+            auto savedArgs = std::tuple<Args...>(std::forward<Args>(args)...);
+            threadFactory = [savedArgs](size_t id) {
+                return std::make_unique<T>(id, std::get<Args>(savedArgs)...);
+            };
+            resize(1);
+        }
+
+        void resize(size_t numThreads) {
+            threads.resize(numThreads);
             for (size_t i = 0; i < numThreads; i++)
-                threads.push_back(std::make_unique<T>(i, std::forward<Args>(args)...));
+                threads[i] = threadFactory(i);
         }
         
         // same functions as the Thread class, but for the entire thread pool
-        void start_searching() { for (auto& thread : threads) thread->start_searching(); }
+        void start_searching() { master().start_searching(); }
+        // function called by the master thread to start the searching of the slaves
+        void slaves_start_searching() {
+            for (size_t i = 1; i < threads.size(); i++)
+                threads[i]->start_searching();
+        }
+
         void abort_search() { for (auto& thread : threads) thread->abort_search(); }
         void exit() { for (auto& thread : threads) thread->exit(); }
         bool is_searching() {
@@ -84,15 +99,23 @@ class ThreadPool {
             return false;
         }
         void wait_search_finished() { for (auto& thread : threads) thread->wait_search_finished(); }
+        void wait_search_finished_slaves() {
+            for (size_t i = 1; i < threads.size(); i++)
+                threads[i]->wait_search_finished();
+        }
+
+        T& master() { return *threads[0]; } // returns the master thread
 
         // operator to access the threads in the pool
-        T& operator[](size_t index) { return *threads[index]; }
+        const T& operator[](size_t index) const { return *threads[index]; }
         size_t size() const { return threads.size(); }
-        auto begin() { return threads.begin(); }
-        auto end() { return threads.end(); }
+        auto begin() const { return threads.begin(); }
+        auto end() const { return threads.end(); }
 
     private:
         std::vector<std::unique_ptr<T>> threads;
+
+        std::function<std::unique_ptr<T>(size_t)> threadFactory;
 };
 
 

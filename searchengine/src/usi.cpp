@@ -1,0 +1,224 @@
+#include "usi.h"
+#include "misc.h"
+
+namespace harukashogi {
+
+
+void USIEngine::run() {
+    std::string command, token;
+    do {
+        std::getline(std::cin, command);
+        std::istringstream cmdStream(command);
+
+        token.clear();
+        cmdStream >> std::skipws >> token;
+
+        if (token == "usi")
+            usi();
+
+        // else if (token == "debug")
+        //     debug(cmdStream);
+
+        else if (token == "isready")
+            isready();
+
+        else if (token == "setoption")
+            setoption(cmdStream);
+
+        else if (token == "ucinewgame")
+            usinewgame();
+        
+        else if (token == "position")
+            position(cmdStream);
+
+        else if (token == "go")
+            go(cmdStream);
+
+        else if (token == "stop")
+            stop();
+
+        else if (token == "ponderhit")
+            ponderhit();
+
+        // else if (token == "gameover")
+        //     gameover(cmdStream);
+
+        // unknown commands are ignored, as per the USI protocol
+
+    } while (token != "quit");
+}
+
+
+void USIEngine::usi() {
+    std::cout << "id name Haruka Shogi\n"
+              << "id author Fausto Lasca" << std::endl;
+
+    // TODO: add options
+    std::cout << "option name USI_Hash type spin default 16 min 1 max 1024\n";
+    std::cout << "option name Threads type spin default 1 min 1 max 128\n";
+    std::cout << "option name MoveOverhead type spin default 0 min 0 max 2000\n";
+    std::cout << "option name USI_OwnBook type check default true\n";
+
+    std::cout << "usiok" << std::endl;
+}
+
+
+void USIEngine::setoption(std::istringstream& cmdStream) {
+    std::string token, name, _;
+    
+    while (cmdStream >> token) {
+        if (token == "name") {
+            cmdStream >> name;
+        }
+
+        else if (token == "value") {
+            cmdStream >> token;
+            if (name == "USI_Hash")
+                engine.resize_tt(std::stoi(token));
+            else if (name == "Threads")
+                engine.resize_threadpool(std::stoi(token));
+            else if (name == "MoveOverhead")
+                engine.set_move_overhead(std::stoi(token));
+            else if (name == "USI_OwnBook")
+                engine.set_own_book(token == "true");
+            name.clear();
+        }
+    }
+}
+
+
+void USIEngine::isready() {
+    std::cout << "readyok" << std::endl;
+}
+
+
+void USIEngine::usinewgame() {
+    engine.new_game();
+}
+
+void USIEngine::position(std::istringstream& cmdStream) {
+    std::string sfen, token;
+    std::vector<std::string> moves;
+
+    cmdStream >> token;
+
+    // set the initial position
+    if (token == "startpos")
+        sfen = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1";
+    else if (token == "sfen") {
+        for (int i = 0; i < 4; ++i) {
+            cmdStream >> token;
+            sfen += token + " ";
+        }
+    }
+
+    // make the moves if provided
+    cmdStream >> token;
+    if (token == "moves") {
+        while (cmdStream >> token) {
+            moves.push_back(token);
+        }
+    }
+
+    engine.set_position(sfen, moves);
+}
+
+
+void USIEngine::go(std::istringstream& cmdStream) {
+    std::string token;
+
+    SearchLimits limits;
+
+    while (cmdStream >> token) {
+        if (token == "movetime") {
+            cmdStream >> token;
+            limits.moveTime = chr::milliseconds(std::stoi(token));
+        }
+        if (token == "infinite")
+            limits.infinite = true;
+
+        if (token == "ponder")
+            limits.ponder = true;
+
+        if (token == "btime") {
+            cmdStream >> token;
+            limits.time[BLACK] = chr::milliseconds(std::stoi(token));
+        }
+        if (token == "wtime") {
+            cmdStream >> token;
+            limits.time[WHITE] = chr::milliseconds(std::stoi(token));
+        }
+        if (token == "binc") {
+            cmdStream >> token;
+            limits.inc[BLACK] = chr::milliseconds(std::stoi(token));
+        }
+        if (token == "winc") {
+            cmdStream >> token;
+            limits.inc[WHITE] = chr::milliseconds(std::stoi(token));
+        }
+        if (token == "byoyomi") {
+            cmdStream >> token;
+            limits.byoyomi = chr::milliseconds(std::stoi(token));
+        }
+        if (token == "depth") {
+            cmdStream >> token;
+            limits.depth = std::stoi(token);
+        }
+        if (token == "nodes") {
+            cmdStream >> token;
+            limits.nodes = std::stoull(token);
+        }
+        if (token == "movestogo") {
+            cmdStream >> token;
+            limits.movesToGo = std::stoi(token);
+        }
+    }
+
+    engine.go(limits);
+}
+
+
+void USIEngine::stop() {
+    engine.stop();
+}
+
+
+void USIEngine::ponderhit() {
+    engine.ponderhit();
+}
+
+
+void USIManager::on_best_move(Move bestMove, Move ponderMove) {
+    std::cout << "bestmove " << bestMove;
+    if (!ponderMove.is_null())
+        std::cout << " ponder " << ponderMove;
+    std::cout << std::endl;
+}
+
+void USIManager::on_iter(const SearchInfo& info) {
+    auto time = chr::duration_cast<chr::milliseconds>(
+        chr::steady_clock::now() - info.startTime
+    );
+    // avoid division by zero
+    long elapsed = std::max(time.count(), long(1));
+    long nps = info.nodeCount * long(1000) / elapsed;
+
+    std::cout << "info"
+              << " depth " << info.depth
+              << " score cp " << info.eval
+              << " time "  << time.count()
+              << " nodes " << info.nodeCount
+              << " nps " << nps;
+
+    std::cout << " pv";
+    for (auto m : info.pv) {
+        if (m.is_null())
+            break;
+        std::cout << " " << m;
+    }
+    
+    std::cout << std::endl;
+}
+
+
+} // namespace harukashogi

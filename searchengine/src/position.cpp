@@ -475,7 +475,7 @@ void Position::unmake_null_move() {
 
 bool Position::is_pseudo_legal(Move m) const {
     // TODO: might need to check if the move data is valid
-    if (m.is_null())
+    if (m.is_null() || !m.is_valid())
         return false;
 
     if (m.is_drop()) {
@@ -495,6 +495,10 @@ bool Position::is_pseudo_legal(Move m) const {
             return false;
         // check if the destination square is occupied by the same color
         if (board[m.to()] != NO_PIECE && color_of(board[m.to()]) == sideToMove) {
+            return false;
+        }
+        // if the move is a promotion, check if the piece can be promoted
+        if (m.is_promotion() && !can_promote(type_of(board[m.from()]))) {
             return false;
         }
     }
