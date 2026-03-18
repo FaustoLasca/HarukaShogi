@@ -129,7 +129,7 @@ void Worker::iterative_deepening() {
     // shrink old values of the move history to make new values more important
     for (int i = 0; i < NUM_COLORS; i++)
         for (int j = 0; j < HISTORY_SIZE; j++) {
-            moveHistory[i][j] = moveHistory[i][j] / 8;
+            moveHistory[i][j] = moveHistory[i][j] / 4;
             // noise to slightly change the threads' move ordering
             if (j%64 == threadId) {
                 moveHistory[i][j] = moveHistory[i][j] + 1;
