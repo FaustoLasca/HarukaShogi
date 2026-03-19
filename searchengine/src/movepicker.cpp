@@ -149,8 +149,8 @@ Move MovePicker::next_move() {
         }
     }
     
-    // move curr to the next legal move
-    while (curr < scoredEnd && !pos.is_legal(*curr)) {
+    // move curr to the next legal move (exclude the tt move as it has already been returned)
+    while (curr < scoredEnd && (!pos.is_legal(*curr) || *curr == ttMove)) {
         curr++;
     }
 

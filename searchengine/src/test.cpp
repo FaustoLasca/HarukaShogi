@@ -1,5 +1,6 @@
 #include <iostream>
 
+#include "movepicker.h"
 #include "position.h"
 #include "engine.h"
 #include "misc.h"
@@ -8,11 +9,14 @@ using namespace harukashogi;
 
 int main() {
     init();
+
     Position pos;
-    pos.set("k8/9/6b2/4gs3/4p4/3GG4/2B3B2/9/8K b - 1");
-    std::cout << pos.sfen() << std::endl;
-    Move m = move_from_string("5f5e");
-    std::cout << pos.see_ge(m, 0) << std::endl;
-    pos.make_move(m);
-    std::cout << pos.sfen() << std::endl;
+    pos.set("l7l/1r2gkg2/2n1p1np1/p1ppssp1p/1p3p3/P1P1S1P1P/1PSPP1N2/2G2G3/LNK4RL b BPbp 1");
+    HistoryEntry moveHistory[MAX_MOVES];
+    MovePicker mp(pos, 1, moveHistory, move_from_string("B*2e"));
+
+    Move m;
+    while (!(m = mp.next_move()).is_null()) {
+        std::cout << m << (pos.is_capture(m) ? " capture" : " quiet") << std::endl;
+    }
 }
