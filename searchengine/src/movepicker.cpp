@@ -1,7 +1,7 @@
 #include <algorithm>
 
 #include "movepicker.h"
-#include "evaluate.h"
+#include "misc.h"
 
 namespace harukashogi {
 

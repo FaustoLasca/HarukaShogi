@@ -155,6 +155,10 @@ class Position {
 			std::cout << "repetitions: " << repetitionTable.get_repetitions() << std::endl;
 		}
 
+		// static exchange evaluation
+		// returns true if the see is greater or equal to the threshold
+		bool see_ge(Move m, int threshold) const;
+
 		
 		private:
 
