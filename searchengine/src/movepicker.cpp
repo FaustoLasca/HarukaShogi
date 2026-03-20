@@ -180,7 +180,7 @@ Move MovePicker::next_move() {
 
         case QUIESCENCE_STAGE:
             for (; curr < movesEnd; curr++)
-                if (pos.is_legal(*curr))
+                if (pos.is_legal(*curr) && (pos.checkers() || pos.see_ge(*curr, 0)))
                     return *curr++;
             
             return Move::null();
