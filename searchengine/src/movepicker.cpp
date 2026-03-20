@@ -105,9 +105,9 @@ Move MovePicker::next_move() {
             [[fallthrough]];
         }
 
-        case CAPTURE_STAGE:
+        case GOOD_CAPTURE_STAGE:
             for (; curr < capturesEnd; curr++)
-                if (pos.is_legal(*curr) && *curr != ttMove)
+                if (pos.is_legal(*curr) && *curr != ttMove && pos.see_ge(*curr, 0))
                     return *curr++;
             
             stage++;
@@ -130,6 +130,15 @@ Move MovePicker::next_move() {
         case QUIET_STAGE:
             for (; curr < movesEnd; curr++)
                 if (pos.is_legal(*curr) && *curr != ttMove)
+                    return *curr++;
+            
+            stage++;
+            curr = moves;
+            [[fallthrough]];
+
+        case BAD_CAPTURE_STAGE:
+            for (; curr < capturesEnd; curr++)
+                if (pos.is_legal(*curr) && *curr != ttMove && !pos.see_ge(*curr, 0))
                     return *curr++;
             
             return Move::null();
