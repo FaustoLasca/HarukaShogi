@@ -22,10 +22,9 @@ enum Stage {
     // normal search stages
     TT_STAGE,
     CAPTURE_STAGE_INIT,
-    GOOD_CAPTURE_STAGE,
+    CAPTURE_STAGE,
     QUIET_STAGE_INIT,
     QUIET_STAGE,
-    BAD_CAPTURE_STAGE,
 
     // evasion
     EVASION_TT_STAGE,
@@ -60,8 +59,8 @@ class MovePicker {
 
         HistoryEntry* moveHistory;
 
-        ValMove scoredMoves[MAX_MOVES];
-        ValMove *curr, *scoredEnd;
+        ValMove moves[MAX_MOVES];
+        ValMove *curr, *movesEnd, *capturesEnd;
 };
 
 

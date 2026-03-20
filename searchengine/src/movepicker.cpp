@@ -9,8 +9,8 @@ namespace harukashogi {
 MovePicker::MovePicker(Position& pos, int depth, HistoryEntry* moveHistory, Move ttMove) : 
         pos(pos), depth(depth), moveHistory(moveHistory), ttMove(ttMove) {
     // initialize the score moves array as empty
-    curr = scoredMoves;
-    scoredEnd = scoredMoves;
+    curr = moves;
+    movesEnd = moves;
 
     // check if the tt move is legal
     if (pos.is_pseudo_legal(ttMove)) {
@@ -87,88 +87,107 @@ Move MovePicker::next_move() {
         case EVASION_TT_STAGE:
             stage++;
             return ttMove;
+        
 
-        case CAPTURE_STAGE_INIT:
+        // normal search
+        case CAPTURE_STAGE_INIT: {
+            stage++;
+
+            Move moveList[MAX_MOVES];
+            Move *end = generate<CAPTURES>(pos, moveList);
+            capturesEnd = score<CAPTURE_STAGE_INIT>(moves, moveList, end);
+            curr = moves;
+
+            std::sort(moves, capturesEnd, [](const ValMove& a, const ValMove& b) {
+                return a.value > b.value;
+            });
+
+            [[fallthrough]];
+        }
+
+        case CAPTURE_STAGE:
+            for (; curr < capturesEnd; curr++)
+                if (pos.is_legal(*curr) && *curr != ttMove)
+                    return *curr++;
+            
+            stage++;
+            [[fallthrough]];
+
+        case QUIET_STAGE_INIT: {
+            stage++;
+
+            Move moveList[MAX_MOVES];
+            Move* end = generate<QUIET>(pos, moveList);
+            movesEnd = score<QUIET_STAGE_INIT>(capturesEnd, moveList, end);
+            curr = capturesEnd;
+            std::sort(capturesEnd, movesEnd, [](const ValMove& a, const ValMove& b) {
+                return a.value > b.value;
+            });
+
+            [[fallthrough]];
+        }
+
+        case QUIET_STAGE:
+            for (; curr < movesEnd; curr++)
+                if (pos.is_legal(*curr) && *curr != ttMove)
+                    return *curr++;
+            
+            return Move::null();
+        
+
+        // evasion search
+        case EVASION_STAGE_INIT: {
+            stage++;
+
+            Move moveList[MAX_MOVES];
+            Move *end = generate<EVASIONS>(pos, moveList);
+            movesEnd = score<EVASION_STAGE_INIT>(moves, moveList, end);
+            curr = moves;
+
+            std::sort(moves, movesEnd, [](const ValMove& a, const ValMove& b) {
+                return a.value > b.value;
+            });
+
+            [[fallthrough]];
+        }
+
+        case EVASION_STAGE:
+            for (; curr < movesEnd; curr++)
+                if (pos.is_legal(*curr) && *curr != ttMove)
+                    return *curr++;
+            
+            return Move::null();
+
+
+        // quiescence search
         case QUIESCENCE_STAGE_INIT: {
             stage++;
+
             Move moveList[MAX_MOVES];
             Move *end;
             if (pos.checkers()) {
                 end = generate<EVASIONS>(pos, moveList);
-                scoredEnd = score<EVASION_STAGE_INIT>(scoredMoves, moveList, end);
+                movesEnd = score<EVASION_STAGE_INIT>(moves, moveList, end);
             }
             else {
                 end = generate<CAPTURES>(pos, moveList);
-                scoredEnd = score<CAPTURE_STAGE_INIT>(scoredMoves, moveList, end);
+                movesEnd = score<CAPTURE_STAGE_INIT>(moves, moveList, end);
             }
-                
-            curr = scoredMoves;
-            std::sort(scoredMoves, scoredEnd, [](const ValMove& a, const ValMove& b) {
-                return a.value > b.value;
-            });
+            curr = moves;
 
-            // std::cout << "Captures stage: " << stage << std::endl;
-            // std::cout << "N moves: " << end - moveList << std::endl;
-            // std::cout << "Score moves: " << scoredEnd - scoredMoves << std::endl;
-
-            break;
+            [[fallthrough]];
         }
 
-        case QUIET_STAGE_INIT: {
-            stage++;
-            Move moveList[MAX_MOVES];
-            Move* end = generate<QUIET>(pos, moveList);
-            curr = scoredMoves;
-            scoredEnd = score<QUIET_STAGE_INIT>(scoredMoves, moveList, end);
-            std::sort(scoredMoves, scoredEnd, [](const ValMove& a, const ValMove& b) {
-                return a.value > b.value;
-            });
-
-            // std::cout << "Quiets stage: " << stage << std::endl;
-            // std::cout << "N moves: " << end - moveList << std::endl;
-            // std::cout << "Score moves: " << scoredEnd - scoredMoves << std::endl;
-
-            break;
-        }
-
-        case EVASION_STAGE_INIT: {
-            stage++;
-            Move moveList[MAX_MOVES];
-            Move* end = generate<EVASIONS>(pos, moveList);
-            curr = scoredMoves;
-            scoredEnd = score<EVASION_STAGE_INIT>(scoredMoves, moveList, end);
-            std::sort(scoredMoves, scoredEnd, [](const ValMove& a, const ValMove& b) {
-                return a.value > b.value;
-            });
-
-            // std::cout << "Evasion stage: " << stage << std::endl;
-            // std::cout << "N moves: " << end - moveList << std::endl;
-            // std::cout << "Score moves: " << scoredEnd - scoredMoves << std::endl;
-
-            break;
-        }
-    }
-    
-    // move curr to the next legal move (exclude the tt move as it has already been returned)
-    while (curr < scoredEnd && (!pos.is_legal(*curr) || *curr == ttMove)) {
-        curr++;
-    }
-
-    if (curr == scoredEnd) {
-        // if the moves are over, return null move
-        if (is_last_stage(Stage(stage))) {
+        case QUIESCENCE_STAGE:
+            for (; curr < movesEnd; curr++)
+                if (pos.is_legal(*curr))
+                    return *curr++;
+            
             return Move::null();
-        }
-        // otherwise, move to the next stage and return the next move
-        else {
-            stage++;
-            return next_move();
-        }
     }
 
-    Move move = *curr;
-    curr++;
-    return move;
+    assert(false);
+    return Move::null();
 }
 
 
