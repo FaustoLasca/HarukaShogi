@@ -37,10 +37,6 @@ enum Stage {
     QUIESCENCE_STAGE
 };
 
-constexpr bool is_last_stage(Stage stage) {
-    return stage == QUIET_STAGE || stage == EVASION_STAGE || stage == QUIESCENCE_STAGE;
-}
-
 
 class MovePicker {
     public:
@@ -61,7 +57,7 @@ class MovePicker {
         HistoryEntry* moveHistory;
 
         ValMove moves[MAX_MOVES];
-        ValMove *curr, *movesEnd, *capturesEnd;
+        ValMove *curr, *capturesEnd, *badCapturesEnd, *movesEnd;
 };
 
 

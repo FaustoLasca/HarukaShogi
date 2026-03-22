@@ -96,6 +96,7 @@ Move MovePicker::next_move() {
             Move moveList[MAX_MOVES];
             Move *end = generate<CAPTURES>(pos, moveList);
             capturesEnd = score<CAPTURE_STAGE_INIT>(moves, moveList, end);
+            badCapturesEnd = moves;
             curr = moves;
 
             std::sort(moves, capturesEnd, [](const ValMove& a, const ValMove& b) {
@@ -107,8 +108,13 @@ Move MovePicker::next_move() {
 
         case GOOD_CAPTURE_STAGE:
             for (; curr < capturesEnd; curr++)
-                if (pos.is_legal(*curr) && *curr != ttMove && pos.see_ge(*curr, 0))
-                    return *curr++;
+                if (pos.is_legal(*curr) && *curr != ttMove) {
+                    if (pos.see_ge(*curr, -1))
+                        return *curr++;
+                    else
+                        *badCapturesEnd++ = *curr;
+                }
+
             
             stage++;
             [[fallthrough]];
@@ -137,9 +143,8 @@ Move MovePicker::next_move() {
             [[fallthrough]];
 
         case BAD_CAPTURE_STAGE:
-            for (; curr < capturesEnd; curr++)
-                if (pos.is_legal(*curr) && *curr != ttMove && !pos.see_ge(*curr, 0))
-                    return *curr++;
+            if (curr < badCapturesEnd)
+                return *curr++;
             
             return Move::null();
         
