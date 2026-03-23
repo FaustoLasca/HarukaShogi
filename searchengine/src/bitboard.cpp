@@ -1,5 +1,4 @@
 #include <bitset>
-#include <bit>
 #include <immintrin.h>
 #include <vector>
 
@@ -7,29 +6,6 @@
 #include "types.h"
 
 namespace harukashogi {
-
-
-int popcount(Bitboard bb) {
-    return std::popcount(bb);
-}
-
-bool one_bit(Bitboard bb) {
-    return std::has_single_bit(bb);
-}
-
-Square lsb(Bitboard bb) {
-    return Square(std::countr_zero(bb));
-}
-
-Bitboard lsb_bb(Bitboard bb) {
-    return bb & -bb;
-}
-
-Square pop_lsb(Bitboard& bb) {
-    Square sq = Square(std::countr_zero(bb));
-    bb &= bb - 1;
-    return sq;
-}
 
 
 // data structures for precomputed bitboards
