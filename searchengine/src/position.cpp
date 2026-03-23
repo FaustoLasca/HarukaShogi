@@ -474,7 +474,6 @@ void Position::unmake_null_move() {
 
 
 bool Position::is_pseudo_legal(Move m) const {
-    // TODO: might need to check if the move data is valid
     if (m.is_null() || !m.is_valid())
         return false;
 
@@ -721,6 +720,7 @@ void Position::update_line_of_sight(Color c) {
     Square ksq = king_square(c);
     si.lineOfSight[c] = 0;
     si.blockers[c] = 0;
+    si.pinners[~c] = 0;
 
     Bitboard snipers = 0;
     snipers |= attacks_bb<BLACK, BISHOP>(ksq) & (pieces(~c, BISHOP) | pieces(~c, P_BISHOP));
@@ -736,6 +736,7 @@ void Position::update_line_of_sight(Color c) {
         between &= all_pieces();
         if (one_bit(between)) {
             si.blockers[c] |= between;
+            si.pinners[~c] |= square_bb(sniper);
         }
     }
 }
@@ -845,6 +846,112 @@ bool RepetitionTable::reached_repetitions(
 
         return false;
     }
+}
+
+
+constexpr std::array<PieceType, NUM_PIECE_TYPES> ORDERED_PTS = {
+    PAWN, KNIGHT, LANCE, SILVER, P_PAWN, P_KNIGHT, P_LANCE, P_SILVER, GOLD,
+    BISHOP, ROOK, P_BISHOP, P_ROOK, KING
+};
+
+// adapted from Stockfish's SEE implementation.
+// computing whether the see is greater than the threshold is more efficient than computing the
+// entire see.
+bool Position::see_ge(Move m, int threshold) const {
+    assert(m.is_valid());
+
+    Square to = m.to();
+
+    // the value of the capture is equal to the value of the captured piece
+    // compute the swap by removing the threshold from the value of the captured piece
+    // (to be "good" the move must make up at least threashold value)
+    int swap = -threshold;
+    if (is_capture(m))
+        swap += PieceValues[type_of(board[to])];
+
+    // if after the first move the swap is negative, we can dismiss it
+    if (swap < 0)
+        return false;
+
+    // compute the swap for the opponent if he were to recapture after the move
+    // if the swap is negative for the opponent after the recaptur, we can return true without
+    // computing the entire see
+    PieceType pt = m.is_drop() ? m.dropped() : type_of(board[m.from()]);
+    swap = PieceValues[pt] - swap;
+    if (swap <= 0)
+        return true;
+
+    Color stm = side_to_move();
+    Bitboard occupied = all_pieces() ^ square_bb(to);
+    if (!m.is_drop())
+        occupied ^= square_bb(m.from());
+    Bitboard attackers = attackers_to(to, occupied);
+    Bitboard stmAttackers, bb, snipers;
+    // making result an int allows a trick:
+    // we can do swap < result. two cases:
+    // 1. result=0, swap for current player. returning result is equal to swap < 0
+    // 2. result=1, swap for opponent. returning result is equal to swap >= 0 for the current player
+    int result = 1;
+
+    while (true) {
+        // switch the side to move and update the attackers
+        stm = ~stm;
+        attackers &= occupied;
+
+        // assign the attackers to the side to move
+        // if the side to move has no attackers, the moving side loses (break and return result)
+        if (!(stmAttackers = attackers & all_pieces(stm)))
+            break;
+
+        // remove blockers from the attackers if there are pinners
+        // can't check with blockers, as a pinner might have moved
+        if (pinners(~stm) & occupied) {
+            stmAttackers &= ~blockers(stm);
+
+            if (!stmAttackers)
+                break;
+        }
+
+        // reverse the result
+        // check if after an eventual recapure the swap for the opponent (of the stm) is negative,
+        // if it is, the move is good for stm, so we return without computing the entire see
+        result ^= 1;
+
+        // remove the least valuable attacker and chack for potential xray new attackers
+        for (const PieceType pt : ORDERED_PTS) {
+            // KING treated differently
+            // always the last piece, if king captures the move is bad for stm if it can be 
+            // recaptured, otherwise it's good
+            if (pt == KING)
+                return (attackers & invert(all_pieces(stm))) ? result^1 : result;
+
+            if ((bb = stmAttackers & pieces(stm, pt))) {
+                if ((swap = PieceValues[pt] - swap) < result)
+                    return result;
+
+                occupied ^= lsb_bb(bb);
+                
+                snipers = 0;
+                if (pt != BISHOP && pt != KNIGHT && pt != KING) {
+                    snipers |= attacks_bb<BLACK, ROOK>(to, occupied) &
+                                (pieces(~stm, ROOK) | pieces(stm, ROOK) |
+                                pieces(~stm, P_ROOK) | pieces(stm, P_ROOK) |
+                                pieces(~stm, LANCE) | pieces(stm, LANCE));
+                }
+                if (pt != PAWN && pt != LANCE && pt != ROOK && pt != KING) {
+                    snipers |= attacks_bb<BLACK, BISHOP>(to, occupied) &
+                                (pieces(~stm, BISHOP) | pieces(stm, BISHOP) |
+                                pieces(~stm, P_BISHOP) | pieces(stm, P_BISHOP));
+                }
+
+                attackers |= snipers;
+
+                break;
+            }
+        }
+    }
+
+    return result;
 }
 
 } // namespace harukashogi

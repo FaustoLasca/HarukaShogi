@@ -2,6 +2,7 @@
 #define BITBOARD_H
 
 #include <iostream>
+#include <immintrin.h>
 
 #include "types.h"
 
@@ -17,7 +18,7 @@ void init();
 }
 
 
-constexpr Bitboard square_bb(Square sq) {
+inline constexpr Bitboard square_bb(Square sq) {
     return static_cast<Bitboard>(1) << sq;
 }
 
@@ -49,7 +50,7 @@ constexpr Bitboard BLastRankBB = Rank1BB;
 constexpr Bitboard BSecondLastRankBB = Rank2BB;
 
 
-constexpr Bitboard invert(Bitboard bb) {
+inline Bitboard invert(Bitboard bb) {
     return ~bb & FullBoard;
 }
 
@@ -61,10 +62,27 @@ Bitboard line_bb(Square from, Square to);
 
 
 // functions used to manipulate a bitboard
-Square lsb(Bitboard bb);
-Square pop_lsb(Bitboard& bb);
-int popcount(Bitboard bb);
-bool one_bit(Bitboard bb);
+inline int popcount(Bitboard bb) {
+    return std::popcount(bb);
+}
+
+inline bool one_bit(Bitboard bb) {
+    return std::has_single_bit(bb);
+}
+
+inline Square lsb(Bitboard bb) {
+    return Square(std::countr_zero(bb));
+}
+
+inline Bitboard lsb_bb(Bitboard bb) {
+    return bb & -bb;
+}
+
+inline Square pop_lsb(Bitboard& bb) {
+    Square sq = Square(std::countr_zero(bb));
+    bb &= bb - 1;
+    return sq;
+}
 
 
 // functions for move generation

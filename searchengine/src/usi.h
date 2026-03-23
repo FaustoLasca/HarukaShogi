@@ -17,7 +17,7 @@ class USIManager : public OutputManager {
 
 class USIEngine {
     public:
-        USIEngine(int numThreads) : engine(usiManager) {}
+        USIEngine() : engine(usiManager) {}
 
         void run();
 

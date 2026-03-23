@@ -1,6 +1,7 @@
 #include "evaluate.h"
 #include "position.h"
 #include "types.h"
+#include "misc.h"
 
 namespace harukashogi {
 

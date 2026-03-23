@@ -34,6 +34,7 @@ struct StateInfo {
 	Bitboard checkersBB;
 	Bitboard checkSquares[NUM_COLORS][NUM_PIECE_TYPES];
 	Bitboard blockers[NUM_COLORS];
+	Bitboard pinners[NUM_COLORS];
 	Bitboard lineOfSight[NUM_COLORS];
 
 	PieceType capturedPT;
@@ -100,6 +101,7 @@ class Position {
 			return si.front().checkSquares[sideToMove][pt];
 		}
 		Bitboard blockers(Color c) const { return si.front().blockers[c]; }
+		Bitboard pinners(Color c) const { return si.front().pinners[c]; }
 
 		// returns all attacks of the given piece type for the given color
 		// use mostly in evaluation
@@ -154,6 +156,10 @@ class Position {
 			std::cout << "counts needed: " << repetitionTable.get_counts_needed() << std::endl;
 			std::cout << "repetitions: " << repetitionTable.get_repetitions() << std::endl;
 		}
+
+		// static exchange evaluation
+		// returns true if the see is greater or equal to the threshold
+		bool see_ge(Move m, int threshold) const;
 
 		
 		private:

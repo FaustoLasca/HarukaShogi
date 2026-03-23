@@ -22,9 +22,10 @@ enum Stage {
     // normal search stages
     TT_STAGE,
     CAPTURE_STAGE_INIT,
-    CAPTURE_STAGE,
+    GOOD_CAPTURE_STAGE,
     QUIET_STAGE_INIT,
     QUIET_STAGE,
+    BAD_CAPTURE_STAGE,
 
     // evasion
     EVASION_TT_STAGE,
@@ -35,10 +36,6 @@ enum Stage {
     QUIESCENCE_STAGE_INIT,
     QUIESCENCE_STAGE
 };
-
-constexpr bool is_last_stage(Stage stage) {
-    return stage == QUIET_STAGE || stage == EVASION_STAGE || stage == QUIESCENCE_STAGE;
-}
 
 
 class MovePicker {
@@ -59,8 +56,8 @@ class MovePicker {
 
         HistoryEntry* moveHistory;
 
-        ValMove scoredMoves[MAX_MOVES];
-        ValMove *curr, *scoredEnd;
+        ValMove moves[MAX_MOVES];
+        ValMove *curr, *capturesEnd, *badCapturesEnd, *movesEnd;
 };
 
 
