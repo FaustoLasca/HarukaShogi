@@ -720,6 +720,7 @@ void Position::update_line_of_sight(Color c) {
     Square ksq = king_square(c);
     si.lineOfSight[c] = 0;
     si.blockers[c] = 0;
+    si.pinners[~c] = 0;
 
     Bitboard snipers = 0;
     snipers |= attacks_bb<BLACK, BISHOP>(ksq) & (pieces(~c, BISHOP) | pieces(~c, P_BISHOP));
@@ -735,6 +736,7 @@ void Position::update_line_of_sight(Color c) {
         between &= all_pieces();
         if (one_bit(between)) {
             si.blockers[c] |= between;
+            si.pinners[~c] |= square_bb(sniper);
         }
     }
 }
@@ -905,7 +907,12 @@ bool Position::see_ge(Move m, int threshold) const {
 
         // remove blockers from the attackers if there are pinners
         // can't check with blockers, as a pinner might have moved
-        // TODO
+        if (pinners(~stm) & occupied) {
+            stmAttackers &= ~blockers(stm);
+
+            if (!stmAttackers)
+                break;
+        }
 
         // reverse the result
         // check if after an eventual recapure the swap for the opponent (of the stm) is negative,
