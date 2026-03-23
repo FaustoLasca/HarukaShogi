@@ -5,7 +5,6 @@
 
 #include "bitboard.h"
 #include "types.h"
-#include "misc.h"
 
 namespace harukashogi {
 
@@ -20,6 +19,10 @@ bool one_bit(Bitboard bb) {
 
 Square lsb(Bitboard bb) {
     return Square(std::countr_zero(bb));
+}
+
+Bitboard lsb_bb(Bitboard bb) {
+    return bb & -bb;
 }
 
 Square pop_lsb(Bitboard& bb) {

@@ -474,7 +474,6 @@ void Position::unmake_null_move() {
 
 
 bool Position::is_pseudo_legal(Move m) const {
-    // TODO: might need to check if the move data is valid
     if (m.is_null() || !m.is_valid())
         return false;
 
@@ -885,7 +884,6 @@ bool Position::see_ge(Move m, int threshold) const {
         return true;
 
     Color stm = side_to_move();
-    // TODO: not sure why we xor the to square
     Bitboard occupied = all_pieces() ^ square_bb(from) ^ square_bb(to);
     Bitboard attackers = attackers_to(to, occupied);
     Bitboard stmAttackers, bb, snipers;
@@ -926,7 +924,7 @@ bool Position::see_ge(Move m, int threshold) const {
                 if ((swap = PieceValues[pt] - swap) < result)
                     return result;
 
-                occupied ^= square_bb(pop_lsb(bb)); // TODO: implement lsb_bb
+                occupied ^= lsb_bb(bb);
                 
                 snipers = 0;
                 if (pt != BISHOP && pt != KNIGHT && pt != KING) {

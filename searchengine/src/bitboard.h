@@ -62,6 +62,7 @@ Bitboard line_bb(Square from, Square to);
 
 // functions used to manipulate a bitboard
 Square lsb(Bitboard bb);
+Bitboard lsb_bb(Bitboard bb);
 Square pop_lsb(Bitboard& bb);
 int popcount(Bitboard bb);
 bool one_bit(Bitboard bb);
