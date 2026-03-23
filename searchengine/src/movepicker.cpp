@@ -70,6 +70,10 @@ ValMove* MovePicker::score(ValMove* scoredMoves, Move* moveList, Move* end) {
         // quiet moves are ordered by the history value of the move
         if constexpr (stage == QUIET_STAGE_INIT) {
             score += moveHistory[m->raw()];
+
+            // bonus for winning checks
+            if (pos.gives_check(*m))
+                score += pos.see_ge(*m, 0) ? 10000 : 0;
         }
 
         valMove.value = score;

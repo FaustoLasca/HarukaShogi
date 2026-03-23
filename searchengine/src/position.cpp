@@ -860,19 +860,14 @@ constexpr std::array<PieceType, NUM_PIECE_TYPES> ORDERED_PTS = {
 bool Position::see_ge(Move m, int threshold) const {
     assert(m.is_valid());
 
-    // TODO: for now only for captures
-    assert(is_capture(m));
-
-    Square from = m.from();
     Square to = m.to();
-
-    assert(board[from] != NO_PIECE);
-    assert(color_of(board[from]) == side_to_move());
 
     // the value of the capture is equal to the value of the captured piece
     // compute the swap by removing the threshold from the value of the captured piece
     // (to be "good" the move must make up at least threashold value)
-    int swap = PieceValues[type_of(board[to])] - threshold;
+    int swap = -threshold;
+    if (is_capture(m))
+        swap += PieceValues[type_of(board[to])];
 
     // if after the first move the swap is negative, we can dismiss it
     if (swap < 0)
@@ -881,12 +876,15 @@ bool Position::see_ge(Move m, int threshold) const {
     // compute the swap for the opponent if he were to recapture after the move
     // if the swap is negative for the opponent after the recaptur, we can return true without
     // computing the entire see
-    swap = PieceValues[type_of(board[from])] - swap;
+    PieceType pt = m.is_drop() ? m.dropped() : type_of(board[m.from()]);
+    swap = PieceValues[pt] - swap;
     if (swap <= 0)
         return true;
 
     Color stm = side_to_move();
-    Bitboard occupied = all_pieces() ^ square_bb(from) ^ square_bb(to);
+    Bitboard occupied = all_pieces() ^ square_bb(to);
+    if (!m.is_drop())
+        occupied ^= square_bb(m.from());
     Bitboard attackers = attackers_to(to, occupied);
     Bitboard stmAttackers, bb, snipers;
     // making result an int allows a trick:
