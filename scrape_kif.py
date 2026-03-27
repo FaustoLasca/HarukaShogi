@@ -131,6 +131,16 @@ def collect_game_urls(num_pages: int) -> list[str]:
 #   6. Save it to a .kif file
 # ---------------------------------------------------------------------------
 
+AD_DOMAIN_PATTERNS = [
+    "*googlesyndication.com*",
+    "*googleadservices.com*",
+    "*doubleclick.net*",
+    "*google-analytics.com*",
+    "*googletagmanager.com*",
+    "*amazon-adsystem.com*",
+]
+
+
 def download_kifs(game_urls: list[str], output_dir: str):
     """
     Use Playwright to visit each game page, click the KIF button, and save
@@ -147,10 +157,13 @@ def download_kifs(game_urls: list[str], output_dir: str):
 
         # A browser context is like an incognito session — isolated cookies,
         # cache, etc. Useful if you wanted multiple parallel sessions.
-        context = browser.new_context()
+        context = browser.new_context(viewport={"width": 1280, "height": 900})
 
-        # A page is a single browser tab.
-        page = context.new_page()
+        # Block ad/tracker requests so their iframes don't load.  Each
+        # pattern is registered separately so only matching URLs are
+        # intercepted — the site's own requests are never touched.
+        for pattern in AD_DOMAIN_PATTERNS:
+            context.route(pattern, lambda route: route.abort())
 
         for i, game_url in enumerate(game_urls, start=1):
             # Extract the game hash from the URL to use as a filename.
@@ -163,21 +176,49 @@ def download_kifs(game_urls: list[str], output_dir: str):
 
             print(f"[Phase 2] ({i}/{len(game_urls)}) Visiting: {game_hash[:20]}...")
 
+            # Use a fresh page (tab) per game so LiveView websocket state
+            # from a previous game never leaks into the next one.
+            page = context.new_page()
+
             try:
-                # Navigate to the game page. wait_until="networkidle" waits
-                # until there are no ongoing network requests for 500ms, which
-                # gives LiveView time to establish its websocket connection.
                 page.goto(game_url, wait_until="networkidle", timeout=30000)
 
-                # Click the KIF export button. The CSS selector [phx-click="kif"]
-                # finds the element with attribute phx-click="kif".
-                page.click('[phx-click="kif"]')
+                # LiveView starts in "phx-loading" and transitions to
+                # "phx-connected" once its websocket is established and
+                # event handlers are bound.  Without this wait, JS clicks
+                # on phx-click elements are silently ignored.
+                # On 404 pages the KIF button doesn't exist, so we also
+                # check for that and skip gracefully.
+                try:
+                    page.wait_for_selector(".phx-connected", timeout=10000)
+                except Exception:
+                    pass
 
-                # Wait for the modal's textarea to be filled with content.
-                # The textarea starts empty and gets populated by LiveView
-                # after the server processes the "kif" event.
+                kif_btn = page.locator('[phx-click="kif"]')
+                if kif_btn.count() == 0:
+                    print(f"  Page not found (no KIF button), skipping.")
+                    continue
+
+                # Trigger the KIF export via JavaScript's native .click().
+                # We can't use Playwright's page.click() because:
+                #  - Ad iframes and the fixed navbar overlap the button,
+                #    causing Playwright's hit-test to fail (30s timeout).
+                #  - Playwright's force=True and dispatch_event("click")
+                #    both fire low-level CDP events that don't propagate
+                #    through Phoenix LiveView's event delegation system.
+                # A JS .click() creates a trusted DOM event that LiveView
+                # correctly captures and forwards over its websocket.
+                page.evaluate(
+                    '() => document.querySelector("[phx-click=kif]").click()'
+                )
+
+                # Wait for the textarea to exist in the DOM, then poll for
+                # content.  We use state="attached" instead of "visible"
+                # because the modal's CSS transition can leave the textarea
+                # in a state Playwright doesn't consider "visible" even
+                # though it is functionally present and being filled.
                 textarea = page.locator("#kifu-modal textarea")
-                textarea.wait_for(state="visible", timeout=10000)
+                textarea.wait_for(state="attached", timeout=10000)
 
                 # Poll until the textarea has content (LiveView fills it
                 # asynchronously after the click event).
@@ -199,6 +240,8 @@ def download_kifs(game_urls: list[str], output_dir: str):
 
             except Exception as e:
                 print(f"  ERROR: {e}")
+            finally:
+                page.close()
 
             time.sleep(REQUEST_DELAY)
 
