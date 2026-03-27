@@ -37,7 +37,7 @@ OUTPUT_DIR = "kif_games"
 
 # How many listing pages to scrape (each page has ~20 games).
 # Start small while testing, increase once you're confident it works.
-NUM_PAGES = 1
+NUM_PAGES = 10
 
 # Seconds to wait between HTTP requests to be polite to the server.
 REQUEST_DELAY = 1.0
