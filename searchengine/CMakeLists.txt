@@ -48,3 +48,22 @@ add_executable(test
     src/engine.cpp
 )
 target_include_directories(test PRIVATE include)
+
+add_executable(book_generation
+    src/book_generation/games_parser.cpp
+    src/position.cpp
+    src/movegen.cpp
+    src/misc.cpp
+    src/perft.cpp
+    src/evaluate.cpp
+    src/search.cpp
+    src/ttable.cpp
+    src/opening_book.cpp
+    src/book_data.cpp
+    src/bitboard.cpp
+    src/movepicker.cpp
+    src/thread.cpp
+    src/usi.cpp
+    src/engine.cpp
+)
+target_include_directories(book_generation PRIVATE include)

@@ -32,15 +32,15 @@ from playwright.sync_api import sync_playwright
 # ---------------------------------------------------------------------------
 
 BASE_URL = "https://shogidb2.com"
-LISTING_URL = BASE_URL + "/popular?q=&page={page}"
-OUTPUT_DIR = "kif_games"
+LISTING_URL = BASE_URL + "/tournament/アマ棋戦?q=&page={page}"
+OUTPUT_DIR = "games/tournaments/アマ棋戦"
 
 # How many listing pages to scrape (each page has ~20 games).
 # Start small while testing, increase once you're confident it works.
-NUM_PAGES = 10
+NUM_PAGES = 85
 
 # Seconds to wait between HTTP requests to be polite to the server.
-REQUEST_DELAY = 1.0
+REQUEST_DELAY = 0.5
 
 
 # ---------------------------------------------------------------------------
