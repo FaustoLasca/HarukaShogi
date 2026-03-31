@@ -20,7 +20,6 @@ add_executable(HarukaShogi
     src/search.cpp
     src/ttable.cpp
     src/opening_book.cpp
-    src/book_data.cpp
     src/bitboard.cpp
     src/movepicker.cpp
     src/thread.cpp
@@ -40,7 +39,6 @@ add_executable(test
     src/search.cpp
     src/ttable.cpp
     src/opening_book.cpp
-    src/book_data.cpp
     src/bitboard.cpp
     src/movepicker.cpp
     src/thread.cpp
@@ -59,7 +57,6 @@ add_executable(book_generation
     src/search.cpp
     src/ttable.cpp
     src/opening_book.cpp
-    src/book_data.cpp
     src/bitboard.cpp
     src/movepicker.cpp
     src/thread.cpp

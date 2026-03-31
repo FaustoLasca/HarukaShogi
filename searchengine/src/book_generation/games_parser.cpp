@@ -22,23 +22,14 @@ using namespace harukashogi;
 
 // Write the book to a .cpp file as an array of OBEntry
 // Data packing: 3 moves (16 bits each) in bits 0-47, counts (5 bits each) in bits 48-62
-void write_book(const std::map<uint64_t, std::unordered_map<uint16_t, int>>& book, 
+void write_book(const std::map<uint64_t, std::unordered_map<uint16_t, int>>& book_data, 
                 const std::string& filename) {
-    std::ofstream out(filename);
-    if (!out.is_open()) {
-        std::cerr << "Failed to open " << filename << " for writing\n";
-        return;
-    }
 
-    // Write header
-    out << "// Auto-generated opening book - DO NOT EDIT\n";
-    out << "#include \"book_data.h\"\n\n";
-    out << "namespace harukashogi {\n\n";
-    out << "const OBEntry BookData[] = {\n";
+    std::vector<OBEntry> book;
 
     size_t entry_count = 0;
     size_t skipped_positions = 0;
-    for (const auto& [key, moves] : book) {
+    for (const auto& [key, moves] : book_data) {
         // Filter out moves with count <= 1, then sort by count (descending)
         std::vector<std::pair<uint16_t, int>> sorted_moves;
         for (const auto& [move, count] : moves) {
@@ -78,19 +69,15 @@ void write_book(const std::map<uint64_t, std::unordered_map<uint16_t, int>>& boo
             data |= uint64_t(count) << (48 + i * 5);          // count in bits 48-62
         }
 
-        out << "    {0x" << std::hex << std::uppercase << std::setfill('0') 
-            << std::setw(16) << key << "ull, 0x" 
-            << std::setw(16) << data << std::dec << "ull},\n";
+        book.push_back(OBEntry(key, data));
         entry_count++;
     }
     
     std::cout << "Skipped " << skipped_positions << " positions with only single-count moves\n";
 
-    out << "};\n\n";
-    out << "const size_t OPENING_BOOK_SIZE = " << entry_count << ";\n\n";
-    out << "} // namespace harukashogi\n";
+    std::ofstream out(filename, std::ios::binary);
+    out.write(reinterpret_cast<const char*>(book.data()), book.size() * sizeof(OBEntry));
 
-    out.close();
     std::cout << "Wrote " << entry_count << " entries to " << filename << "\n";
 }
 
@@ -162,7 +149,7 @@ int main() {
     file.close();
 
     // Write the book to a .cpp file
-    write_book(book, "searchengine/src/book_data.cpp");
+    write_book(book, "searchengine/bin/book_data.bin");
 
     return 0;
 }

@@ -2,7 +2,7 @@
 .vscode/
 */.cache/
 */build/
-*/build*/
+*/old_builds/
 engines
 searchengine/src/book_generation/csv_parser
 data

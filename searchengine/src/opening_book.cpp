@@ -1,25 +1,30 @@
 #include <algorithm>
-#include <iostream>
 #include <random>
 
 #include "opening_book.h"
-#include "book_data.h"
-#include "misc.h"
+#include "incbin.h"
 
 namespace harukashogi {
 
 
+// include the opening book data from the binary file
+INCBIN(OBEntry, Book, "../bin/book_data.bin");
+
+
+OpeningBook::OpeningBook() : size(gBookSize / sizeof(OBEntry)) {}
+
+
 Move OpeningBook::sample_move(uint64_t key) const {
     const OBEntry* it = std::lower_bound(
-        BookData,
-        BookData + OPENING_BOOK_SIZE,
+        gBookData,
+        gBookData + this->size,
         key,
         [](const OBEntry& entry, uint64_t key) {
             return entry.get_key() < key;
         }
     );
 
-    if (it == BookData + OPENING_BOOK_SIZE || it->get_key() != key) {
+    if (it == gBookData + this->size || it->get_key() != key) {
         return Move::null();
     }
 
