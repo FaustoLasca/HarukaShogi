@@ -33,7 +33,7 @@ void write_book(const std::map<uint64_t, std::unordered_map<uint16_t, int>>& boo
         // Filter out moves with count <= 1, then sort by count (descending)
         std::vector<std::pair<uint16_t, int>> sorted_moves;
         for (const auto& [move, count] : moves) {
-            if (count > 1) {
+            if (count > 2) {
                 sorted_moves.emplace_back(move, count);
             }
         }
