@@ -29,12 +29,13 @@ class OBEntry {
 
 class OpeningBook {
     public:
-        OpeningBook() = default;
+        OpeningBook();
 
         Move sample_move(uint64_t key) const;
     
     private:
         mutable std::mt19937 rng{std::random_device{}()};
+        size_t size;
 };
 
 
