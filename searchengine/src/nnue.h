@@ -26,10 +26,9 @@ class NNUE {
 
         // compute the accumulator from scratch,
         // only used for the initial position
-        Accumulator compute_accumulator(const Position& pos) const;
+        void compute_accumulator(Accumulator& acc, const Position& pos) const;
 
         // update the accumulator for a given move
-        // the accumulator is updated in place
         void update_accumulator(Accumulator& acc, const Position& pos, Move m) const;
 
         // evaluate the position from the accumulator
