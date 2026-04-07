@@ -44,6 +44,7 @@ add_executable(test
     src/thread.cpp
     src/usi.cpp
     src/engine.cpp
+    src/nnue.cpp
 )
 target_include_directories(test PRIVATE include)
 
