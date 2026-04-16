@@ -2,6 +2,7 @@
 #include "position.h"
 #include "types.h"
 #include "misc.h"
+#include "nnue.h"
 
 namespace harukashogi {
 
@@ -50,42 +51,42 @@ int evaluate(Position& pos) {
                  * 100*PieceValues[pt];
 
     // add pawn position values
-    Bitboard ownPawns = pos.pieces(sideToMove, PAWN);
-    while (ownPawns)
-        score += PawnSquareValues[sideToMove][pop_lsb(ownPawns)];
-    Bitboard oppPawns = pos.pieces(~sideToMove, PAWN);
-    while (oppPawns)
-        score -= PawnSquareValues[~sideToMove][pop_lsb(oppPawns)];
+    // Bitboard ownPawns = pos.pieces(sideToMove, PAWN);
+    // while (ownPawns)
+    //     score += PawnSquareValues[sideToMove][pop_lsb(ownPawns)];
+    // Bitboard oppPawns = pos.pieces(~sideToMove, PAWN);
+    // while (oppPawns)
+    //     score -= PawnSquareValues[~sideToMove][pop_lsb(oppPawns)];
 
     // add the value of the king protection
-    score -= (popcount(pos.attacks<KING>(sideToMove)  & ~pos.all_pieces(sideToMove))
-           -  popcount(pos.attacks<KING>(~sideToMove) & ~pos.all_pieces(~sideToMove)))
-           * 3;
+    // score -= (popcount(pos.attacks<KING>(sideToMove)  & ~pos.all_pieces(sideToMove))
+    //        -  popcount(pos.attacks<KING>(~sideToMove) & ~pos.all_pieces(~sideToMove)))
+    //        * 3;
 
     // add sliding piece mobility
-    Bitboard sliding = pos.pieces(sideToMove, BISHOP) | pos.pieces(sideToMove, P_BISHOP);
-    Bitboard attacks = 0;
-    while (sliding)
-        attacks |= attacks_bb<BLACK, BISHOP>(pop_lsb(sliding), pos.all_pieces());
-    score += popcount(attacks) * 1;
+    // Bitboard sliding = pos.pieces(sideToMove, BISHOP) | pos.pieces(sideToMove, P_BISHOP);
+    // Bitboard attacks = 0;
+    // while (sliding)
+    //     attacks |= attacks_bb<BLACK, BISHOP>(pop_lsb(sliding), pos.all_pieces());
+    // score += popcount(attacks) * 1;
 
-    sliding = pos.pieces(sideToMove, ROOK) | pos.pieces(sideToMove, P_ROOK);
-    attacks = 0;
-    while (sliding)
-        attacks |= attacks_bb<BLACK, ROOK>(pop_lsb(sliding), pos.all_pieces());
-    score += popcount(attacks) * 1;
+    // sliding = pos.pieces(sideToMove, ROOK) | pos.pieces(sideToMove, P_ROOK);
+    // attacks = 0;
+    // while (sliding)
+    //     attacks |= attacks_bb<BLACK, ROOK>(pop_lsb(sliding), pos.all_pieces());
+    // score += popcount(attacks) * 1;
 
-    sliding = pos.pieces(~sideToMove, BISHOP) | pos.pieces(~sideToMove, P_BISHOP);
-    attacks = 0;
-    while (sliding)
-        attacks |= attacks_bb<WHITE, BISHOP>(pop_lsb(sliding), pos.all_pieces());
-    score -= popcount(attacks) * 1;
+    // sliding = pos.pieces(~sideToMove, BISHOP) | pos.pieces(~sideToMove, P_BISHOP);
+    // attacks = 0;
+    // while (sliding)
+    //     attacks |= attacks_bb<WHITE, BISHOP>(pop_lsb(sliding), pos.all_pieces());
+    // score -= popcount(attacks) * 1;
 
-    sliding = pos.pieces(~sideToMove, ROOK) | pos.pieces(~sideToMove, P_ROOK);
-    attacks = 0;
-    while (sliding)
-        attacks |= attacks_bb<WHITE, ROOK>(pop_lsb(sliding), pos.all_pieces());
-    score -= popcount(attacks) * 1;
+    // sliding = pos.pieces(~sideToMove, ROOK) | pos.pieces(~sideToMove, P_ROOK);
+    // attacks = 0;
+    // while (sliding)
+    //     attacks |= attacks_bb<WHITE, ROOK>(pop_lsb(sliding), pos.all_pieces());
+    // score -= popcount(attacks) * 1;
 
     
 
@@ -97,6 +98,21 @@ int evaluate(Position& pos) {
     }
 
     return score;
+}
+
+
+int evaluate_nnue(NNUE::NNUE& nnue, NNUE::Accumulator& acc, Position& pos) {
+    // if the game is over, return the winning score
+    if (pos.is_game_over()) {
+        // if the game is over, the side to move has lost
+        if (pos.get_winner() == NO_COLOR)
+            return 0;
+        else
+            return -WIN_SCORE;
+    }
+
+    // evaluate the position from the accumulator
+    return nnue.evaluate(acc, pos.side_to_move());
 }
 
 

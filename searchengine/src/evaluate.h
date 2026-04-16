@@ -2,12 +2,14 @@
 #define EVALUATE_H
 
 #include "position.h"
+#include "nnue.h"
 
 namespace harukashogi {
 
 
 int evaluate(Position& pos);
 
+int evaluate_nnue(NNUE::NNUE& nnue, NNUE::Accumulator& acc, Position& pos);
 
 constexpr int WIN_SCORE = 32000;
 constexpr int INF_SCORE = 32001;
