@@ -25,6 +25,7 @@ add_executable(HarukaShogi
     src/thread.cpp
     src/usi.cpp
     src/engine.cpp
+    src/nnue.cpp
 )
 target_include_directories(HarukaShogi PRIVATE include)
 
@@ -63,5 +64,6 @@ add_executable(book_generation
     src/thread.cpp
     src/usi.cpp
     src/engine.cpp
+    src/nnue.cpp
 )
 target_include_directories(book_generation PRIVATE include)

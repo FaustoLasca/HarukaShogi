@@ -13,7 +13,7 @@ int main() {
     init();
 
     Position pos;
-    pos.set("lr3g1nl/3sg1kb1/p1np1s1p1/2p1ppp1p/2P6/1P1P1P2P/Pp1SP1PP1/2R1G1SK1/LN2BG1NL w - 1");
+    pos.set("ln3k1nl/1r2g1gs1/4pp1p1/p1pps1p1p/5P3/P1P1S1PRP/1PSPP4/2G1G4/LN1K3NL w BPbp 1");
     NNUE::NNUE nnue;
     NNUE::Accumulator acc;
     Move moveList[MAX_MOVES], *end, selectedMove;

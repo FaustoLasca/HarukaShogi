@@ -16,56 +16,56 @@ NNUE::NNUE() {
     l2Bias = 0;
 
     for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
-        l1Weights[board_idx(BLACK, PAWN, sq)][0] = 1;
-        l1Weights[board_idx(WHITE, PAWN, sq)][0] = -1;
+        l1Weights[board_idx(BLACK, PAWN, sq)][0] = 4;
+        l1Weights[board_idx(WHITE, PAWN, sq)][0] = -4;
 
-        l1Weights[board_idx(BLACK, KNIGHT, sq)][1] = 1;
-        l1Weights[board_idx(WHITE, KNIGHT, sq)][1] = -1;
+        l1Weights[board_idx(BLACK, KNIGHT, sq)][1] = 4;
+        l1Weights[board_idx(WHITE, KNIGHT, sq)][1] = -4;
 
-        l1Weights[board_idx(BLACK, LANCE, sq)][2] = 1;
-        l1Weights[board_idx(WHITE, LANCE, sq)][2] = -1;
+        l1Weights[board_idx(BLACK, LANCE, sq)][2] = 4;
+        l1Weights[board_idx(WHITE, LANCE, sq)][2] = -4;
 
-        l1Weights[board_idx(BLACK, SILVER, sq)][3] = 1;
-        l1Weights[board_idx(WHITE, SILVER, sq)][3] = -1;
+        l1Weights[board_idx(BLACK, SILVER, sq)][3] = 4;
+        l1Weights[board_idx(WHITE, SILVER, sq)][3] = -4;
 
-        l1Weights[board_idx(BLACK, GOLD, sq)][4] = 1;
-        l1Weights[board_idx(WHITE, GOLD, sq)][4] = -1;
-        l1Weights[board_idx(BLACK, P_PAWN, sq)][4] = 1;
-        l1Weights[board_idx(WHITE, P_PAWN, sq)][4] = -1;
-        l1Weights[board_idx(BLACK, P_LANCE, sq)][4] = 1;
-        l1Weights[board_idx(WHITE, P_LANCE, sq)][4] = -1;
-        l1Weights[board_idx(BLACK, P_KNIGHT, sq)][4] = 1;
-        l1Weights[board_idx(WHITE, P_KNIGHT, sq)][4] = -1;
-        l1Weights[board_idx(BLACK, P_SILVER, sq)][4] = 1;
-        l1Weights[board_idx(WHITE, P_SILVER, sq)][4] = -1;
+        l1Weights[board_idx(BLACK, GOLD, sq)][4] = 4;
+        l1Weights[board_idx(WHITE, GOLD, sq)][4] = -4;
+        l1Weights[board_idx(BLACK, P_PAWN, sq)][4] = 4;
+        l1Weights[board_idx(WHITE, P_PAWN, sq)][4] = -4;
+        l1Weights[board_idx(BLACK, P_LANCE, sq)][4] = 4;
+        l1Weights[board_idx(WHITE, P_LANCE, sq)][4] = -4;
+        l1Weights[board_idx(BLACK, P_KNIGHT, sq)][4] = 4;
+        l1Weights[board_idx(WHITE, P_KNIGHT, sq)][4] = -4;
+        l1Weights[board_idx(BLACK, P_SILVER, sq)][4] = 4;
+        l1Weights[board_idx(WHITE, P_SILVER, sq)][4] = -4;
 
-        l1Weights[board_idx(BLACK, BISHOP, sq)][5] = 1;
-        l1Weights[board_idx(WHITE, BISHOP, sq)][5] = -1;
+        l1Weights[board_idx(BLACK, BISHOP, sq)][5] = 4;
+        l1Weights[board_idx(WHITE, BISHOP, sq)][5] = -4;
 
-        l1Weights[board_idx(BLACK, ROOK, sq)][6] = 1;
-        l1Weights[board_idx(WHITE, ROOK, sq)][6] = -1;
+        l1Weights[board_idx(BLACK, ROOK, sq)][6] = 4;
+        l1Weights[board_idx(WHITE, ROOK, sq)][6] = -4;
 
-        l1Weights[board_idx(BLACK, P_BISHOP, sq)][7] = 1;
-        l1Weights[board_idx(WHITE, P_BISHOP, sq)][7] = -1;
-        l1Weights[board_idx(BLACK, P_ROOK, sq)][7] = 1;
-        l1Weights[board_idx(WHITE, P_ROOK, sq)][7] = -1;
+        l1Weights[board_idx(BLACK, P_BISHOP, sq)][7] = 4;
+        l1Weights[board_idx(WHITE, P_BISHOP, sq)][7] = -4;
+        l1Weights[board_idx(BLACK, P_ROOK, sq)][7] = 4;
+        l1Weights[board_idx(WHITE, P_ROOK, sq)][7] = -4;
     }
 
     // hand piece weights
-    for (int i = 0; i < 4; ++i) l1Weights[hand_idx(BLACK, GOLD, i)][4] = 1;
-    for (int i = 0; i < 4; ++i) l1Weights[hand_idx(WHITE, GOLD, i)][4] = -1;
-    for (int i = 0; i < 4; ++i) l1Weights[hand_idx(BLACK, SILVER, i)][3] = 1;
-    for (int i = 0; i < 4; ++i) l1Weights[hand_idx(WHITE, SILVER, i)][3] = -1;
-    for (int i = 0; i < 4; ++i) l1Weights[hand_idx(BLACK, LANCE, i)][2] = 1;
-    for (int i = 0; i < 4; ++i) l1Weights[hand_idx(WHITE, LANCE, i)][2] = -1;
-    for (int i = 0; i < 4; ++i) l1Weights[hand_idx(BLACK, KNIGHT, i)][1] = 1;
-    for (int i = 0; i < 4; ++i) l1Weights[hand_idx(WHITE, KNIGHT, i)][1] = -1;
-    for (int i = 0; i < 2; ++i) l1Weights[hand_idx(BLACK, BISHOP, i)][5] = 1;
-    for (int i = 0; i < 2; ++i) l1Weights[hand_idx(WHITE, BISHOP, i)][5] = -1;
-    for (int i = 0; i < 2; ++i) l1Weights[hand_idx(BLACK, ROOK, i)][6] = 1;
-    for (int i = 0; i < 2; ++i) l1Weights[hand_idx(WHITE, ROOK, i)][6] = -1;
-    for (int i = 0; i < 18; ++i) l1Weights[hand_idx(BLACK, PAWN, i)][0] = 1;
-    for (int i = 0; i < 18; ++i) l1Weights[hand_idx(WHITE, PAWN, i)][0] = -1;
+    for (int i = 0; i < 4; ++i) l1Weights[hand_idx(BLACK, GOLD, i)][4] = 5;
+    for (int i = 0; i < 4; ++i) l1Weights[hand_idx(WHITE, GOLD, i)][4] = -5;
+    for (int i = 0; i < 4; ++i) l1Weights[hand_idx(BLACK, SILVER, i)][3] = 5;
+    for (int i = 0; i < 4; ++i) l1Weights[hand_idx(WHITE, SILVER, i)][3] = -5;
+    for (int i = 0; i < 4; ++i) l1Weights[hand_idx(BLACK, LANCE, i)][2] = 5;
+    for (int i = 0; i < 4; ++i) l1Weights[hand_idx(WHITE, LANCE, i)][2] = -5;
+    for (int i = 0; i < 4; ++i) l1Weights[hand_idx(BLACK, KNIGHT, i)][1] = 5;
+    for (int i = 0; i < 4; ++i) l1Weights[hand_idx(WHITE, KNIGHT, i)][1] = -5;
+    for (int i = 0; i < 2; ++i) l1Weights[hand_idx(BLACK, BISHOP, i)][5] = 5;
+    for (int i = 0; i < 2; ++i) l1Weights[hand_idx(WHITE, BISHOP, i)][5] = -5;
+    for (int i = 0; i < 2; ++i) l1Weights[hand_idx(BLACK, ROOK, i)][6] = 5;
+    for (int i = 0; i < 2; ++i) l1Weights[hand_idx(WHITE, ROOK, i)][6] = -5;
+    for (int i = 0; i < 18; ++i) l1Weights[hand_idx(BLACK, PAWN, i)][0] = 5;
+    for (int i = 0; i < 18; ++i) l1Weights[hand_idx(WHITE, PAWN, i)][0] = -5;
 
     l2Weights[0] = 1;
     l2Weights[1] = 3;
@@ -75,6 +75,14 @@ NNUE::NNUE() {
     l2Weights[5] = 10;
     l2Weights[6] = 12;
     l2Weights[7] = 16;
+    l2Weights[8] = -1;
+    l2Weights[9] = -3;
+    l2Weights[10] = -4;
+    l2Weights[11] = -5;
+    l2Weights[12] = -6;
+    l2Weights[13] = -10;
+    l2Weights[14] = -12;
+    l2Weights[15] = -16;
 }
 
 

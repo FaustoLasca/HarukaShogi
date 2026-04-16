@@ -135,6 +135,11 @@ void Worker::iterative_deepening() {
                 moveHistory[i][j] = moveHistory[i][j] + 1;
             }
         }
+
+    // initialize the nnue accumulator
+    accumulatorStack = std::stack<NNUE::Accumulator>();
+    accumulatorStack.push(NNUE::Accumulator());
+    nnue.compute_accumulator(accumulatorStack.top(), searchPos);
     
     int old_score = q_search();
     int score;
@@ -260,7 +265,7 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
         
         searchDepth = depth - reduction;
         
-        searchPos.make_move(m);
+        make_move(m);
         // Princpal Variation Search (PVS)
         // If we are in a PV node, search only the first node with a full alpha beta window,
         // the other moves are searched as NON_PV nodes with null window between alpha and alpha+1.
@@ -280,7 +285,7 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
                 score = -search<PV_NODE>(stack+1, depth - 1, -beta, -alpha);
             }
         }
-        searchPos.unmake_move(m);
+        unmake_move(m);
 
         // update best score and the pv table
         if (score > bestScore) {
@@ -334,6 +339,7 @@ int Worker::q_search(int alpha, int beta) {
         throw AbortSearchException();
 
     int eval = evaluate(searchPos);
+    // int eval = nnue.evaluate(accumulatorStack.top(), searchPos.side_to_move());
 
     if (eval >= beta)
         return eval;
@@ -351,9 +357,9 @@ int Worker::q_search(int alpha, int beta) {
     int score;
     Move m;
     while ((m = movePicker.next_move()) != Move::null()) {
-        searchPos.make_move(m);
+        make_move(m);
         score = -q_search(-beta, -alpha);
-        searchPos.unmake_move(m);
+        unmake_move(m);
 
         if (score > bestScore) {
             bestScore = score;
@@ -366,6 +372,41 @@ int Worker::q_search(int alpha, int beta) {
     }
     
     return bestScore;
+}
+
+
+void Worker::make_move(Move m) {
+    // update the nnue accumulator (before making the move)
+    // copy the accumulator and update it
+    accumulatorStack.push(accumulatorStack.top());
+    nnue.update_accumulator(accumulatorStack.top(), searchPos, m);
+    // make the move
+    searchPos.make_move(m);
+}
+
+
+void Worker::unmake_move(Move m) {
+    // remove the top accumulator from the stack
+    accumulatorStack.pop();
+    // unmake the move
+    searchPos.unmake_move(m);
+}
+
+
+void Worker::make_null_move() {
+    // add a copy of the top accumulator to the stack
+    // no modifications are made to the accumulator with a null move
+    accumulatorStack.push(accumulatorStack.top());
+    // make the null move
+    searchPos.make_null_move();
+}
+
+
+void Worker::unmake_null_move() {
+    // remove the top accumulator from the stack
+    accumulatorStack.pop();
+    // unmake the null move
+    searchPos.unmake_null_move();
 }
 
 

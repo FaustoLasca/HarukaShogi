@@ -1,3 +1,6 @@
+#ifndef NNUE_H
+#define NNUE_H
+
 #include "position.h"
 #include "types.h"
 #include <cstdint>
@@ -11,7 +14,7 @@ constexpr size_t FEATURES = 2 * NUM_SQUARES * NUM_PIECE_TYPES + 2 * 2 * 19;
 constexpr size_t ACCUMULATOR_SIZE = 8;
 constexpr int Q1 = 127; // needs to fit in int8_t [-128, 127]
 constexpr int Q2 = 64;  // weights need to fit in int8_t, so max weight value is  2
-constexpr int SCALE = 100 * 127 * 64; // needs to be adjusted
+constexpr int SCALE = 25 * 127 * 64; // needs to be adjusted
 
 
 struct Accumulator {
@@ -47,3 +50,5 @@ class NNUE {
 
 } // namespace NNUE
 } // namespace harukashogi
+
+#endif // NNUE_H

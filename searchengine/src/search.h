@@ -3,6 +3,7 @@
 
 #include <chrono>
 #include <exception>
+#include <stack>
 
 #include "position.h"
 #include "evaluate.h"
@@ -10,6 +11,7 @@
 #include "history.h"
 #include "thread.h"
 #include "types.h"
+#include "nnue.h"
 
 namespace chr = std::chrono;
 
@@ -131,6 +133,12 @@ class Worker : public Thread {
         // quiescence search, called by the main search
         int q_search(int alpha = -INF_SCORE, int beta = INF_SCORE);
 
+        // movemaking functions
+        void make_move(Move m);
+        void unmake_move(Move m);
+        void make_null_move();
+        void unmake_null_move();
+
         // checks if the time is up and throws an exception if it is
         void stop_check();
 
@@ -141,6 +149,9 @@ class Worker : public Thread {
 
         StackEntry stack[MAX_DEPTH];
         void empty_stack();
+
+        NNUE::NNUE nnue;
+        std::stack<NNUE::Accumulator> accumulatorStack;
 
         // shared elements
         TTable& tt;
