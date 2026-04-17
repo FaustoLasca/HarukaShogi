@@ -90,7 +90,7 @@ int evaluate(Position& pos) {
     
 
     // add the value of the hand pieces
-    for (PieceType pt = SILVER; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
+    for (PieceType pt = GOLD; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
         // hand pieces are volued more than board pieces
         score += (pos.hand_count(sideToMove, pt) * 120*PieceValues[pt]);
         score -= (pos.hand_count(~sideToMove, pt) * 120*PieceValues[pt]);
