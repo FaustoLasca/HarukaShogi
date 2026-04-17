@@ -338,8 +338,8 @@ int Worker::q_search(int alpha, int beta) {
     if (is_search_aborted())
         throw AbortSearchException();
 
-    // int eval = evaluate(searchPos);
-    int eval = evaluate_nnue(nnue, accumulatorStack.top(), searchPos);
+    int eval = evaluate(searchPos);
+    // int eval = evaluate_nnue(nnue, accumulatorStack.top(), searchPos);
 
     if (eval >= beta)
         return eval;

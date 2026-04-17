@@ -51,47 +51,47 @@ int evaluate(Position& pos) {
                  * 100*PieceValues[pt];
 
     // add pawn position values
-    // Bitboard ownPawns = pos.pieces(sideToMove, PAWN);
-    // while (ownPawns)
-    //     score += PawnSquareValues[sideToMove][pop_lsb(ownPawns)];
-    // Bitboard oppPawns = pos.pieces(~sideToMove, PAWN);
-    // while (oppPawns)
-    //     score -= PawnSquareValues[~sideToMove][pop_lsb(oppPawns)];
+    Bitboard ownPawns = pos.pieces(sideToMove, PAWN);
+    while (ownPawns)
+        score += PawnSquareValues[sideToMove][pop_lsb(ownPawns)];
+    Bitboard oppPawns = pos.pieces(~sideToMove, PAWN);
+    while (oppPawns)
+        score -= PawnSquareValues[~sideToMove][pop_lsb(oppPawns)];
 
     // add the value of the king protection
-    // score -= (popcount(pos.attacks<KING>(sideToMove)  & ~pos.all_pieces(sideToMove))
-    //        -  popcount(pos.attacks<KING>(~sideToMove) & ~pos.all_pieces(~sideToMove)))
-    //        * 3;
+    score -= (popcount(pos.attacks<KING>(sideToMove)  & ~pos.all_pieces(sideToMove))
+           -  popcount(pos.attacks<KING>(~sideToMove) & ~pos.all_pieces(~sideToMove)))
+           * 3;
 
     // add sliding piece mobility
-    // Bitboard sliding = pos.pieces(sideToMove, BISHOP) | pos.pieces(sideToMove, P_BISHOP);
-    // Bitboard attacks = 0;
-    // while (sliding)
-    //     attacks |= attacks_bb<BLACK, BISHOP>(pop_lsb(sliding), pos.all_pieces());
-    // score += popcount(attacks) * 1;
+    Bitboard sliding = pos.pieces(sideToMove, BISHOP) | pos.pieces(sideToMove, P_BISHOP);
+    Bitboard attacks = 0;
+    while (sliding)
+        attacks |= attacks_bb<BLACK, BISHOP>(pop_lsb(sliding), pos.all_pieces());
+    score += popcount(attacks) * 1;
 
-    // sliding = pos.pieces(sideToMove, ROOK) | pos.pieces(sideToMove, P_ROOK);
-    // attacks = 0;
-    // while (sliding)
-    //     attacks |= attacks_bb<BLACK, ROOK>(pop_lsb(sliding), pos.all_pieces());
-    // score += popcount(attacks) * 1;
+    sliding = pos.pieces(sideToMove, ROOK) | pos.pieces(sideToMove, P_ROOK);
+    attacks = 0;
+    while (sliding)
+        attacks |= attacks_bb<BLACK, ROOK>(pop_lsb(sliding), pos.all_pieces());
+    score += popcount(attacks) * 1;
 
-    // sliding = pos.pieces(~sideToMove, BISHOP) | pos.pieces(~sideToMove, P_BISHOP);
-    // attacks = 0;
-    // while (sliding)
-    //     attacks |= attacks_bb<WHITE, BISHOP>(pop_lsb(sliding), pos.all_pieces());
-    // score -= popcount(attacks) * 1;
+    sliding = pos.pieces(~sideToMove, BISHOP) | pos.pieces(~sideToMove, P_BISHOP);
+    attacks = 0;
+    while (sliding)
+        attacks |= attacks_bb<WHITE, BISHOP>(pop_lsb(sliding), pos.all_pieces());
+    score -= popcount(attacks) * 1;
 
-    // sliding = pos.pieces(~sideToMove, ROOK) | pos.pieces(~sideToMove, P_ROOK);
-    // attacks = 0;
-    // while (sliding)
-    //     attacks |= attacks_bb<WHITE, ROOK>(pop_lsb(sliding), pos.all_pieces());
-    // score -= popcount(attacks) * 1;
+    sliding = pos.pieces(~sideToMove, ROOK) | pos.pieces(~sideToMove, P_ROOK);
+    attacks = 0;
+    while (sliding)
+        attacks |= attacks_bb<WHITE, ROOK>(pop_lsb(sliding), pos.all_pieces());
+    score -= popcount(attacks) * 1;
 
     
 
     // add the value of the hand pieces
-    for (PieceType pt = SILVER; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
+    for (PieceType pt = GOLD; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
         // hand pieces are volued more than board pieces
         score += (pos.hand_count(sideToMove, pt) * 120*PieceValues[pt]);
         score -= (pos.hand_count(~sideToMove, pt) * 120*PieceValues[pt]);
