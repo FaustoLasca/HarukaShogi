@@ -25,7 +25,7 @@ add_executable(HarukaShogi
     src/thread.cpp
     src/usi.cpp
     src/engine.cpp
-    src/nnue.cpp
+    src/nnue/nnue.cpp
 )
 target_include_directories(HarukaShogi PRIVATE include)
 
@@ -45,7 +45,8 @@ add_executable(test
     src/thread.cpp
     src/usi.cpp
     src/engine.cpp
-    src/nnue.cpp
+    src/nnue/nnue.cpp
+    src/nnue/load.cpp
 )
 target_include_directories(test PRIVATE include)
 
@@ -64,6 +65,39 @@ add_executable(book_generation
     src/thread.cpp
     src/usi.cpp
     src/engine.cpp
-    src/nnue.cpp
+    src/nnue/nnue.cpp
 )
 target_include_directories(book_generation PRIVATE include)
+
+
+find_package(pybind11 REQUIRED)
+
+pybind11_add_module(nnue_loader
+    src/position.cpp
+    src/movegen.cpp
+    src/misc.cpp
+    src/bitboard.cpp
+    src/nnue/nnue.cpp
+    src/nnue/load.cpp
+    src/nnue/bindings.cpp
+)
+target_include_directories(nnue_loader PRIVATE include)
+
+
+set(NNUE_WEIGHTS "${CMAKE_CURRENT_SOURCE_DIR}/bin/nnue/test_weights.bin")
+set(BOOK_DATA "${CMAKE_CURRENT_SOURCE_DIR}/bin/book_data.bin")
+
+set_source_files_properties(src/nnue/nnue.cpp
+    PROPERTIES OBJECT_DEPENDS "${NNUE_WEIGHTS}"
+)
+set_source_files_properties(src/opening_book.cpp
+    PROPERTIES OBJECT_DEPENDS "${BOOK_DATA}"
+)
+
+execute_process(
+    COMMAND "${Python_EXECUTABLE}" -c
+    "import site; print(site.getsitepackages()[0])"
+    OUTPUT_VARIABLE PY_SITE_PACKAGES
+    OUTPUT_STRIP_TRAILING_WHITESPACE
+)
+install(TARGETS nnue_loader LIBRARY DESTINATION "${PY_SITE_PACKAGES}")

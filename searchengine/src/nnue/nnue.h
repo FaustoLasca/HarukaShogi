@@ -1,8 +1,8 @@
 #ifndef NNUE_H
 #define NNUE_H
 
-#include "position.h"
-#include "types.h"
+#include "../position.h"
+#include "../types.h"
 #include <cstdint>
 
 
@@ -14,7 +14,7 @@ constexpr size_t FEATURES = 2 * NUM_SQUARES * NUM_PIECE_TYPES + 2 * 2 * 19;
 constexpr size_t ACCUMULATOR_SIZE = 8;
 constexpr int Q1 = 127; // needs to fit in int8_t [-128, 127]
 constexpr int Q2 = 64;  // weights need to fit in int8_t, so max weight value is  2
-constexpr int SCALE = 25 * 127 * 64; // needs to be adjusted
+constexpr int SCALE = 600; // needs to be adjusted
 
 
 struct Accumulator {
@@ -36,15 +36,16 @@ class NNUE {
         // evaluate the position from the accumulator
         int32_t evaluate(const Accumulator& acc, Color stm) const;
 
+        // compute the index of the feature given a the combination
+        static size_t board_idx(Color c, PieceType pt, Square sq);
+        static size_t hand_idx(Color c, PieceType pt, int count);
+
     private:
         int16_t l1Weights[FEATURES][ACCUMULATOR_SIZE];
         int16_t l1Biases[ACCUMULATOR_SIZE];
+        
         int8_t l2Weights[2*ACCUMULATOR_SIZE];
-        int8_t l2Bias;
-
-        // compute the index of the feature given a the combination
-        size_t board_idx(Color c, PieceType pt, Square sq) const;
-        size_t hand_idx(Color c, PieceType pt, int count) const;
+        int32_t l2Bias;
 };
 
 

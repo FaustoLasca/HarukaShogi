@@ -2,7 +2,9 @@
 #include "position.h"
 #include "types.h"
 #include "misc.h"
-#include "nnue.h"
+#include "nnue/nnue.h"
+
+#include <algorithm>
 
 namespace harukashogi {
 
@@ -112,7 +114,7 @@ int evaluate_nnue(NNUE::NNUE& nnue, NNUE::Accumulator& acc, Position& pos) {
     }
 
     // evaluate the position from the accumulator
-    return nnue.evaluate(acc, pos.side_to_move());
+    return std::clamp(nnue.evaluate(acc, pos.side_to_move()), -WIN_SCORE+1, WIN_SCORE-1);
 }
 
 

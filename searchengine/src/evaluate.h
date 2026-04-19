@@ -2,7 +2,7 @@
 #define EVALUATE_H
 
 #include "position.h"
-#include "nnue.h"
+#include "nnue/nnue.h"
 
 namespace harukashogi {
 

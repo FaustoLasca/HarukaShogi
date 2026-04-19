@@ -11,7 +11,7 @@
 #include "history.h"
 #include "thread.h"
 #include "types.h"
-#include "nnue.h"
+#include "nnue/nnue.h"
 
 namespace chr = std::chrono;
 
