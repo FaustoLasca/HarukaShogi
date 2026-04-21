@@ -70,6 +70,24 @@ add_executable(book_generation
 target_include_directories(book_generation PRIVATE include)
 
 
+add_executable(gensfen
+    src/nnue/gensfen.cpp
+    src/position.cpp
+    src/movegen.cpp
+    src/misc.cpp
+    src/bitboard.cpp
+    src/movepicker.cpp
+    src/thread.cpp
+    src/engine.cpp
+    src/search.cpp
+    src/ttable.cpp
+    src/opening_book.cpp
+    src/evaluate.cpp
+    src/nnue/nnue.cpp
+)
+target_include_directories(gensfen PRIVATE include)
+
+
 find_package(pybind11 REQUIRED)
 
 pybind11_add_module(nnue_loader

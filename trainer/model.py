@@ -54,7 +54,7 @@ class NNUEModel(nn.Module):
 if __name__ == "__main__":
 
     from nnue_loader import load_data_batch
-    batch = load_data_batch("test_data.txt")
+    batch = load_data_batch("data/gensfen/data_0/0.txt")
 
     b_features = torch.tensor(batch.black_indexes)
     w_features = torch.tensor(batch.white_indexes)
