@@ -64,7 +64,7 @@ int play_game(Engine& engine, CVManager& manager, OpeningBook& book, std::vector
     int numMoves = 0, score;
 
     // start the game with a random last move from the opening book
-    while ((move = book.sample_move(pos.get_key())) != Move::null()) {
+    while (!pos.is_game_over() && (move = book.sample_move(pos.get_key())) != Move::null()) {
         pos.make_move(move);
         numMoves++;
     }

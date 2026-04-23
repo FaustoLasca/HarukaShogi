@@ -1,5 +1,6 @@
 import torch
 from torch import nn
+import torch.nn.functional as F
 import numpy as np	
 
 NUM_FEATURES = 2344
@@ -18,9 +19,22 @@ class NNUEModel(nn.Module):
         nn.init.normal_(self.l1.weight, mean=0., std=std)
         nn.init.normal_(self.l1_bias, mean=0., std=std)
 
+
+    @staticmethod
+    def fake_quantize(x, scale, qmin, qmax):
+        scale = 1/scale
+        return torch.fake_quantize_per_tensor_affine(x, scale, 0, qmin, qmax)
+
+
     def forward(self, black_features, white_features, stm):
-        b_acc = self.l1(black_features).sum(dim=1) + self.l1_bias
-        w_acc = self.l1(white_features).sum(dim=1) + self.l1_bias
+        q_l1w = self.fake_quantize(self.l1.weight, 127, -32768, 32767)
+        q_l1b = self.fake_quantize(self.l1_bias, 127, -32768, 32767)
+        q_l2w = self.fake_quantize(self.l2.weight, 64, -128, 127)
+        # no need to fake quantize the l2 bias at int32 precision
+
+
+        b_acc = F.embedding(black_features, q_l1w).sum(dim=1) + q_l1b
+        w_acc = F.embedding(white_features, q_l1w).sum(dim=1) + q_l1b
 
         accumulator = torch.where(
             stm.unsqueeze(-1) == 0,
@@ -29,7 +43,8 @@ class NNUEModel(nn.Module):
         )
 
         accumulator = torch.clamp(accumulator, min=0., max=1.)
-        return self.l2(accumulator)
+        return F.linear(accumulator, q_l2w, self.l2.bias)
+    
 
     def weights_to_bin(self, file_path):
         with open(file_path, "wb") as f:
@@ -39,10 +54,10 @@ class NNUEModel(nn.Module):
             l2_weights = self.l2.weight.data.clone().cpu().numpy().flatten() # (2*ACCUMULATOR_SIZE,)
             l2_bias = self.l2.bias.data.clone().cpu().numpy()                # (1,)
 
-            l1_weights = (l1_weights * 127)                        .round().astype(np.int16)
-            l1_bias    = (l1_bias * 127)                           .round().astype(np.int16)
-            l2_weights = (l2_weights * 64) .clip(min=-128, max=127).round().astype(np.int8 )
-            l2_bias    = (l2_bias * 127*64)                        .round().astype(np.int32)
+            l1_weights = (l1_weights * 127)                           .round().astype(np.int16)
+            l1_bias    = (l1_bias    * 127)                           .round().astype(np.int16)
+            l2_weights = (l2_weights * 64)    .clip(min=-128, max=127).round().astype(np.int8 )
+            l2_bias    = (l2_bias    * 127*64)                        .round().astype(np.int32)
 
             print(l1_weights.shape, l1_weights.dtype)
             print(l1_bias.shape, l1_bias.dtype)

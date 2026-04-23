@@ -66,7 +66,8 @@ class NNUEIterableDataset(IterableDataset):
         
         # at the end, yield the remaining carry
         if carry_b is not None:
-            yield (carry_b, carry_w, carry_s, carry_r, carry_t)
+            if carry_b.size(0) > 0:
+                yield (carry_b, carry_w, carry_s, carry_r, carry_t) 
                 
 
 if __name__ == "__main__":

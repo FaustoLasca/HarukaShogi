@@ -1,6 +1,7 @@
 import torch
 import torch.nn as nn
-from torch.optim import SGD
+from torch.optim import SGD, AdamW
+from torch.optim.lr_scheduler import CosineAnnealingLR, StepLR, ExponentialLR
 from torch.utils.data import DataLoader
 
 from model import NNUEModel
@@ -9,21 +10,23 @@ from dataset import NNUEIterableDataset
 
 device = "cuda"
 LAMBDA = 0.7
+EPOCHS = 300
 
 
 model = NNUEModel().to(device)
 dataloader = DataLoader(
-    NNUEIterableDataset("data/gensfen", batch_size=8192),
+    NNUEIterableDataset("data/gensfen", batch_size=16384),
     batch_size=None,
     num_workers=16,
     persistent_workers=True,
     prefetch_factor=4,
     pin_memory=True,
     )
-optimizer = SGD(model.parameters(), lr=1e-2, weight_decay=1e-5)
+optimizer = AdamW(model.parameters(), lr=1e-3, weight_decay=1e-5)
+scheduler = ExponentialLR(optimizer, gamma=0.1**(1/EPOCHS))
 
 losses = []
-for epoch in range(300):
+for epoch in range(EPOCHS):
     for batch in dataloader:
         b, w, s, r, t = [tensor.to(device) for tensor in batch]
 
@@ -41,12 +44,14 @@ for epoch in range(300):
         loss.backward()
         optimizer.step()
 
-        losses.append(loss)
-
+        losses.append(loss.detach())
+    
     mean_loss = torch.stack(losses).mean().item()
-    print(f"Epoch {epoch}, Loss: {mean_loss:.4f}")
+    print(f"Epoch {epoch}, Loss: {mean_loss:.4f}, LR: {scheduler.get_last_lr()[0]:.4e}")
     losses = []
 
-model.weights_to_bin("searchengine/bin/nnue/weights_3.bin")
+    scheduler.step()
+
+model.weights_to_bin("searchengine/bin/nnue/weights_AdamW_3.bin")
 
 del dataloader	
