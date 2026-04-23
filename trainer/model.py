@@ -14,6 +14,10 @@ class NNUEModel(nn.Module):
         self.l1_bias = nn.Parameter(torch.zeros(ACCUMULATOR_SIZE))
         self.l2 = nn.Linear(ACCUMULATOR_SIZE * 2, 1)
 
+        std = 1/np.sqrt(NUM_FEATURES)
+        nn.init.normal_(self.l1.weight, mean=0., std=std)
+        nn.init.normal_(self.l1_bias, mean=0., std=std)
+
     def forward(self, black_features, white_features, stm):
         b_acc = self.l1(black_features).sum(dim=1) + self.l1_bias
         w_acc = self.l1(white_features).sum(dim=1) + self.l1_bias
@@ -30,15 +34,15 @@ class NNUEModel(nn.Module):
     def weights_to_bin(self, file_path):
         with open(file_path, "wb") as f:
 
-            l1_weights = self.l1.weight.data.numpy()           # (NUM_FEATURES, ACCUMULATOR_SIZE)
-            l1_bias = self.l1_bias.data.numpy()                # (ACCUMULATOR_SIZE,)
-            l2_weights = self.l2.weight.data.numpy().flatten() # (2*ACCUMULATOR_SIZE,)
-            l2_bias = self.l2.bias.data.numpy()                # (1,)
+            l1_weights = self.l1.weight.data.clone().cpu().numpy()           # (NUM_FEATURES, ACCUMULATOR_SIZE)
+            l1_bias = self.l1_bias.data.clone().cpu().numpy()                # (ACCUMULATOR_SIZE,)
+            l2_weights = self.l2.weight.data.clone().cpu().numpy().flatten() # (2*ACCUMULATOR_SIZE,)
+            l2_bias = self.l2.bias.data.clone().cpu().numpy()                # (1,)
 
-            l1_weights = (l1_weights * 127).round().astype(np.int16)
-            l1_bias    = (l1_bias * 127)   .round().astype(np.int16)
-            l2_weights = (l2_weights * 64) .round().astype(np.int8)
-            l2_bias    = (l2_bias * 127*64).round().astype(np.int32)
+            l1_weights = (l1_weights * 127)                        .round().astype(np.int16)
+            l1_bias    = (l1_bias * 127)                           .round().astype(np.int16)
+            l2_weights = (l2_weights * 64) .clip(min=-128, max=127).round().astype(np.int8 )
+            l2_bias    = (l2_bias * 127*64)                        .round().astype(np.int32)
 
             print(l1_weights.shape, l1_weights.dtype)
             print(l1_bias.shape, l1_bias.dtype)
@@ -60,13 +64,14 @@ if __name__ == "__main__":
     w_features = torch.tensor(batch.white_indexes)
     stm = torch.tensor(batch.stms)
 
-    print(b_features.shape, w_features.shape, stm.unsqueeze(-1).shape)
-    print(stm.unsqueeze(-1))
-
     model = NNUEModel()
-    model.eval()
-    with torch.no_grad():
-        output = model(b_features, w_features, stm)
-    print(output * 600)
 
-    model.weights_to_bin("searchengine/bin/nnue/test_weights.bin")
+    b_acc = model.l1(b_features).sum(dim=1) + model.l1_bias
+
+    print(b_acc.shape)
+    print(f'b_acc mean: {b_acc.mean().item():.4f}')
+    print(f'b_acc std:  {b_acc.std().item():.4f}')
+    print(f'b_acc fraction in (0,1):  {((b_acc > 0) & (b_acc < 1)).float().mean().item():.4f}')
+
+
+    
