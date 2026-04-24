@@ -4,6 +4,7 @@
 
 #include <fstream>
 #include <sstream>
+#include <random>
 
 namespace harukashogi {
 namespace NNUE {
@@ -34,7 +35,7 @@ DataBatch::DataBatch(std::vector<DataSample>& samples) {
 }
 
 
-DataSample compute_sample(std::string sfen, float score, float result) {
+DataSample compute_sample(std::string sfen, float score, float result, bool hflip) {
     Position pos;
     pos.set(sfen);
 
@@ -44,14 +45,15 @@ DataSample compute_sample(std::string sfen, float score, float result) {
     sample.stm = pos.side_to_move() == BLACK ? 0.0f : 1.0f;
 
     size_t num_idxs = 0;
+    Piece p;
     // add the board indexes
     for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
-        Piece p = pos.piece(sq);
-        if (pos.piece(sq) != NO_PIECE) {
+        if ((p = pos.piece(sq)) != NO_PIECE) {
+            Square sq_flip = hflip ? harukashogi::hflip(sq) : sq;
             PieceType pt = type_of(p);
             Color c = color_of(p);
-            sample.black_indexes[num_idxs] = NNUE::board_idx(c, pt, sq);
-            sample.white_indexes[num_idxs] = NNUE::board_idx(~c, pt, SQ_99 - sq);
+            sample.black_indexes[num_idxs] = NNUE::board_idx<BLACK>(c, pt, sq_flip);
+            sample.white_indexes[num_idxs] = NNUE::board_idx<WHITE>(c, pt, sq_flip);
             ++num_idxs;
         }
     }
@@ -59,8 +61,8 @@ DataSample compute_sample(std::string sfen, float score, float result) {
     for (Color c = BLACK; c < NUM_COLORS; ++c) {
         for (PieceType pt = GOLD; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
             for (int count = 0; count < pos.hand_count(c, pt); ++count) {
-                sample.black_indexes[num_idxs] = NNUE::hand_idx(c, pt, count);
-                sample.white_indexes[num_idxs] = NNUE::hand_idx(~c, pt, count);
+                sample.black_indexes[num_idxs] = NNUE::hand_idx<BLACK>(c, pt, count);
+                sample.white_indexes[num_idxs] = NNUE::hand_idx<WHITE>(c, pt, count);
                 ++num_idxs;
             }
         }
@@ -72,8 +74,13 @@ DataSample compute_sample(std::string sfen, float score, float result) {
 }
 
 
-std::shared_ptr<DataBatch> load_data_batch(const std::string& file_path) {
+std::shared_ptr<DataBatch> load_data_batch(
+    const std::string& file_path,
+    bool hflip,
+    bool random_hflip
+) {
     Position::init();
+    std::mt19937 rng(std::random_device{}());
 
     std::ifstream file(file_path);
     if (!file.is_open()) {
@@ -92,7 +99,8 @@ std::shared_ptr<DataBatch> load_data_batch(const std::string& file_path) {
         score = std::stof(line.substr(p1 + 1, p2 - p1 - 1));
         result = std::stof(line.substr(p2 + 1, line.size() - p2 - 1));
 
-        samples.push_back(compute_sample(sfen, score, result));
+        if (random_hflip) hflip = rng() % 2 == 0;
+        samples.push_back(compute_sample(sfen, score, result, hflip));
     }
 
     return std::make_shared<DataBatch>(samples);

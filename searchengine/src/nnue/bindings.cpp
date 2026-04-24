@@ -61,6 +61,8 @@ PYBIND11_MODULE(nnue_loader, m) {
     m.def("load_data_batch",
         &load_data_batch,
         py::arg("file_path"),
+        py::arg("hflip") = false,
+        py::arg("random_hflip") = false,
         py::call_guard<py::gil_scoped_release>()
     );
 }

@@ -36,8 +36,12 @@ struct DataBatch {
 };
 
 
-DataSample compute_sample(std::string sfen, float score, float result);
-std::shared_ptr<DataBatch> load_data_batch(const std::string& file_path);
+DataSample compute_sample(std::string sfen, float score, float result, bool hflip = false);
+std::shared_ptr<DataBatch> load_data_batch(
+    const std::string& file_path,
+    bool hflip = false,
+    bool random_hflip = false
+);
 
 
 } // namespace NNUE

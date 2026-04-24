@@ -15,7 +15,7 @@ EPOCHS = 300
 
 model = NNUEModel().to(device)
 dataloader = DataLoader(
-    NNUEIterableDataset("data/gensfen", batch_size=16384),
+    NNUEIterableDataset("data/nnue/train", batch_size=16384, random_hflip=True),
     batch_size=None,
     num_workers=16,
     persistent_workers=True,
@@ -52,6 +52,6 @@ for epoch in range(EPOCHS):
 
     scheduler.step()
 
-model.weights_to_bin("searchengine/bin/nnue/weights_AdamW_3.bin")
+model.weights_to_bin("searchengine/bin/nnue/weights_AdamW_4.bin")
 
 del dataloader	

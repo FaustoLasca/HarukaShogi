@@ -13,7 +13,7 @@ namespace NNUE {
 // const unsigned char gWeightsData[];
 // const unsigned char *const gWeightsEnd;
 // const unsigned int gWeightsSize;
-INCBIN(Weights, "../bin/nnue/weights_AdamW_3.bin");
+INCBIN(Weights, "../bin/nnue/AdamW_acc8_14M.bin");
 
 
 NNUE::NNUE() {
@@ -116,8 +116,8 @@ void NNUE::compute_accumulator(Accumulator& acc, const Position& pos) const {
             PieceType pt = type_of(pos.piece(sq));
             Color c = color_of(pos.piece(sq));
             for (int i = 0; i < ACCUMULATOR_SIZE; ++i) {
-                acc.v[0][i] += l1Weights[board_idx(c, pt, sq)][i];
-                acc.v[1][i] += l1Weights[board_idx(~c, pt, SQ_99 - sq)][i];
+                acc.v[0][i] += l1Weights[board_idx<BLACK>(c, pt, sq)][i];
+                acc.v[1][i] += l1Weights[board_idx<WHITE>(c, pt, sq)][i];
             }
         }
     }
@@ -127,8 +127,8 @@ void NNUE::compute_accumulator(Accumulator& acc, const Position& pos) const {
         for (PieceType pt = GOLD; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
             for (int count = 0; count < pos.hand_count(c, pt); ++count) {
                 for (int i = 0; i < ACCUMULATOR_SIZE; ++i) {
-                    acc.v[0][i] += l1Weights[hand_idx(c, pt, count)][i];
-                    acc.v[1][i] += l1Weights[hand_idx(~c, pt, count)][i];
+                    acc.v[0][i] += l1Weights[hand_idx<BLACK>(c, pt, count)][i];
+                    acc.v[1][i] += l1Weights[hand_idx<WHITE>(c, pt, count)][i];
                 }
             }
         }
@@ -144,13 +144,13 @@ void NNUE::update_accumulator(Accumulator& acc, const Position& pos, Move m) con
         PieceType pt = m.dropped();
         // add the dropped piece to the board
         for (int i = 0; i < ACCUMULATOR_SIZE; ++i) {
-            acc.v[0][i] += l1Weights[board_idx(stm, pt, to)][i];
-            acc.v[1][i] += l1Weights[board_idx(~stm, pt, SQ_99 - to)][i];
+            acc.v[0][i] += l1Weights[board_idx<BLACK>(stm, pt, to)][i];
+            acc.v[1][i] += l1Weights[board_idx<WHITE>(stm, pt, to)][i];
         }
         // remove the dropped piece from the hand
         for (int i = 0; i < ACCUMULATOR_SIZE; ++i) {
-            acc.v[0][i] -= l1Weights[hand_idx(stm, pt, pos.hand_count(stm, pt)-1)][i];
-            acc.v[1][i] -= l1Weights[hand_idx(~stm, pt, pos.hand_count(stm, pt)-1)][i];
+            acc.v[0][i] -= l1Weights[hand_idx<BLACK>(stm, pt, pos.hand_count(stm, pt)-1)][i];
+            acc.v[1][i] -= l1Weights[hand_idx<WHITE>(stm, pt, pos.hand_count(stm, pt)-1)][i];
         }
     }
 
@@ -159,15 +159,15 @@ void NNUE::update_accumulator(Accumulator& acc, const Position& pos, Move m) con
         PieceType pt = type_of(pos.piece(from));
         // remove the piece from the board
         for (int i = 0; i < ACCUMULATOR_SIZE; ++i) {
-            acc.v[0][i] -= l1Weights[board_idx(stm, pt, from)][i];
-            acc.v[1][i] -= l1Weights[board_idx(~stm, pt, SQ_99 - from)][i];
+            acc.v[0][i] -= l1Weights[board_idx<BLACK>(stm, pt, from)][i];
+            acc.v[1][i] -= l1Weights[board_idx<WHITE>(stm, pt, from)][i];
         }
         // add the piece to the board
         if (m.is_promotion())
             pt = promote(pt);
         for (int i = 0; i < ACCUMULATOR_SIZE; ++i) {
-            acc.v[0][i] += l1Weights[board_idx(stm, pt, to)][i];
-            acc.v[1][i] += l1Weights[board_idx(~stm, pt, SQ_99 - to)][i];
+            acc.v[0][i] += l1Weights[board_idx<BLACK>(stm, pt, to)][i];
+            acc.v[1][i] += l1Weights[board_idx<WHITE>(stm, pt, to)][i];
         }
 
         // if the move is a capture, remove the captured piece from the board and add it to the hand
@@ -175,14 +175,15 @@ void NNUE::update_accumulator(Accumulator& acc, const Position& pos, Move m) con
             // remove the captured piece from the board
             PieceType capturedPT = type_of(pos.piece(m.to()));
             for (int i = 0; i < ACCUMULATOR_SIZE; ++i) {
-                acc.v[0][i] -= l1Weights[board_idx(~stm, capturedPT, m.to())][i];
-                acc.v[1][i] -= l1Weights[board_idx(stm, capturedPT, SQ_99 - m.to())][i];
+                acc.v[0][i] -= l1Weights[board_idx<BLACK>(~stm, capturedPT, m.to())][i];
+                acc.v[1][i] -= l1Weights[board_idx<WHITE>(~stm, capturedPT, m.to())][i];
             }
             // add the captured piece to the hand
             capturedPT = unpromoted_type(capturedPT);
+            int count = pos.hand_count(stm, capturedPT);
             for (int i = 0; i < ACCUMULATOR_SIZE; ++i) {
-                acc.v[0][i] += l1Weights[hand_idx(stm, capturedPT, pos.hand_count(stm, capturedPT))][i];
-                acc.v[1][i] += l1Weights[hand_idx(~stm, capturedPT, pos.hand_count(stm, capturedPT))][i];
+                acc.v[0][i] += l1Weights[hand_idx<BLACK>(stm, capturedPT, count)][i];
+                acc.v[1][i] += l1Weights[hand_idx<WHITE>(stm, capturedPT, count)][i];
             }
         }
     }
@@ -206,14 +207,24 @@ int32_t NNUE::evaluate(const Accumulator& acc, Color stm) const {
 }
 
 
+template <Color perspective>
 size_t NNUE::board_idx(Color c, PieceType pt, Square sq) {
+    if constexpr (perspective == WHITE) {
+        c = ~c;
+        sq = SQ_99 - sq;
+    }
     return c * NUM_SQUARES * NUM_PIECE_TYPES 
          + pt * NUM_SQUARES 
          + sq;
 }
+template size_t NNUE::board_idx<BLACK>(Color c, PieceType pt, Square sq);
+template size_t NNUE::board_idx<WHITE>(Color c, PieceType pt, Square sq);
 
 
+template <Color perspective>
 size_t NNUE::hand_idx(Color c, PieceType pt, int count) {
+    if constexpr (perspective == WHITE) c = ~c;
+    
     size_t idx = 2 * NUM_SQUARES * NUM_PIECE_TYPES;
     idx += (c == BLACK) ? 0 : (2*19);
     switch (pt) {
@@ -244,6 +255,9 @@ size_t NNUE::hand_idx(Color c, PieceType pt, int count) {
     }
     return idx + count;
 }
+template size_t NNUE::hand_idx<BLACK>(Color c, PieceType pt, int count);
+template size_t NNUE::hand_idx<WHITE>(Color c, PieceType pt, int count);
+
 
 }
 }

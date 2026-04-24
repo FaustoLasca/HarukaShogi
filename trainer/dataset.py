@@ -7,11 +7,19 @@ from nnue_loader import load_data_batch
 
 
 class NNUEIterableDataset(IterableDataset):
-    def __init__(self, data_path, batch_size = 256, shuffle = True):
+    def __init__(
+        self, 
+        data_path, 
+        batch_size = 256, 
+        shuffle = True, 
+        random_hflip = False, 
+        hflip = False
+    ):
         self.files = list(Path(data_path).rglob("*.txt"))
         self.batch_size = batch_size
         self.shuffle = shuffle
-
+        self.random_hflip = random_hflip
+        self.hflip = hflip # always flip, overwritten by random_hflip
 
     def _files_fragment(self):
         info = get_worker_info()
@@ -29,7 +37,11 @@ class NNUEIterableDataset(IterableDataset):
         carry_b = carry_w = carry_s = carry_r = carry_t = None
 
         for file in files:
-            batch = load_data_batch(file.as_posix())
+            batch = load_data_batch(
+                file.as_posix(),
+                random_hflip=self.random_hflip,
+                hflip=self.hflip
+            )
             b = torch.from_numpy(batch.black_indexes)
             w = torch.from_numpy(batch.white_indexes)
             s = torch.from_numpy(batch.scores)
@@ -72,7 +84,7 @@ class NNUEIterableDataset(IterableDataset):
 
 if __name__ == "__main__":
     dataloader = DataLoader(
-        NNUEIterableDataset("data/gensfen", batch_size=10000),
+        NNUEIterableDataset("data/nnue/train", batch_size=10000),
         batch_size=None, # batch handled by the dataset
         num_workers=8,
         pin_memory=True,

@@ -175,7 +175,7 @@ void generate_data(const std::string& outDir, int totalPositions, int filePositi
 int main(int argc, char* argv[]) {
     assert(argc >= 2 && argc <= 4);
     std::string outDir = argv[1];
-    int totalPositions = 100000;
+    int totalPositions = 1000000;
     if (argc >= 3) totalPositions = std::stoi(argv[2]);
     int filePositions = 1000;
     if (argc >= 4) filePositions = std::stoi(argv[3]);

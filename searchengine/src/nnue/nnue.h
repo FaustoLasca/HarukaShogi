@@ -37,7 +37,9 @@ class NNUE {
         int32_t evaluate(const Accumulator& acc, Color stm) const;
 
         // compute the index of the feature given a the combination
+        template <Color perspective>
         static size_t board_idx(Color c, PieceType pt, Square sq);
+        template <Color perspective>
         static size_t hand_idx(Color c, PieceType pt, int count);
 
     private:

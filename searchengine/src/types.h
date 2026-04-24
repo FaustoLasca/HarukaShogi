@@ -292,6 +292,9 @@ constexpr DirectionStruct operator-(DirectionStruct d1, DirectionStruct d2) {
 constexpr Square make_square(File f, Rank r) { return Square(r*9 + f); };
 constexpr File file_of(Square sq) { return File(sq % 9); };
 constexpr Rank rank_of(Square sq) { return Rank(sq / 9); };
+constexpr Square hflip(Square sq) {
+    return make_square(File(8 - file_of(sq)), Rank(rank_of(sq)));
+};
 
 constexpr bool promotion_zone(Square sq, Color c) { 
     return rank_of(sq) <= R_3 && c == BLACK || rank_of(sq) >= R_7 && c == WHITE;
