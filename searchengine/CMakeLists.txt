@@ -102,12 +102,12 @@ pybind11_add_module(nnue_loader
 target_include_directories(nnue_loader PRIVATE include)
 
 
-set(NNUE_WEIGHTS "${CMAKE_CURRENT_SOURCE_DIR}/bin/nnue/test_weights.bin")
+# set(NNUE_WEIGHTS "${CMAKE_CURRENT_SOURCE_DIR}/bin/nnue/test_weights.bin")
 set(BOOK_DATA "${CMAKE_CURRENT_SOURCE_DIR}/bin/book_data.bin")
 
-set_source_files_properties(src/nnue/nnue.cpp
-    PROPERTIES OBJECT_DEPENDS "${NNUE_WEIGHTS}"
-)
+# set_source_files_properties(src/nnue/nnue.cpp
+#     PROPERTIES OBJECT_DEPENDS "${NNUE_WEIGHTS}"
+# )
 set_source_files_properties(src/opening_book.cpp
     PROPERTIES OBJECT_DEPENDS "${BOOK_DATA}"
 )

@@ -3,6 +3,7 @@
 
 #include "../position.h"
 #include "../types.h"
+#include "../misc.h"
 #include <cstdint>
 
 
@@ -19,6 +20,22 @@ constexpr int SCALE = 2000; // needs to be adjusted
 
 struct Accumulator {
     int16_t v[2][ACCUMULATOR_SIZE];
+};
+
+
+struct AccumulatorStack {
+    public:
+        AccumulatorStack() {}
+
+        void clear() { size = 1; }
+
+        void push();
+        void pop() { size--; }
+        Accumulator& top() { return stack[size-1]; }
+
+    private:
+        std::array<Accumulator, MAX_PLY+1> stack;
+        int size = 1;
 };
 
 

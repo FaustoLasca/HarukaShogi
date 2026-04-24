@@ -137,11 +137,10 @@ void Worker::iterative_deepening() {
         }
 
     // initialize the nnue accumulator
-    accumulatorStack = std::stack<NNUE::Accumulator>();
-    accumulatorStack.push(NNUE::Accumulator());
+    accumulatorStack.clear();
     nnue.compute_accumulator(accumulatorStack.top(), searchPos);
     
-    int old_score = q_search();
+    int old_score = q_search(0);
     int score;
     int alpha, beta;
     int deltaMult = 1;
@@ -184,7 +183,7 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
 
     // if the depth is 0, return the evaluation of the position
     if (searchPos.is_game_over() || depth == 0)
-        return q_search(alpha, beta);
+        return q_search(stack->ply, alpha, beta);
         
     // throws an exception if the time is up
     stop_check();
@@ -331,7 +330,7 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
 }
 
 
-int Worker::q_search(int alpha, int beta) {
+int Worker::q_search(int ply, int alpha, int beta) {
     info.nodeCount++;
 
     // throws an exception to abort the search
@@ -342,6 +341,8 @@ int Worker::q_search(int alpha, int beta) {
     int eval = evaluate_nnue(nnue, accumulatorStack.top(), searchPos);
 
     if (eval >= beta)
+        return eval;
+    if (ply >= MAX_PLY)
         return eval;
     if (searchPos.is_game_over())
         return eval;
@@ -358,7 +359,7 @@ int Worker::q_search(int alpha, int beta) {
     Move m;
     while ((m = movePicker.next_move()) != Move::null()) {
         make_move(m);
-        score = -q_search(-beta, -alpha);
+        score = -q_search(ply+1, -beta, -alpha);
         unmake_move(m);
 
         if (score > bestScore) {
@@ -378,7 +379,7 @@ int Worker::q_search(int alpha, int beta) {
 void Worker::make_move(Move m) {
     // update the nnue accumulator (before making the move)
     // copy the accumulator and update it
-    accumulatorStack.push(accumulatorStack.top());
+    accumulatorStack.push();
     nnue.update_accumulator(accumulatorStack.top(), searchPos, m);
     // make the move
     searchPos.make_move(m);
@@ -396,7 +397,7 @@ void Worker::unmake_move(Move m) {
 void Worker::make_null_move() {
     // add a copy of the top accumulator to the stack
     // no modifications are made to the accumulator with a null move
-    accumulatorStack.push(accumulatorStack.top());
+    accumulatorStack.push();
     // make the null move
     searchPos.make_null_move();
 }

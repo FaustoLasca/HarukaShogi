@@ -22,7 +22,7 @@ dataloader = DataLoader(
     prefetch_factor=4,
     pin_memory=True,
     )
-optimizer = AdamW(model.parameters(), lr=1e-3, weight_decay=1e-5)
+optimizer = AdamW(model.parameters(), lr=1e-3, weight_decay=1e-2)
 scheduler = ExponentialLR(optimizer, gamma=0.1**(1/EPOCHS))
 
 losses = []
@@ -52,6 +52,6 @@ for epoch in range(EPOCHS):
 
     scheduler.step()
 
-model.weights_to_bin("searchengine/bin/nnue/weights_AdamW_4.bin")
+model.weights_to_bin("searchengine/bin/nnue/AdamW_acc8_14M_1wd.bin")
 
 del dataloader	

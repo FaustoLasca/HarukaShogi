@@ -9,11 +9,17 @@ namespace harukashogi {
 namespace NNUE {
 
 
+void AccumulatorStack::push() {
+    stack[size] = stack[size-1];
+    size++;
+}
+
+
 // creates the following symbols:
 // const unsigned char gWeightsData[];
 // const unsigned char *const gWeightsEnd;
 // const unsigned int gWeightsSize;
-INCBIN(Weights, "../bin/nnue/AdamW_acc8_14M.bin");
+INCBIN(Weights, "../bin/nnue/AdamW_acc8_14M_3wd.bin");
 
 
 NNUE::NNUE() {
@@ -26,82 +32,6 @@ NNUE::NNUE() {
     std::memcpy(l1Biases, l1bStart, sizeof(l1Biases));
     std::memcpy(l2Weights, l2wStart, sizeof(l2Weights));
     std::memcpy(&l2Bias, l2bStart, sizeof(l2Bias));
-
-    // TODO: temporary manual initialization of the weights.
-    //       should be roughly the same as the material evaluation.
-    // std::memset(l1Weights, 0, sizeof(l1Weights));
-    // std::memset(l1Biases, 0, sizeof(l1Biases));
-    // std::memset(l2Weights, 0, sizeof(l2Weights));
-    // l2Bias = 0;
-
-    // for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
-    //     l1Weights[board_idx(BLACK, PAWN, sq)][0] = 4;
-    //     l1Weights[board_idx(WHITE, PAWN, sq)][0] = -4;
-
-    //     l1Weights[board_idx(BLACK, KNIGHT, sq)][1] = 4;
-    //     l1Weights[board_idx(WHITE, KNIGHT, sq)][1] = -4;
-
-    //     l1Weights[board_idx(BLACK, LANCE, sq)][2] = 4;
-    //     l1Weights[board_idx(WHITE, LANCE, sq)][2] = -4;
-
-    //     l1Weights[board_idx(BLACK, SILVER, sq)][3] = 4;
-    //     l1Weights[board_idx(WHITE, SILVER, sq)][3] = -4;
-
-    //     l1Weights[board_idx(BLACK, GOLD, sq)][4] = 4;
-    //     l1Weights[board_idx(WHITE, GOLD, sq)][4] = -4;
-    //     l1Weights[board_idx(BLACK, P_PAWN, sq)][4] = 4;
-    //     l1Weights[board_idx(WHITE, P_PAWN, sq)][4] = -4;
-    //     l1Weights[board_idx(BLACK, P_LANCE, sq)][4] = 4;
-    //     l1Weights[board_idx(WHITE, P_LANCE, sq)][4] = -4;
-    //     l1Weights[board_idx(BLACK, P_KNIGHT, sq)][4] = 4;
-    //     l1Weights[board_idx(WHITE, P_KNIGHT, sq)][4] = -4;
-    //     l1Weights[board_idx(BLACK, P_SILVER, sq)][4] = 4;
-    //     l1Weights[board_idx(WHITE, P_SILVER, sq)][4] = -4;
-
-    //     l1Weights[board_idx(BLACK, BISHOP, sq)][5] = 4;
-    //     l1Weights[board_idx(WHITE, BISHOP, sq)][5] = -4;
-
-    //     l1Weights[board_idx(BLACK, ROOK, sq)][6] = 4;
-    //     l1Weights[board_idx(WHITE, ROOK, sq)][6] = -4;
-
-    //     l1Weights[board_idx(BLACK, P_BISHOP, sq)][7] = 4;
-    //     l1Weights[board_idx(WHITE, P_BISHOP, sq)][7] = -4;
-    //     l1Weights[board_idx(BLACK, P_ROOK, sq)][7] = 4;
-    //     l1Weights[board_idx(WHITE, P_ROOK, sq)][7] = -4;
-    // }
-
-    // // hand piece weights
-    // for (int i = 0; i < 4; ++i) l1Weights[hand_idx(BLACK, GOLD, i)][4] = 5;
-    // for (int i = 0; i < 4; ++i) l1Weights[hand_idx(WHITE, GOLD, i)][4] = -5;
-    // for (int i = 0; i < 4; ++i) l1Weights[hand_idx(BLACK, SILVER, i)][3] = 5;
-    // for (int i = 0; i < 4; ++i) l1Weights[hand_idx(WHITE, SILVER, i)][3] = -5;
-    // for (int i = 0; i < 4; ++i) l1Weights[hand_idx(BLACK, LANCE, i)][2] = 5;
-    // for (int i = 0; i < 4; ++i) l1Weights[hand_idx(WHITE, LANCE, i)][2] = -5;
-    // for (int i = 0; i < 4; ++i) l1Weights[hand_idx(BLACK, KNIGHT, i)][1] = 5;
-    // for (int i = 0; i < 4; ++i) l1Weights[hand_idx(WHITE, KNIGHT, i)][1] = -5;
-    // for (int i = 0; i < 2; ++i) l1Weights[hand_idx(BLACK, BISHOP, i)][5] = 5;
-    // for (int i = 0; i < 2; ++i) l1Weights[hand_idx(WHITE, BISHOP, i)][5] = -5;
-    // for (int i = 0; i < 2; ++i) l1Weights[hand_idx(BLACK, ROOK, i)][6] = 5;
-    // for (int i = 0; i < 2; ++i) l1Weights[hand_idx(WHITE, ROOK, i)][6] = -5;
-    // for (int i = 0; i < 18; ++i) l1Weights[hand_idx(BLACK, PAWN, i)][0] = 5;
-    // for (int i = 0; i < 18; ++i) l1Weights[hand_idx(WHITE, PAWN, i)][0] = -5;
-
-    // l2Weights[0] = 1;
-    // l2Weights[1] = 3;
-    // l2Weights[2] = 4;
-    // l2Weights[3] = 5;
-    // l2Weights[4] = 6;
-    // l2Weights[5] = 10;
-    // l2Weights[6] = 12;
-    // l2Weights[7] = 16;
-    // l2Weights[8] = -1;
-    // l2Weights[9] = -3;
-    // l2Weights[10] = -4;
-    // l2Weights[11] = -5;
-    // l2Weights[12] = -6;
-    // l2Weights[13] = -10;
-    // l2Weights[14] = -12;
-    // l2Weights[15] = -16;
 }
 
 

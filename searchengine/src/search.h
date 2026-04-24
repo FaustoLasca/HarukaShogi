@@ -3,7 +3,6 @@
 
 #include <chrono>
 #include <exception>
-#include <stack>
 
 #include "position.h"
 #include "evaluate.h"
@@ -12,6 +11,7 @@
 #include "thread.h"
 #include "types.h"
 #include "nnue/nnue.h"
+#include "misc.h"
 
 namespace chr = std::chrono;
 
@@ -29,9 +29,6 @@ class AbortSearchException : public std::exception {
             return "Time limit exceeded";
         }
 };
-
-
-constexpr int MAX_DEPTH = 20;
 
 
 struct SearchInfo {
@@ -131,7 +128,7 @@ class Worker : public Thread {
         template <NodeType nodeType>
         int search(StackEntry* stack, int depth, int alpha = -INF_SCORE, int beta = INF_SCORE);
         // quiescence search, called by the main search
-        int q_search(int alpha = -INF_SCORE, int beta = INF_SCORE);
+        int q_search(int ply, int alpha = -INF_SCORE, int beta = INF_SCORE);
 
         // movemaking functions
         void make_move(Move m);
@@ -151,7 +148,7 @@ class Worker : public Thread {
         void empty_stack();
 
         NNUE::NNUE nnue;
-        std::stack<NNUE::Accumulator> accumulatorStack;
+        NNUE::AccumulatorStack accumulatorStack;
 
         // shared elements
         TTable& tt;
