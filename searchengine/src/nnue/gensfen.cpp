@@ -67,6 +67,10 @@ int play_game(Engine& engine, CVManager& manager, OpeningBook& book, std::vector
     while (!pos.is_game_over() && (move = book.sample_move(pos.get_key())) != Move::null()) {
         pos.make_move(move);
         numMoves++;
+
+        // small chanche to exit the opening book early
+        if (rng() % 50 == 0)
+            break;
     }
 
     // play up to 5 random moves
