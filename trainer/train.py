@@ -10,7 +10,7 @@ from dataset import NNUEIterableDataset
 
 device = "cuda"
 LAMBDA = 0.7
-EPOCHS = 300
+EPOCHS = 200
 
 
 model = NNUEModel().to(device)
@@ -52,6 +52,6 @@ for epoch in range(EPOCHS):
 
     scheduler.step()
 
-model.weights_to_bin("searchengine/bin/nnue/AdamW_acc8_14M_1wd.bin")
+model.weights_to_bin("searchengine/bin/nnue/AdamW_acc16_20M.bin")
 
 del dataloader	

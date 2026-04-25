@@ -19,7 +19,7 @@ void AccumulatorStack::push() {
 // const unsigned char gWeightsData[];
 // const unsigned char *const gWeightsEnd;
 // const unsigned int gWeightsSize;
-INCBIN(Weights, "../bin/nnue/AdamW_acc8_14M_3wd.bin");
+INCBIN(Weights, "../bin/nnue/AdamW_acc16_20M.bin");
 
 
 NNUE::NNUE() {
