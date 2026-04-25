@@ -27,7 +27,7 @@ run_one() {
     local log="$dir/gensfen.log"
     mkdir -p "$dir"
 
-    stdbuf -oL -eL ./searchengine/build/gensfen "$dir" &> "$log"
+    stdbuf -oL -eL ./pre_nnue_gensfen "$dir" &> "$log"
     local rc=$?
     if [ "$rc" -ne 0 ]; then
         echo "[data_$idx] exited with code $rc. Last log lines:" >&2
