@@ -92,10 +92,13 @@ if __name__ == "__main__":
         prefetch_factor=2,
     )
 
-    for i, batch in enumerate(dataloader):
+    total = 0
+    for batch in dataloader:
         b, w, s, r, t = batch
         print(b.shape, w.shape, s.shape, r.shape, t.shape)
 
-    print(i)
+        total += b.size(0)
+
+    print(total)
 
     del dataloader

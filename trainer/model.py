@@ -5,7 +5,7 @@ import numpy as np
 
 NUM_FEATURES = 2344
 ACTIVE_FEATURES = 40
-ACCUMULATOR_SIZE = 16
+ACCUMULATOR_SIZE = 32
 
 class NNUEModel(nn.Module):
     def __init__(self):
@@ -58,11 +58,6 @@ class NNUEModel(nn.Module):
             l1_bias    = (l1_bias    * 127)                           .round().astype(np.int16)
             l2_weights = (l2_weights * 64)    .clip(min=-128, max=127).round().astype(np.int8 )
             l2_bias    = (l2_bias    * 127*64)                        .round().astype(np.int32)
-
-            print(l1_weights.shape, l1_weights.dtype)
-            print(l1_bias.shape, l1_bias.dtype)
-            print(l2_weights.shape, l2_weights.dtype)
-            print(l2_bias.shape, l2_bias.dtype)
 
             f.write(l1_weights.tobytes())
             f.write(l1_bias.tobytes())
