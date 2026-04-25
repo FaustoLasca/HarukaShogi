@@ -2,6 +2,9 @@
 #include "position.h"
 #include "types.h"
 #include "misc.h"
+#include "nnue/nnue.h"
+
+#include <algorithm>
 
 namespace harukashogi {
 
@@ -97,6 +100,21 @@ int evaluate(Position& pos) {
     }
 
     return score;
+}
+
+
+int evaluate_nnue(NNUE::NNUE& nnue, NNUE::AccumulatorType& acc, Position& pos) {
+    // if the game is over, return the winning score
+    if (pos.is_game_over()) {
+        // if the game is over, the side to move has lost
+        if (pos.get_winner() == NO_COLOR)
+            return 0;
+        else
+            return -WIN_SCORE;
+    }
+
+    // evaluate the position from the accumulator
+    return std::clamp(nnue.evaluate(acc, pos.side_to_move()), -WIN_SCORE+1, WIN_SCORE-1);
 }
 
 

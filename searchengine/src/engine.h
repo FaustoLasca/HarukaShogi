@@ -14,7 +14,7 @@ class Engine {
     public:
         Engine(OutputManager& outputManager) : 
             outputManager(outputManager),
-            threads(tt, threads, outputManager) 
+            threads(tt, threads, outputManager, nnue) 
         {
             init();
         }
@@ -26,7 +26,7 @@ class Engine {
         void set_own_book(bool ownBook) { this->ownBook = ownBook; }
 
         void new_game();
-        void set_position(const std::string& sfen, const std::vector<std::string>& moves);
+        void set_position(const std::string& sfen, const std::vector<std::string>& moves = {});
         void go(const SearchLimits& limits);
         void stop();
         void ponderhit();
@@ -34,6 +34,7 @@ class Engine {
     private:
         Position pos;
         TTable tt;
+        NNUE::NNUE nnue;
         ThreadPool<Worker> threads;
         OutputManager& outputManager;
         OpeningBook openingBook;

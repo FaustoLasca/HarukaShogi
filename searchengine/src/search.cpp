@@ -135,8 +135,12 @@ void Worker::iterative_deepening() {
                 moveHistory[i][j] = moveHistory[i][j] + 1;
             }
         }
+
+    // initialize the nnue accumulator
+    accumulatorStack.clear();
+    accumulatorStack.compute(searchPos);
     
-    int old_score = q_search();
+    int old_score = q_search(0);
     int score;
     int alpha, beta;
     int deltaMult = 1;
@@ -179,7 +183,7 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
 
     // if the depth is 0, return the evaluation of the position
     if (searchPos.is_game_over() || depth == 0)
-        return q_search(alpha, beta);
+        return q_search(stack->ply, alpha, beta);
         
     // throws an exception if the time is up
     stop_check();
@@ -260,7 +264,7 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
         
         searchDepth = depth - reduction;
         
-        searchPos.make_move(m);
+        make_move(m);
         // Princpal Variation Search (PVS)
         // If we are in a PV node, search only the first node with a full alpha beta window,
         // the other moves are searched as NON_PV nodes with null window between alpha and alpha+1.
@@ -280,7 +284,7 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
                 score = -search<PV_NODE>(stack+1, depth - 1, -beta, -alpha);
             }
         }
-        searchPos.unmake_move(m);
+        unmake_move(m);
 
         // update best score and the pv table
         if (score > bestScore) {
@@ -326,16 +330,19 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
 }
 
 
-int Worker::q_search(int alpha, int beta) {
+int Worker::q_search(int ply, int alpha, int beta) {
     info.nodeCount++;
 
     // throws an exception to abort the search
     if (is_search_aborted())
         throw AbortSearchException();
 
-    int eval = evaluate(searchPos);
+    // int eval = evaluate(searchPos);
+    int eval = evaluate_nnue(nnue, accumulatorStack.top(), searchPos);
 
     if (eval >= beta)
+        return eval;
+    if (ply >= MAX_PLY)
         return eval;
     if (searchPos.is_game_over())
         return eval;
@@ -351,9 +358,9 @@ int Worker::q_search(int alpha, int beta) {
     int score;
     Move m;
     while ((m = movePicker.next_move()) != Move::null()) {
-        searchPos.make_move(m);
-        score = -q_search(-beta, -alpha);
-        searchPos.unmake_move(m);
+        make_move(m);
+        score = -q_search(ply+1, -beta, -alpha);
+        unmake_move(m);
 
         if (score > bestScore) {
             bestScore = score;
@@ -366,6 +373,40 @@ int Worker::q_search(int alpha, int beta) {
     }
     
     return bestScore;
+}
+
+
+void Worker::make_move(Move m) {
+    // update the nnue accumulator (before making the move)
+    // copy the accumulator and update it
+    accumulatorStack.push(searchPos, m);
+    // make the move
+    searchPos.make_move(m);
+}
+
+
+void Worker::unmake_move(Move m) {
+    // remove the top accumulator from the stack
+    accumulatorStack.pop();
+    // unmake the move
+    searchPos.unmake_move(m);
+}
+
+
+void Worker::make_null_move() {
+    // add a copy of the top accumulator to the stack
+    // no modifications are made to the accumulator with a null move
+    accumulatorStack.push();
+    // make the null move
+    searchPos.make_null_move();
+}
+
+
+void Worker::unmake_null_move() {
+    // remove the top accumulator from the stack
+    accumulatorStack.pop();
+    // unmake the null move
+    searchPos.unmake_null_move();
 }
 
 

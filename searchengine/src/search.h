@@ -10,6 +10,9 @@
 #include "history.h"
 #include "thread.h"
 #include "types.h"
+#include "nnue/nnue.h"
+#include "nnue/accumulator.h"
+#include "misc.h"
 
 namespace chr = std::chrono;
 
@@ -27,9 +30,6 @@ class AbortSearchException : public std::exception {
             return "Time limit exceeded";
         }
 };
-
-
-constexpr int MAX_DEPTH = 20;
 
 
 struct SearchInfo {
@@ -79,11 +79,14 @@ enum NodeType {
 
 class Worker : public Thread {
     public:
-        Worker(size_t id, TTable& tt, ThreadPool<Worker>& threads, OutputManager& outputManager) : 
+        Worker(size_t id, TTable& tt, ThreadPool<Worker>& threads, OutputManager& outputManager,
+               NNUE::NNUE& nnue) : 
             Thread(id),
             tt(tt),
             threads(threads),
-            outputManager(outputManager) {
+            outputManager(outputManager),
+            nnue(nnue),
+            accumulatorStack(nnue.feature_transformer()) {
             clear();
         }
 
@@ -129,7 +132,13 @@ class Worker : public Thread {
         template <NodeType nodeType>
         int search(StackEntry* stack, int depth, int alpha = -INF_SCORE, int beta = INF_SCORE);
         // quiescence search, called by the main search
-        int q_search(int alpha = -INF_SCORE, int beta = INF_SCORE);
+        int q_search(int ply, int alpha = -INF_SCORE, int beta = INF_SCORE);
+
+        // movemaking functions
+        void make_move(Move m);
+        void unmake_move(Move m);
+        void make_null_move();
+        void unmake_null_move();
 
         // checks if the time is up and throws an exception if it is
         void stop_check();
@@ -141,6 +150,9 @@ class Worker : public Thread {
 
         StackEntry stack[MAX_DEPTH];
         void empty_stack();
+
+        NNUE::NNUE nnue;
+        NNUE::AccumulatorStack accumulatorStack;
 
         // shared elements
         TTable& tt;

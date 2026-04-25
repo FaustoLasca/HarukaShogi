@@ -162,7 +162,7 @@ class Position {
 		bool see_ge(Move m, int threshold) const;
 
 		
-		private:
+	private:
 
 		// methods to update all the affected information when a piece moves
 		void add_piece(Piece p, Square sq);

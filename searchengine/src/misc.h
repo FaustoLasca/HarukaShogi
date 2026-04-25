@@ -8,6 +8,10 @@
 namespace harukashogi {
 
 
+constexpr int MAX_DEPTH = 20;
+constexpr int MAX_PLY = MAX_DEPTH + 20;
+
+
 constexpr std::string_view PieceToChar(" KGSLNBRP      kgslnbrp");
 
 
