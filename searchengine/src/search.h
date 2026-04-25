@@ -11,6 +11,7 @@
 #include "thread.h"
 #include "types.h"
 #include "nnue/nnue.h"
+#include "nnue/accumulator.h"
 #include "misc.h"
 
 namespace chr = std::chrono;
@@ -78,11 +79,14 @@ enum NodeType {
 
 class Worker : public Thread {
     public:
-        Worker(size_t id, TTable& tt, ThreadPool<Worker>& threads, OutputManager& outputManager) : 
+        Worker(size_t id, TTable& tt, ThreadPool<Worker>& threads, OutputManager& outputManager,
+               NNUE::NNUE& nnue) : 
             Thread(id),
             tt(tt),
             threads(threads),
-            outputManager(outputManager) {
+            outputManager(outputManager),
+            nnue(nnue),
+            accumulatorStack(nnue.feature_transformer()) {
             clear();
         }
 

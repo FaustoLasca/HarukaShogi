@@ -103,7 +103,7 @@ int evaluate(Position& pos) {
 }
 
 
-int evaluate_nnue(NNUE::NNUE& nnue, NNUE::Accumulator& acc, Position& pos) {
+int evaluate_nnue(NNUE::NNUE& nnue, NNUE::AccumulatorType& acc, Position& pos) {
     // if the game is over, return the winning score
     if (pos.is_game_over()) {
         // if the game is over, the side to move has lost

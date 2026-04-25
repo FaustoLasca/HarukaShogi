@@ -138,7 +138,7 @@ void Worker::iterative_deepening() {
 
     // initialize the nnue accumulator
     accumulatorStack.clear();
-    nnue.compute_accumulator(accumulatorStack.top(), searchPos);
+    accumulatorStack.compute(searchPos);
     
     int old_score = q_search(0);
     int score;
@@ -379,8 +379,7 @@ int Worker::q_search(int ply, int alpha, int beta) {
 void Worker::make_move(Move m) {
     // update the nnue accumulator (before making the move)
     // copy the accumulator and update it
-    accumulatorStack.push();
-    nnue.update_accumulator(accumulatorStack.top(), searchPos, m);
+    accumulatorStack.push(searchPos, m);
     // make the move
     searchPos.make_move(m);
 }

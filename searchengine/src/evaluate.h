@@ -9,7 +9,7 @@ namespace harukashogi {
 
 int evaluate(Position& pos);
 
-int evaluate_nnue(NNUE::NNUE& nnue, NNUE::Accumulator& acc, Position& pos);
+int evaluate_nnue(NNUE::NNUE& nnue, NNUE::AccumulatorType& acc, Position& pos);
 
 constexpr int WIN_SCORE = 32000;
 constexpr int INF_SCORE = 32001;

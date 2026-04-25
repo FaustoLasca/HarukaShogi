@@ -14,7 +14,7 @@ class Engine {
     public:
         Engine(OutputManager& outputManager) : 
             outputManager(outputManager),
-            threads(tt, threads, outputManager) 
+            threads(tt, threads, outputManager, nnue) 
         {
             init();
         }
@@ -34,6 +34,7 @@ class Engine {
     private:
         Position pos;
         TTable tt;
+        NNUE::NNUE nnue;
         ThreadPool<Worker> threads;
         OutputManager& outputManager;
         OpeningBook openingBook;

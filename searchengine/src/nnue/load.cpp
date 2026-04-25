@@ -1,9 +1,9 @@
 #include "load.h"
 #include "../types.h"
 #include "../position.h"
+#include "features.h"
 
 #include <fstream>
-#include <sstream>
 #include <random>
 
 namespace harukashogi {
@@ -52,8 +52,8 @@ DataSample compute_sample(std::string sfen, float score, float result, bool hfli
             Square sq_flip = hflip ? harukashogi::hflip(sq) : sq;
             PieceType pt = type_of(p);
             Color c = color_of(p);
-            sample.black_indexes[num_idxs] = NNUE::board_idx<BLACK>(c, pt, sq_flip);
-            sample.white_indexes[num_idxs] = NNUE::board_idx<WHITE>(c, pt, sq_flip);
+            sample.black_indexes[num_idxs] = board_idx<BLACK>(c, pt, sq_flip);
+            sample.white_indexes[num_idxs] = board_idx<WHITE>(c, pt, sq_flip);
             ++num_idxs;
         }
     }
@@ -61,8 +61,8 @@ DataSample compute_sample(std::string sfen, float score, float result, bool hfli
     for (Color c = BLACK; c < NUM_COLORS; ++c) {
         for (PieceType pt = GOLD; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
             for (int count = 0; count < pos.hand_count(c, pt); ++count) {
-                sample.black_indexes[num_idxs] = NNUE::hand_idx<BLACK>(c, pt, count);
-                sample.white_indexes[num_idxs] = NNUE::hand_idx<WHITE>(c, pt, count);
+                sample.black_indexes[num_idxs] = hand_idx<BLACK>(c, pt, count);
+                sample.white_indexes[num_idxs] = hand_idx<WHITE>(c, pt, count);
                 ++num_idxs;
             }
         }
