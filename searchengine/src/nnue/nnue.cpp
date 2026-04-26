@@ -57,7 +57,7 @@ void AccumulatorStack::pop() {
 
 void AccumulatorStack::compute(const Position& pos) {
     assert(size == 1);
-    ft.forward(pos, stack[0]);
+    ft.compute(pos, stack[0]);
 }
 
 }

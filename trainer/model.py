@@ -11,13 +11,13 @@ class NNUEModel(nn.Module):
     def __init__(self):
         super().__init__()
 
-        self.l1 = nn.Embedding(NUM_FEATURES, ACCUMULATOR_SIZE)
-        self.l1_bias = nn.Parameter(torch.zeros(ACCUMULATOR_SIZE))
-        self.l2 = nn.Linear(ACCUMULATOR_SIZE * 2, 1)
+        self.ft = nn.Embedding(NUM_FEATURES, ACCUMULATOR_SIZE)
+        self.ft_bias = nn.Parameter(torch.zeros(ACCUMULATOR_SIZE))
+        self.l1 = nn.Linear(ACCUMULATOR_SIZE * 2, 1)
 
         std = 1/np.sqrt(NUM_FEATURES)
-        nn.init.normal_(self.l1.weight, mean=0., std=std)
-        nn.init.normal_(self.l1_bias, mean=0., std=std)
+        nn.init.normal_(self.ft.weight, mean=0., std=std)
+        nn.init.normal_(self.ft_bias, mean=0., std=std)
 
 
     @staticmethod
@@ -27,9 +27,9 @@ class NNUEModel(nn.Module):
 
 
     def forward(self, black_features, white_features, stm):
-        q_l1w = self.fake_quantize(self.l1.weight, 127, -32768, 32767)
-        q_l1b = self.fake_quantize(self.l1_bias, 127, -32768, 32767)
-        q_l2w = self.fake_quantize(self.l2.weight, 64, -128, 127)
+        q_l1w = self.fake_quantize(self.ft.weight, 127, -32768, 32767)
+        q_l1b = self.fake_quantize(self.ft_bias, 127, -32768, 32767)
+        q_l2w = self.fake_quantize(self.l1.weight, 64, -128, 127)
         # no need to fake quantize the l2 bias at int32 precision
 
 
@@ -43,26 +43,26 @@ class NNUEModel(nn.Module):
         )
 
         accumulator = torch.clamp(accumulator, min=0., max=1.)
-        return F.linear(accumulator, q_l2w, self.l2.bias)
+        return F.linear(accumulator, q_l2w, self.l1.bias)
     
 
     def weights_to_bin(self, file_path):
         with open(file_path, "wb") as f:
 
-            l1_weights = self.l1.weight.data.clone().cpu().numpy()           # (NUM_FEATURES, ACCUMULATOR_SIZE)
-            l1_bias = self.l1_bias.data.clone().cpu().numpy()                # (ACCUMULATOR_SIZE,)
-            l2_weights = self.l2.weight.data.clone().cpu().numpy().flatten() # (2*ACCUMULATOR_SIZE,)
-            l2_bias = self.l2.bias.data.clone().cpu().numpy()                # (1,)
+            ft_wieghts = self.ft.weight.data.clone().cpu().numpy()           # (NUM_FEATURES, ACCUMULATOR_SIZE)
+            ft_bias = self.ft_bias.data.clone().cpu().numpy()                # (ACCUMULATOR_SIZE,)
+            l1_weights = self.l1.weight.data.clone().cpu().numpy().flatten() # (2*ACCUMULATOR_SIZE,)
+            l1_bias = self.l1.bias.data.clone().cpu().numpy()                # (1,)
 
-            l1_weights = (l1_weights * 127)                           .round().astype(np.int16)
-            l1_bias    = (l1_bias    * 127)                           .round().astype(np.int16)
-            l2_weights = (l2_weights * 64)    .clip(min=-128, max=127).round().astype(np.int8 )
-            l2_bias    = (l2_bias    * 127*64)                        .round().astype(np.int32)
+            ft_wieghts = (ft_wieghts * 127)                           .round().astype(np.int16)
+            ft_bias    = (ft_bias    * 127)                           .round().astype(np.int16)
+            l1_weights = (l1_weights * 64)    .clip(min=-128, max=127).round().astype(np.int8 )
+            l1_bias    = (l1_bias    * 127*64)                        .round().astype(np.int32)
 
+            f.write(ft_wieghts.tobytes())
+            f.write(ft_bias.tobytes())
             f.write(l1_weights.tobytes())
             f.write(l1_bias.tobytes())
-            f.write(l2_weights.tobytes())
-            f.write(l2_bias.tobytes())
 
 
 if __name__ == "__main__":
@@ -76,7 +76,7 @@ if __name__ == "__main__":
 
     model = NNUEModel()
 
-    b_acc = model.l1(b_features).sum(dim=1) + model.l1_bias
+    b_acc = model.ft(b_features).sum(dim=1) + model.ft_bias
 
     print(b_acc.shape)
     print(f'b_acc mean: {b_acc.mean().item():.4f}')

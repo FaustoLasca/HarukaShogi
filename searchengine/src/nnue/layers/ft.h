@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <cstddef>
 #include <cstring>
+#include <immintrin.h>
 
 #include "../features.h"
 #include "../accumulator.h"
@@ -20,7 +21,7 @@ class FeatureTransformer {
         FeatureTransformer() {}
 
         // compute the accumulator from scratch
-        void forward(const Position& pos, Accumulator<M>& acc) const;
+        void compute(const Position& pos, Accumulator<M>& acc) const;
 
         // update the accumulator incrementally
         void incremental_update(
@@ -34,39 +35,69 @@ class FeatureTransformer {
         const unsigned char* set_weights(const unsigned char* weights_start);
 
     private:
-        int16_t weights[N][M];
-        int16_t biases[M];
+        alignas(64) int16_t weights[N][M];
+        alignas(64) int16_t biases[M];
 };
 
 
 template <size_t N, size_t M>
-void FeatureTransformer<N, M>::forward(const Position& pos, Accumulator<M>& acc) const {
-    // initialize the accumulator with the biases
-    std::memcpy(acc[BLACK], biases, sizeof(biases));
-    std::memcpy(acc[WHITE], biases, sizeof(biases));
+void FeatureTransformer<N, M>::compute(const Position& pos, Accumulator<M>& acc) const {
+    constexpr size_t registerWidth = 256 / 16; // 16 bit elements in a 256 bit register
+    static_assert(M % registerWidth == 0, "We must fill the registers completely");
+    constexpr size_t numChunks = M / registerWidth;
+    static_assert(numChunks <= 8, "Chunks will overspill the registers");
+    // array of registers to accumulate the weights 16 at a time
+    // one set for each perspective
+    __m256i regs[2][numChunks];
 
-    // for every board piece present add the 
+    // load the biases into the registers (256 bits at a time)
+    for (size_t i = 0; i < numChunks; ++i) {
+        regs[BLACK][i] = _mm256_load_si256((const __m256i*)&biases[i*registerWidth]);
+        regs[WHITE][i] = _mm256_load_si256((const __m256i*)&biases[i*registerWidth]);
+    }
+
+    // add the weights for the active features into the registers
     for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
         if (pos.piece(sq) != NO_PIECE) {
             PieceType pt = type_of(pos.piece(sq));
             Color c = color_of(pos.piece(sq));
-            for (int i = 0; i < M; ++i) {
-                acc[BLACK][i] += weights[board_idx<BLACK>(c, pt, sq)][i];
-                acc[WHITE][i] += weights[board_idx<WHITE>(c, pt, sq)][i];
+            size_t bIdx = board_idx<BLACK>(c, pt, sq);
+            size_t wIdx = board_idx<WHITE>(c, pt, sq);
+
+
+            // for each active feature, add the weight to the corresponding register
+            for (size_t i = 0; i < numChunks; ++i) {
+                regs[BLACK][i] = _mm256_add_epi16(
+                    regs[BLACK][i],
+                    _mm256_load_si256((const __m256i*)&weights[bIdx][i*registerWidth])
+                );
+                regs[WHITE][i] = _mm256_add_epi16(
+                    regs[WHITE][i],
+                    _mm256_load_si256((const __m256i*)&weights[wIdx][i*registerWidth])
+                );
             }
         }
     }
 
-    // for every hand piece add the corresponding feature weights
+
     for (Color c = BLACK; c < NUM_COLORS; ++c) {
         for (PieceType pt = GOLD; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
             for (int count = 0; count < pos.hand_count(c, pt); ++count) {
-                for (int i = 0; i < M; ++i) {
-                    acc[BLACK][i] += weights[hand_idx<BLACK>(c, pt, count)][i];
-                    acc[WHITE][i] += weights[hand_idx<WHITE>(c, pt, count)][i];
+                size_t bIdx = hand_idx<BLACK>(c, pt, count);
+                size_t wIdx = hand_idx<WHITE>(c, pt, count);
+                for (size_t i = 0; i < numChunks; ++i) {
+                    regs[BLACK][i] = _mm256_add_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bIdx][i*registerWidth]));
+                    regs[WHITE][i] = _mm256_add_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wIdx][i*registerWidth]));
                 }
             }
         }
+    }
+
+
+    // store the results in the accumulator
+    for (size_t i = 0; i < numChunks; ++i) {
+        _mm256_store_si256((__m256i*)&acc[BLACK][i*registerWidth], regs[BLACK][i]);
+        _mm256_store_si256((__m256i*)&acc[WHITE][i*registerWidth], regs[WHITE][i]);
     }
 }
 
@@ -78,58 +109,87 @@ void FeatureTransformer<N, M>::incremental_update(
     const Accumulator<M>& oldAcc,
     Accumulator<M>& newAcc
 ) const {
-    // copy the old accumulator to the new accumulator
-    newAcc = oldAcc;
+    constexpr size_t registerWidth = 256 / 16; // 16 bit elements in a 256 bit register
+    static_assert(M % registerWidth == 0, "We must fill the registers completely");
+    constexpr size_t numChunks = M / registerWidth;
+    static_assert(numChunks <= 8, "Chunks will overspill the registers");
+    // array of registers to accumulate the weights 16 at a time
+    // one set for each perspective
+    __m256i regs[2][numChunks];
+
+    // load the old accumulator into the registers
+    for (size_t i = 0; i < numChunks; ++i) {
+        regs[BLACK][i] = _mm256_load_si256((const __m256i*)&oldAcc[BLACK][i*registerWidth]);
+        regs[WHITE][i] = _mm256_load_si256((const __m256i*)&oldAcc[WHITE][i*registerWidth]);
+    }
 
     Color stm = pos.side_to_move();
     Square to = m.to();
 
     if (m.is_drop()) {
         PieceType pt = m.dropped();
-        // add the dropped piece to the board
-        for (int i = 0; i < M; ++i) {
-            newAcc[BLACK][i] += weights[board_idx<BLACK>(stm, pt, to)][i];
-            newAcc[WHITE][i] += weights[board_idx<WHITE>(stm, pt, to)][i];
-        }
-        // remove the dropped piece from the hand
-        for (int i = 0; i < M; ++i) {
-            newAcc[BLACK][i] -= weights[hand_idx<BLACK>(stm, pt, pos.hand_count(stm, pt)-1)][i];
-            newAcc[WHITE][i] -= weights[hand_idx<WHITE>(stm, pt, pos.hand_count(stm, pt)-1)][i];
+
+        size_t bBoardIdx = board_idx<BLACK>(stm, pt, to);
+        size_t wBoardIdx = board_idx<WHITE>(stm, pt, to);
+        size_t bHandIdx = hand_idx<BLACK>(stm, pt, pos.hand_count(stm, pt)-1);
+        size_t wHandIdx = hand_idx<WHITE>(stm, pt, pos.hand_count(stm, pt)-1);
+        
+        for (size_t i = 0; i < numChunks; ++i) {
+            // add the dropped piece to the board
+            regs[BLACK][i] = _mm256_add_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bBoardIdx][i*registerWidth]));
+            regs[WHITE][i] = _mm256_add_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wBoardIdx][i*registerWidth]));
+            // remove the dropped piece from the hand
+            regs[BLACK][i] = _mm256_sub_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bHandIdx][i*registerWidth]));
+            regs[WHITE][i] = _mm256_sub_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wHandIdx][i*registerWidth]));
         }
     }
 
     else {
         Square from = m.from();
         PieceType pt = type_of(pos.piece(from));
-        // remove the piece from the board
-        for (int i = 0; i < M; ++i) {
-            newAcc[BLACK][i] -= weights[board_idx<BLACK>(stm, pt, from)][i];
-            newAcc[WHITE][i] -= weights[board_idx<WHITE>(stm, pt, from)][i];
-        }
-        // add the piece to the board
+
+        size_t bFromIdx = board_idx<BLACK>(stm, pt, from);
+        size_t wFromIdx = board_idx<WHITE>(stm, pt, from);
         if (m.is_promotion())
             pt = promote(pt);
-        for (int i = 0; i < M; ++i) {
-            newAcc[BLACK][i] += weights[board_idx<BLACK>(stm, pt, to)][i];
-            newAcc[WHITE][i] += weights[board_idx<WHITE>(stm, pt, to)][i];
+        size_t bToIdx = board_idx<BLACK>(stm, pt, to);
+        size_t wToIdx = board_idx<WHITE>(stm, pt, to);
+        
+        for (size_t i = 0; i < numChunks; ++i) {
+            // remove the piece from the board
+            regs[BLACK][i] = _mm256_sub_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bFromIdx][i*registerWidth]));
+            regs[WHITE][i] = _mm256_sub_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wFromIdx][i*registerWidth]));
+            // add the piece to the board
+            regs[BLACK][i] = _mm256_add_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bToIdx][i*registerWidth]));
+            regs[WHITE][i] = _mm256_add_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wToIdx][i*registerWidth]));
         }
 
         // if the move is a capture, remove the captured piece from the board and add it to the hand
         if (pos.is_capture(m)) {
-            // remove the captured piece from the board
             PieceType capturedPT = type_of(pos.piece(m.to()));
-            for (int i = 0; i < M; ++i) {
-                newAcc[BLACK][i] -= weights[board_idx<BLACK>(~stm, capturedPT, m.to())][i];
-                newAcc[WHITE][i] -= weights[board_idx<WHITE>(~stm, capturedPT, m.to())][i];
-            }
-            // add the captured piece to the hand
+
+            size_t bBoardIdx = board_idx<BLACK>(~stm, capturedPT, m.to());
+            size_t wBoardIdx = board_idx<WHITE>(~stm, capturedPT, m.to());
             capturedPT = unpromoted_type(capturedPT);
             int count = pos.hand_count(stm, capturedPT);
-            for (int i = 0; i < M; ++i) {
-                newAcc[BLACK][i] += weights[hand_idx<BLACK>(stm, capturedPT, count)][i];
-                newAcc[WHITE][i] += weights[hand_idx<WHITE>(stm, capturedPT, count)][i];
+            size_t bHandIdx = hand_idx<BLACK>(stm, capturedPT, count);
+            size_t wHandIdx = hand_idx<WHITE>(stm, capturedPT, count);
+
+            for (size_t i = 0; i < numChunks; ++i) {
+                // remove the captured piece from the board
+                regs[BLACK][i] = _mm256_sub_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bBoardIdx][i*registerWidth]));
+                regs[WHITE][i] = _mm256_sub_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wBoardIdx][i*registerWidth]));
+                // add the captured piece to the hand
+                regs[BLACK][i] = _mm256_add_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bHandIdx][i*registerWidth]));
+                regs[WHITE][i] = _mm256_add_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wHandIdx][i*registerWidth]));
             }
         }
+    }
+
+    // store the results in the new accumulator
+    for (size_t i = 0; i < numChunks; ++i) {
+        _mm256_store_si256((__m256i*)&newAcc[BLACK][i*registerWidth], regs[BLACK][i]);
+        _mm256_store_si256((__m256i*)&newAcc[WHITE][i*registerWidth], regs[WHITE][i]);
     }
 }
 
