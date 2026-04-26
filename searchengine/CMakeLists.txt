@@ -88,6 +88,8 @@ add_executable(gensfen
 target_include_directories(gensfen PRIVATE include)
 
 
+set(PYBIND11_FINDPYTHON ON)
+find_package(Python REQUIRED COMPONENTS Interpreter Development)
 find_package(pybind11 REQUIRED)
 
 pybind11_add_module(nnue_loader
