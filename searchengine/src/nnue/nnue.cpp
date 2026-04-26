@@ -24,7 +24,7 @@ NNUE::NNUE() {
 
 
 int32_t NNUE::evaluate(const AccumulatorType& acc, Color stm) const {
-    int8_t actAcc[2*ACCUMULATOR_SIZE];
+    alignas(32) int8_t actAcc[2*ACCUMULATOR_SIZE];
     crelu16<ACCUMULATOR_SIZE>(acc[stm], actAcc);
     crelu16<ACCUMULATOR_SIZE>(acc[~stm], actAcc + ACCUMULATOR_SIZE);
 
