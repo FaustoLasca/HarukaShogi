@@ -9,7 +9,7 @@ from dataset import NNUEIterableDataset
 
 
 device = "cuda"
-LAMBDA = 0.7
+LAMBDA = 0.5
 EPOCHS = 200
 
 
@@ -82,8 +82,8 @@ for epoch in range(EPOCHS):
 
     if val_loss < min_val_loss:
         min_val_loss = val_loss
-        model.weights_to_bin("searchengine/bin/nnue/AdamW_acc32_30M.bin")
-        print("Model saved to searchengine/bin/nnue/AdamW_acc32_30M.bin")
+        model.weights_to_bin("searchengine/bin/nnue/AdamW_acc32_46M.bin")
+        print("Model saved to searchengine/bin/nnue/AdamW_acc32_46M.bin")
 
 
     scheduler.step()
