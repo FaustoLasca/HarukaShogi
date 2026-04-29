@@ -102,6 +102,7 @@ pybind11_add_module(nnue_loader
     src/nnue/nnue.cpp
     src/nnue/load.cpp
     src/nnue/bindings.cpp
+    src/nnue/binpack.cpp
 )
 target_include_directories(nnue_loader PRIVATE include)
 

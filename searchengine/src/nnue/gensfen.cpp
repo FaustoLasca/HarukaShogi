@@ -60,7 +60,7 @@ int play_game(Engine& engine, CVManager& manager, OpeningBook& book,
 
     Move moveList[MAX_MOVES];
     Move move, *end;
-    int numMoves = 0, score;
+    int numMoves = 0, numValidMoves = 0, score;
 
     // start the game with a random last move from the opening book
     while (!pos.is_game_over() && (move = book.sample_move(pos.get_key())) != Move::null()) {
@@ -83,8 +83,6 @@ int play_game(Engine& engine, CVManager& manager, OpeningBook& book,
 
     // start searching from the current position
     binpack.new_game(pos);
-
-    std::cout << "Starting search from position: " << pos.sfen() << std::endl;
 
     // main generation loop
     SearchLimits limits;
@@ -111,7 +109,11 @@ int play_game(Engine& engine, CVManager& manager, OpeningBook& book,
 
         // filter out checks and positions where a capture is the best move
         // if a capture is the best move, we are likely to be in an unstable position
-        binpack.add_move(move, score, pos.is_capture(move) || pos.checkers());
+        bool discard = pos.is_capture(move) || pos.checkers();
+        binpack.add_move(move, score, discard);
+        if (!discard) {
+            numValidMoves++;
+        }
         
         pos.make_move(move);
         numMoves++;
@@ -119,11 +121,9 @@ int play_game(Engine& engine, CVManager& manager, OpeningBook& book,
 
     Color winner = pos.get_winner();
 
-    std::cout << "Game over: " << pos.sfen() << " " << (int)winner << std::endl;
-
     binpack.game_over(winner);
 
-    return numMoves;
+    return numValidMoves;
 }
 
 
@@ -140,14 +140,14 @@ void generate_data(const std::string& outDir, int totalPositions, int filePositi
 
     int generatedPositions = 0;
     for (int fileIdx = 0; generatedPositions < totalPositions; fileIdx++) {
-        std::cout << "Generating file " << fileIdx << std::endl;
         NNUE::Binpack binpack(outDir + "/" + std::to_string(fileIdx) + ".binp", std::ios::out);
         for (int count = 0; count < filePositions; ) {
-            std::cout << "game " << count << std::endl;
             int numMoves = play_game(engine, manager, book, binpack, rng);
             count += numMoves;
             generatedPositions += numMoves;
         }
+
+        std::cout << "Generated file " << fileIdx << std::endl;
     }
 }
 

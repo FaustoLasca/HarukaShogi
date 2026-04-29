@@ -2,8 +2,8 @@
 #include "../types.h"
 #include "../position.h"
 #include "features.h"
+#include "binpack.h"
 
-#include <fstream>
 #include <random>
 
 namespace harukashogi {
@@ -35,13 +35,12 @@ DataBatch::DataBatch(std::vector<DataSample>& samples) {
 }
 
 
-DataSample compute_sample(std::string sfen, float score, float result, bool hflip) {
-    Position pos;
-    pos.set(sfen);
-
+DataSample compute_sample(const Position& pos, int16_t score, Color winner, bool hflip) {
     DataSample sample;
     sample.score = score;
-    sample.result = result;
+    sample.result = winner == NO_COLOR           ? 0.5f 
+                  : winner == pos.side_to_move() ? 1.0f 
+                  : 0.0f;
     sample.stm = pos.side_to_move() == BLACK ? 0.0f : 1.0f;
 
     size_t num_idxs = 0;
@@ -82,25 +81,25 @@ std::shared_ptr<DataBatch> load_data_batch(
     Position::init();
     std::mt19937 rng(std::random_device{}());
 
-    std::ifstream file(file_path);
-    if (!file.is_open()) {
-        throw std::runtime_error("Failed to open file: " + file_path);
-    }
-
     std::vector<DataSample> samples;
-    std::string line, sfen;
-    float score, result;
 
-    while (std::getline(file, line)) {
-        size_t p1 = line.find("|");
-        size_t p2 = line.find("|", p1 + 1);
+    Binpack binpack(file_path, std::ios::in);
+    GameData game;
 
-        sfen = line.substr(0, p1);
-        score = std::stof(line.substr(p1 + 1, p2 - p1 - 1));
-        result = std::stof(line.substr(p2 + 1, line.size() - p2 - 1));
+    while (binpack.read_game(game)) {
+        for (const auto& tuple : game.scoreMoves) {
+            Move move = std::get<0>(tuple);
+            int16_t score = std::get<1>(tuple);
+            bool discard = std::get<2>(tuple);
 
-        if (random_hflip) hflip = rng() % 2 == 0;
-        samples.push_back(compute_sample(sfen, score, result, hflip));
+            if (!discard) {
+                if (random_hflip) hflip = rng() % 2 == 0;
+                samples.push_back(compute_sample(game.pos, score, game.winner, hflip));
+            }
+
+            game.pos.make_move(move);
+        }
+        
     }
 
     return std::make_shared<DataBatch>(samples);
