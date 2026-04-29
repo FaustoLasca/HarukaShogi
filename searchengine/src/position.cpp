@@ -176,7 +176,7 @@ std::string Position::sfen() const {
 }
 
 
-void Position::from_bytes(const unsigned char* bytes) {
+void Position::from_bytes(const char* bytes) {
     // The first 5 bytes (40 bits) correspond to the owner mask for the pieces:
     // each bit, in order, tells which color the piece belongs to
     // after that, each byte corresponds to one of the 40 promotion-square pairs
@@ -234,7 +234,7 @@ void Position::from_bytes(const unsigned char* bytes) {
 }
 
 
-void Position::to_bytes(unsigned char* bytes) const {
+void Position::to_bytes(char* bytes) const {
     uint64_t ownerMask = 0;
     uint8_t *promSqPtr = (uint8_t*)(bytes + 5);
 

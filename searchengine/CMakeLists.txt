@@ -47,6 +47,7 @@ add_executable(test
     src/engine.cpp
     src/nnue/nnue.cpp
     src/nnue/load.cpp
+    src/nnue/binpack.cpp
 )
 target_include_directories(test PRIVATE include)
 

@@ -95,8 +95,8 @@ class Position {
 		// 5 bytes owner mask for the pieces
 		// 40 bytes of promotion-square pairs [promotion flag (bit 7), square (bits 0-6)]
 		// the pieces are in fixed order
-		void from_bytes(const unsigned char* bytes);
-		void to_bytes(unsigned char* bytes) const;
+		void from_bytes(const char* bytes);
+		void to_bytes(char* bytes) const;
 
 		// move methods
 		void make_move(Move m);
