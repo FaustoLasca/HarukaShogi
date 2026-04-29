@@ -85,6 +85,7 @@ add_executable(gensfen
     src/opening_book.cpp
     src/evaluate.cpp
     src/nnue/nnue.cpp
+    src/nnue/binpack.cpp
 )
 target_include_directories(gensfen PRIVATE include)
 

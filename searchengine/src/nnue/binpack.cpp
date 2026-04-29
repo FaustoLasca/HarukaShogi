@@ -55,6 +55,9 @@ void Binpack::add_move(Move move, int16_t score, bool discard) {
 
 
 void Binpack::game_over(Color winner) {
+    // if no moves were added, don't write anything
+    if (count == 0)
+        return;
     // set the winner and count that were uninitialized
     count |= (uint16_t)winner << 14;
     std::memcpy(&buffer[45], &count, 2);

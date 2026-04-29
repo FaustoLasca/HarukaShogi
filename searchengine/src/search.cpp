@@ -148,7 +148,7 @@ void Worker::iterative_deepening() {
     int startingDepth = 1 + threadId % 4;
     
     // loop through the depths
-    for (int depth = startingDepth; depth <= MAX_DEPTH; depth++) {
+    for (int depth = startingDepth; depth <= std::min(limits.depth, MAX_DEPTH); depth++) {
         // aspiration window loop
         while (true) {
             alpha = std::max(old_score - ASPIRATION_DELTA * deltaMult, -INF_SCORE);

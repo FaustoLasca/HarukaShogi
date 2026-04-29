@@ -3,13 +3,14 @@
 #include "../types.h"
 #include "../movegen.h"
 #include "../misc.h"
+#include "binpack.h"
 
 #include <iostream>
 #include <mutex>
 #include <condition_variable>
-#include <fstream>
 #include <filesystem>
 #include <algorithm>
+#include <random>
 
 using namespace harukashogi;
 
@@ -52,10 +53,8 @@ struct DataPoint {
 };
 
 
-int play_game(Engine& engine, CVManager& manager, OpeningBook& book, std::vector<DataPoint>& data){
-    size_t gameStartIdx = data.size();
-
-    std::mt19937 rng = std::mt19937(std::random_device{}());
+int play_game(Engine& engine, CVManager& manager, OpeningBook& book, 
+              NNUE::Binpack& binpack, std::mt19937& rng){
     Position pos;
     pos.set();
 
@@ -82,13 +81,18 @@ int play_game(Engine& engine, CVManager& manager, OpeningBook& book, std::vector
         numMoves++;
     }
 
+    // start searching from the current position
+    binpack.new_game(pos);
+
+    std::cout << "Starting search from position: " << pos.sfen() << std::endl;
+
     // main generation loop
     SearchLimits limits;
     while (!pos.is_game_over() && numMoves < 1000) {
         // search for 100ms and get the best move and score
         engine.set_position(pos.sfen());
         limits = SearchLimits();
-        limits.moveTime = chr::milliseconds(100);
+        limits.depth = 3;
         engine.go(limits);
         move = manager.wait_for_best_move();
         score = manager.get_score();
@@ -107,48 +111,19 @@ int play_game(Engine& engine, CVManager& manager, OpeningBook& book, std::vector
 
         // filter out checks and positions where a capture is the best move
         // if a capture is the best move, we are likely to be in an unstable position
-        if (!pos.checkers() && !pos.is_capture(move)) {
-            data.push_back({pos.sfen(), score, pos.side_to_move() == BLACK ? 0.0f : 1.0f});
-        }
+        binpack.add_move(move, score, pos.is_capture(move) || pos.checkers());
         
         pos.make_move(move);
         numMoves++;
     }
 
-    // if no new data points were added, return
-    if (data.size() == gameStartIdx)
-        return 0;
-
     Color winner = pos.get_winner();
 
-    for (size_t i = gameStartIdx; i < data.size(); i++) {
-        if (winner == NO_COLOR) {
-            data[i].result = 0.5f;
-        }
-        else if ((data[i].result == 0 && winner == BLACK) || 
-                 (data[i].result == 1 && winner == WHITE)) {
-            data[i].result = 1.0f;
-        }
-        else {
-            data[i].result = 0.0f;
-        }
-    }
+    std::cout << "Game over: " << pos.sfen() << " " << (int)winner << std::endl;
 
-    return data.size() - gameStartIdx;
-}
+    binpack.game_over(winner);
 
-
-void write_file(const std::string& filePath, std::vector<DataPoint>& data, int numPositions) {
-    // write the data to a file
-    std::ofstream file(filePath);
-    assert(file.is_open());
-    numPositions = std::min(numPositions, int(data.size()));
-    for (size_t i=0; i<numPositions; i++)
-        file << data[i].sfen << " | " << data[i].score << " | " << data[i].result << std::endl;
-    file.close();
-
-    // remove the data from the vector
-    data.erase(data.begin(), data.begin() + numPositions);
+    return numMoves;
 }
 
 
@@ -161,16 +136,17 @@ void generate_data(const std::string& outDir, int totalPositions, int filePositi
     engine.set_own_book(false);
     OpeningBook book;
 
-    std::vector<DataPoint> data;
+    std::mt19937 rng(std::random_device{}());
 
     int generatedPositions = 0;
-    int fileIdx = 0;
-    while (generatedPositions < totalPositions) {
-        generatedPositions += play_game(engine, manager, book, data);
-
-        if (data.size() >= filePositions) {
-            std::cout << "Writing file " << fileIdx << std::endl;
-            write_file(outDir + "/" + std::to_string(fileIdx++) + ".txt", data, filePositions);
+    for (int fileIdx = 0; generatedPositions < totalPositions; fileIdx++) {
+        std::cout << "Generating file " << fileIdx << std::endl;
+        NNUE::Binpack binpack(outDir + "/" + std::to_string(fileIdx) + ".binp", std::ios::out);
+        for (int count = 0; count < filePositions; ) {
+            std::cout << "game " << count << std::endl;
+            int numMoves = play_game(engine, manager, book, binpack, rng);
+            count += numMoves;
+            generatedPositions += numMoves;
         }
     }
 }
