@@ -60,7 +60,7 @@ int play_game(Engine& engine, CVManager& manager, OpeningBook& book,
 
     Move moveList[MAX_MOVES];
     Move move, *end;
-    int numMoves = 0, numValidMoves = 0, score;
+    int numMoves = 0, validMoves = 0, randomMoves = 0, score;
 
     // start the game with a random last move from the opening book
     while (!pos.is_game_over() && (move = book.sample_move(pos.get_key())) != Move::null()) {
@@ -72,17 +72,20 @@ int play_game(Engine& engine, CVManager& manager, OpeningBook& book,
             break;
     }
 
-    // play up to 5 random moves
-    int nRandMoves = rng() % 5;
+    // play up to 3 random moves
+    int nRandMoves = rng() % 3;
     for (int i = 0; i < nRandMoves && !pos.is_game_over(); i++) {
         end = generate<LEGAL>(pos, moveList);
         move = moveList[rng() % (end - moveList)];
         pos.make_move(move);
         numMoves++;
+        randomMoves++;
     }
 
     // start searching from the current position
     binpack.new_game(pos);
+
+    int ply = 0;
 
     // main generation loop
     SearchLimits limits;
@@ -109,10 +112,17 @@ int play_game(Engine& engine, CVManager& manager, OpeningBook& book,
 
         // filter out checks and positions where a capture is the best move
         // if a capture is the best move, we are likely to be in an unstable position
-        bool discard = pos.is_capture(move) || pos.checkers();
+        bool discard = pos.is_capture(move) || pos.checkers() || score > 20000 || score < -20000;
+
+        // randomly change the move for a random move with low probability in the first 16 plies
+        if (ply < 16 && randomMoves < 6 && rng() % 8 == 0) {
+            move = moveList[rng() % (end - moveList)];
+            randomMoves++;
+        }
+
         binpack.add_move(move, score, discard);
         if (!discard) {
-            numValidMoves++;
+            validMoves++;
         }
         
         pos.make_move(move);
@@ -123,7 +133,7 @@ int play_game(Engine& engine, CVManager& manager, OpeningBook& book,
 
     binpack.game_over(winner);
 
-    return numValidMoves;
+    return validMoves;
 }
 
 
