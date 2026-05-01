@@ -16,7 +16,7 @@ int main() {
     Position pos;
     pos.set();
 
-    NNUE::Binpack binpack("test_binps/0.binp", std::ios::in);
+    NNUE::Binpack binpack("data/test_binps/0.binp", std::ios::in);
     NNUE::GameData game;
     while (binpack.read_game(game)) {
         std::cout << "sfen:      " << game.pos.sfen() << std::endl;
