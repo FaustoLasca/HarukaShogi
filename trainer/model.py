@@ -24,7 +24,7 @@ class NNUEModel(nn.Module):
 
         accumulator = torch.clamp(accumulator, min=0., max=1.)
         x = self.l1(accumulator)
-        x = fake_quantize(x, 127, 0, 127)
+        x = shift_quant_crelu(x, 127, 64)
         return self.l2(x)
     
 
@@ -57,6 +57,15 @@ class NNUEModel(nn.Module):
 def fake_quantize(x, scale, qmin, qmax):
     scale = 1/scale
     return torch.fake_quantize_per_tensor_affine(x, scale, 0, qmin, qmax)
+
+
+def shift_quant_crelu(x, in_scale, weight_scale):
+    raw = torch.round(x * in_scale * weight_scale)
+    shifted = torch.floor(raw / weight_scale)
+    q = torch.clamp(shifted, 0, in_scale) / in_scale
+
+    x_ste = torch.clamp(x, 0, 1)
+    return x_ste + (q - x_ste).detach()
 
 
 class FeatureTransformer(nn.Module):
@@ -116,7 +125,7 @@ if __name__ == "__main__":
     w_features = torch.tensor(batch.white_indexes)
     stm = torch.tensor(batch.stms)
 
-    model = NNUEModel(num_features=2344, accumulator_size=128)
+    model = NNUEModel(num_features=2344, accumulator_size=128, hidden_size=32)
 
     # b_acc = model.ft(b_features).sum(dim=1) + model.ft_bias
 

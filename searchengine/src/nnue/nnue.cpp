@@ -13,26 +13,34 @@ namespace NNUE {
 // const unsigned char gWeightsData[];
 // const unsigned char *const gWeightsEnd;
 // const unsigned int gWeightsSize;
-// INCBIN(Weights, "../bin/nnue/AdamW_acc128_1B.bin");
-INCBIN(Weights, "../bin/nnue/test_weights.bin");
+INCBIN(Weights, "../bin/nnue/AdamW_acc128-32_1B.bin");
+// INCBIN(Weights, "../bin/nnue/test_weights.bin");
 
 
 NNUE::NNUE() {
     const unsigned char* ptr = gWeightsData;
     ptr = ft.set_weights(ptr);
-    l1.set_weights(ptr);
+    ptr = l1.set_weights(ptr);
+    ptr = l2.set_weights(ptr);
 }
 
 
 int32_t NNUE::evaluate(const AccumulatorType& acc, Color stm) const {
+    // apply the feature transformer to the accumulator
     alignas(32) int8_t actAcc[2*ACCUMULATOR_SIZE];
     crelu16<ACCUMULATOR_SIZE>(acc[stm], actAcc);
     crelu16<ACCUMULATOR_SIZE>(acc[~stm], actAcc + ACCUMULATOR_SIZE);
 
-    int32_t score;
-    l1.forward(actAcc, &score);
+    // apply the first linear layer to the activated accumulator
+    int32_t h1[H1_SIZE];
+    l1.forward(actAcc, h1);
+    alignas(32) int8_t h1Act[H1_SIZE];
+    crelu32<H1_SIZE>(h1, h1Act);
     
-    return (score * SCALE) / (Q1 * Q2);
+    // apply the linear layer to the activated hidden layer
+    int32_t score;
+    l2.forward(h1Act, &score);
+    return (score * SCALE) / (Q0 * Q1);
 }
 
 
