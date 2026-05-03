@@ -15,7 +15,7 @@ class NNUEIterableDataset(IterableDataset):
         random_hflip = False, 
         hflip = False
     ):
-        self.files = list(Path(data_path).rglob("*.txt"))
+        self.files = list(Path(data_path).rglob("*.binp"))
         self.batch_size = batch_size
         self.shuffle = shuffle
         self.random_hflip = random_hflip
@@ -84,7 +84,7 @@ class NNUEIterableDataset(IterableDataset):
 
 if __name__ == "__main__":
     dataloader = DataLoader(
-        NNUEIterableDataset("data/nnue/train", batch_size=10000),
+        NNUEIterableDataset("data/nnue/dataset_v0", batch_size=16384),
         batch_size=None, # batch handled by the dataset
         num_workers=8,
         pin_memory=True,

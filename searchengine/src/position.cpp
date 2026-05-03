@@ -62,14 +62,8 @@ void Position::set(const std::string& sfenStr) {
 
     ss >> std::noskipws;
 
-    // empty board, hands, and bitboards
-    board.fill(NO_PIECE);
-    std::memset(hands, 0, sizeof(hands));
-    std::memset(pawnFiles, 0, sizeof(pawnFiles));
-    std::fill(std::begin(allPiecesBB), std::end(allPiecesBB), Bitboard(0));
-    std::memset(piecesBB, 0, sizeof(piecesBB));
-    gameStatus = NO_STATUS;
-    winner = NO_COLOR;
+    // reset the position
+    clear();
 
     // 1. board pieces
     while ((ss >> token) && token != ' ') {
@@ -112,27 +106,8 @@ void Position::set(const std::string& sfenStr) {
     ss >> std::skipws >> gamePly;
     gamePly--;
 
-    // initialize the state info list
-    si.clear();
-    si.push_front(StateInfo());
-
-    // update the checkers bitboard
-    si.front().checkersBB = attackers_to(kingSq[sideToMove], all_pieces()) & all_pieces(~sideToMove);
-
-    // update the blocker info for each color
-    update_line_of_sight(BLACK);
-    update_line_of_sight(WHITE);
-
-    // update the check squares for each color
-    compute_check_squares<BLACK>();
-    compute_check_squares<WHITE>();
-
-    // compute the zobrist hash code
-    compute_key();
-
-    // initialize the repetition table and add the initial position
-    repetitionTable = RepetitionTable();
-    repetitionTable.add(si.front().key);
+    // initialize the state info list and computes the root node info
+    init_si();
 }
 
 
@@ -198,6 +173,135 @@ std::string Position::sfen() const {
     ss << ' ' << gamePly + 1;
 
     return ss.str();
+}
+
+
+void Position::from_bytes(const char* bytes) {
+    // The first 5 bytes (40 bits) correspond to the owner mask for the pieces:
+    // each bit, in order, tells which color the piece belongs to
+    // after that, each byte corresponds to one of the 40 promotion-square pairs
+    // each byte corresponds to one of the 40 pieces in order:
+    // KKGGGGSSSSLLLLNNNNBBRRPPPPPPPPPPPPPPPPPP
+    // the first bit is the promotion flag, the other 7 bits are the square of the piece
+    // NO_SQUARE means the piece is in the hand
+    // the side to move is the first bit, as it's the stm's king color
+
+    // array containing the number of pieces of each type (not including promoted pieces)
+    constexpr int ptCounts[] = {2,4,4,4,4,2,2,18};
+    constexpr uint8_t sqMask = 0b01111111;
+    constexpr uint8_t promMask = 0b10000000;
+
+    uint64_t ownerMask = *(uint64_t*)bytes & 0xFFFFFFFFFF; // get the first 5 bytes
+    uint8_t *promSqPtr = (uint8_t*)(bytes + 5); // get the pointer to the promotion-square pairs
+
+    // reset the position
+    clear();
+
+    // the first 2 pieces are kings. The first owner is the side to move.
+    sideToMove = Color(ownerMask & 1);
+
+    // loop through the pieces and add them to the board/hand
+    int slot = 0;
+    for (PieceType pt = KING; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
+        for (int n = 0; n < ptCounts[pt]; ++n) {
+            (void)n;
+            const uint8_t enc = promSqPtr[slot];
+            Square sq = Square(enc & sqMask);
+            bool promote = enc & promMask;
+            Color c = Color((ownerMask >> slot) & 1);
+            ++slot;
+            Piece p = make_piece(c, pt);
+            if (promote)
+                p = promote_piece(p);
+            // add the piece to either the board or the hand
+            if (sq != NO_SQUARE)
+                add_piece(p, sq);
+            else
+                add_hand_piece(c, pt);
+            // update the king location
+            if (type_of(p) == KING)
+                kingSq[c] = sq;
+            // update the pawn file
+            if (type_of(p) == PAWN && sq != NO_SQUARE)
+                pawnFiles[c][file_of(sq)] = true;
+        }
+    }
+
+    assert(slot == 40);
+
+    // initialize the state info list and computes the root node info
+    init_si();
+}
+
+
+void Position::to_bytes(char* bytes) const {
+    uint64_t ownerMask = 0;
+    uint8_t *promSqPtr = (uint8_t*)(bytes + 5);
+
+    // loop through the pieces and add them to the bytes
+    int i = 0;
+    for (PieceType pt = KING; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
+        // stm board pieces first
+        Color c = sideToMove;
+        for (int j = 0; j < 2; ++j) {
+            Bitboard bb = pieces(c, pt);
+            if (can_promote(pt))
+                bb |= pieces(c, promote(pt));
+            // board pieces
+            while (bb) {
+                Square sq = pop_lsb(bb);
+                promSqPtr[i] = sq | (is_promoted(piece(sq)) ? 1 << 7 : 0);
+                ownerMask |= (uint64_t)c << i++;
+            }
+            // hand pieces
+            for (int count = 0; count < hand_count(c, pt); ++count) {
+                promSqPtr[i] = NO_SQUARE;
+                ownerMask |= (uint64_t)c << i++;
+            }
+            c = ~c;
+        }
+    }
+
+    assert(i == 40);
+
+    // write the owner mask to the first 5 bytes
+    for (int i = 0; i < 5; ++i) {
+        bytes[i] = (ownerMask >> (i * 8)) & 0xFF;
+    }
+}
+
+
+void Position::clear() {
+    board.fill(NO_PIECE);
+    std::memset(hands, 0, sizeof(hands));
+    std::memset(pawnFiles, 0, sizeof(pawnFiles));
+    std::fill(std::begin(allPiecesBB), std::end(allPiecesBB), Bitboard(0));
+    std::memset(piecesBB, 0, sizeof(piecesBB));
+    gameStatus = NO_STATUS;
+    winner = NO_COLOR;
+    gamePly = 0;
+    sideToMove = BLACK;
+    repetitionTable = RepetitionTable();
+}
+
+
+// initializes the state info list and computes the root node info
+void Position::init_si() {
+    si.clear();
+    // initialize the state info list
+    si.push_front(StateInfo());
+    // update the checkers bitboard
+    si.front().checkersBB =attackers_to(kingSq[sideToMove], all_pieces()) & all_pieces(~sideToMove);
+    // update the blocker info for each color
+    update_line_of_sight(BLACK);
+    update_line_of_sight(WHITE);
+    // update the check squares for each color
+    compute_check_squares<BLACK>();
+    compute_check_squares<WHITE>();
+    // compute the zobrist hash code
+    compute_key();
+    // add the initial position to the repetition table
+    repetitionTable.add(si.front().key);
 }
 
 

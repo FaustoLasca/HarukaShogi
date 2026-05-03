@@ -72,6 +72,8 @@ class RepetitionTable {
 
 constexpr uint8_t MAX_HAND_COUNT = 18;
 
+constexpr size_t POS_BYTES_SIZE = 40;
+
 
 class Position {
     public:
@@ -86,6 +88,15 @@ class Position {
 			sfenStr = "lnsgkgsnl/1r5b1/ppppppppp/9/9/9/PPPPPPPPP/1B5R1/LNSGKGSNL b - 1"
 		);
 		std::string sfen() const;
+
+		// load and save a position as a byte array
+		// used to efficiently store positions in binp files
+		// 45 bytes:
+		// 5 bytes owner mask for the pieces
+		// 40 bytes of promotion-square pairs [promotion flag (bit 7), square (bits 0-6)]
+		// the pieces are in fixed order
+		void from_bytes(const char* bytes);
+		void to_bytes(char* bytes) const;
 
 		// move methods
 		void make_move(Move m);
@@ -176,6 +187,12 @@ class Position {
 		template<Color c> void compute_check_squares();
 		template<Color c> void compute_dir_check_squares();
 		template<Color c> void compute_sld_check_squares();
+
+		// clears the position
+		void clear();
+
+		// initializes the state info list and computes the root node info
+		void init_si();
 
 		// compute the zobrist hash code
 		void compute_key();

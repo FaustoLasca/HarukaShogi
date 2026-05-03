@@ -47,6 +47,7 @@ add_executable(test
     src/engine.cpp
     src/nnue/nnue.cpp
     src/nnue/load.cpp
+    src/nnue/binpack.cpp
 )
 target_include_directories(test PRIVATE include)
 
@@ -84,6 +85,7 @@ add_executable(gensfen
     src/opening_book.cpp
     src/evaluate.cpp
     src/nnue/nnue.cpp
+    src/nnue/binpack.cpp
 )
 target_include_directories(gensfen PRIVATE include)
 
@@ -100,6 +102,7 @@ pybind11_add_module(nnue_loader
     src/nnue/nnue.cpp
     src/nnue/load.cpp
     src/nnue/bindings.cpp
+    src/nnue/binpack.cpp
 )
 target_include_directories(nnue_loader PRIVATE include)
 

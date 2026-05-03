@@ -1,20 +1,29 @@
 #include <iostream>
+#include <fstream>
+#include <bitset>
 
-
-#include "nnue/nnue.h"
-#include "engine.h"
-
+#include "position.h"
+#include "nnue/binpack.h"
+#include "misc.h"
+#include "types.h"
 
 using namespace harukashogi;
 
+
 int main() {
-    init();
+    Position::init();
 
     Position pos;
-    NNUE::NNUE nnue;
+    pos.set();
 
-    pos.set("ln4k1l/4g2s1/3s1pnp1/3pp1P1p/P1PP1P3/2p1S2RP/1+r2P4/L3+n4/1+p2K2NL w BGSPPbggpp 1");
-    NNUE::AccumulatorType acc;
-    nnue.feature_transformer().compute(pos, acc);
-    std::cout << nnue.evaluate(acc, pos.side_to_move()) << std::endl;
+    NNUE::Binpack binpack("data/test_binps/0.binp", std::ios::in);
+    NNUE::GameData game;
+    while (binpack.read_game(game)) {
+        std::cout << "sfen:      " << game.pos.sfen() << std::endl;
+        std::cout << "winner:    " << (int)game.winner << std::endl;
+        std::cout << "movecount: " << game.scoreMoves.size() << std::endl;
+        for (const auto& el : game.scoreMoves) {
+            std::cout << "el: " << std::get<0>(el) << " " << std::get<1>(el) << " " << std::get<2>(el) << std::endl;
+        }
+    }
 }

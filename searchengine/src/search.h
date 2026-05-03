@@ -53,7 +53,7 @@ struct SearchLimits {
         time{chr::milliseconds(0), chr::milliseconds(0)},
         inc{chr::milliseconds(0), chr::milliseconds(0)},
         byoyomi(0), moveTime(0),
-        depth(0), nodes(0), movesToGo(0),
+        depth(MAX_DEPTH), nodes(0), movesToGo(0),
         infinite(false), ponder(false) {}
 
     chr::time_point<chr::steady_clock> startTime;
