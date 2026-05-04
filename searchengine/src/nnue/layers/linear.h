@@ -23,7 +23,8 @@ class Linear {
     private:
         void linear_single(const int8_t* input, int32_t* output) const;
 
-        alignas(64) int8_t weights[OUT_SIZE*IN_SIZE];
+        static constexpr size_t inWeightsSize = ((IN_SIZE + 31) / 32) * 32;
+        alignas(64) int8_t weights[OUT_SIZE*inWeightsSize];
         alignas(64) int32_t biases[OUT_SIZE];
 };
 
@@ -64,9 +65,8 @@ void Linear<IN_SIZE, OUT_SIZE, SR_BITS>::forward(const int8_t* input, int32_t* o
 requires (OUT_SIZE > 1)
 {
     constexpr size_t inRegisterWidth = 256 / 8; // 8 bit elements in a 256 bit register
-    static_assert(IN_SIZE % inRegisterWidth == 0, "Input must fill registers completely");
     static_assert(OUT_SIZE % 4 == 0, "Output aize must be a multiple of 4");
-    constexpr size_t numInChunks = IN_SIZE / inRegisterWidth;
+    constexpr size_t numInChunks = (IN_SIZE + inRegisterWidth - 1) / inRegisterWidth;
     constexpr size_t numOutChunks = OUT_SIZE / 4; // compute 4 output elements at a time
 
     for (size_t i = 0; i < numOutChunks; ++i) {
@@ -122,8 +122,7 @@ void Linear<IN_SIZE, OUT_SIZE, SR_BITS>::forward(const int8_t* input, int32_t* o
 requires (OUT_SIZE == 1)
 {
     constexpr size_t inRegisterWidth = 256 / 8; // 8 bit elements in a 256 bit register
-    static_assert(IN_SIZE % inRegisterWidth == 0, "Input must fill registers completely");
-    constexpr size_t numInChunks = IN_SIZE / inRegisterWidth;
+    constexpr size_t numInChunks = (IN_SIZE + inRegisterWidth - 1) / inRegisterWidth;
 
     // initialize the accumulator to zero
     __m256i acc = _mm256_setzero_si256();
@@ -154,8 +153,13 @@ requires (OUT_SIZE == 1)
 
 template <size_t IN_SIZE, size_t OUT_SIZE, int SR_BITS>
 const unsigned char* Linear<IN_SIZE, OUT_SIZE, SR_BITS>::set_weights(const unsigned char* weights_start) {
-    std::memcpy(weights, weights_start, sizeof(weights));
-    std::memcpy(biases, weights_start + sizeof(weights), sizeof(biases));
+    // initialize the weights array to zero, then copy the weights into the array
+    // this adds 0 padding to the weights to fill the registers completely during inference
+    std::memset(weights, 0, sizeof(weights));
+    for (size_t i = 0; i < OUT_SIZE; ++i) {
+        std::memcpy(&weights[i*inWeightsSize], weights_start + i*IN_SIZE, IN_SIZE);
+    }
+    std::memcpy(biases, weights_start + OUT_SIZE*IN_SIZE, sizeof(biases));
     return weights_start + sizeof(weights) + sizeof(biases);
 }
 

@@ -13,8 +13,7 @@ template <size_t SIZE>
 void crelu16(const int16_t* input, int8_t* output) {
     constexpr size_t inRegisterWidth = 256 / 16; // 16 bit elements in a 256 bit register
     constexpr size_t outRegisterWidth = 256 / 8; // 8 bit elements in a 256 bit register
-    static_assert(SIZE % outRegisterWidth == 0, "Outpet must fill registers completely");
-    constexpr size_t numChunks = SIZE / outRegisterWidth;
+    constexpr size_t numChunks = (SIZE + outRegisterWidth - 1) / outRegisterWidth;
 
     __m256i zero = _mm256_setzero_si256();
     // used to permute the elements of the register in the final step
@@ -50,8 +49,7 @@ template <size_t SIZE>
 void crelu32(const int32_t* input, int8_t* output) {
     constexpr size_t inRegisterWidth = 256 / 32; // 32 bit elements in a 256 bit register
     constexpr size_t outRegisterWidth = 256 / 8; // 8 bit elements in a 256 bit register
-    static_assert(SIZE % outRegisterWidth == 0, "Outpet must fill registers completely");
-    constexpr size_t numChunks = SIZE / outRegisterWidth;
+    constexpr size_t numChunks = (SIZE + outRegisterWidth - 1) / outRegisterWidth;
 
     __m256i zero = _mm256_setzero_si256();
     // used to permute the 32 bit groups in the correct order after packs operations

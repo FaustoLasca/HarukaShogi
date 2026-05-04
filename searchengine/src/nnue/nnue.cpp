@@ -13,7 +13,7 @@ namespace NNUE {
 // const unsigned char gWeightsData[];
 // const unsigned char *const gWeightsEnd;
 // const unsigned int gWeightsSize;
-INCBIN(Weights, "../bin/nnue/AdamW_acc128-32_1B.bin");
+INCBIN(Weights, "../bin/nnue/AdamW_acc128-8_1B.bin");
 // INCBIN(Weights, "../bin/nnue/test_weights.bin");
 
 
@@ -32,9 +32,9 @@ int32_t NNUE::evaluate(const AccumulatorType& acc, Color stm) const {
     crelu16<ACCUMULATOR_SIZE>(acc[~stm], actAcc + ACCUMULATOR_SIZE);
 
     // apply the first linear layer to the activated accumulator
-    int32_t h1[H1_SIZE];
+    int32_t h1[(H1_SIZE + 31) / 32 * 32];
     l1.forward(actAcc, h1);
-    alignas(32) int8_t h1Act[H1_SIZE];
+    alignas(32) int8_t h1Act[(H1_SIZE + 31) / 32 * 32];
     crelu32<H1_SIZE>(h1, h1Act);
     
     // apply the linear layer to the activated hidden layer

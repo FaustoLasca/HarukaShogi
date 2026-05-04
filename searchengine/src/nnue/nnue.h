@@ -16,7 +16,7 @@ namespace NNUE {
 
 constexpr size_t FEATURES = 2 * NUM_SQUARES * NUM_PIECE_TYPES + 2 * 2 * 19;
 constexpr size_t ACCUMULATOR_SIZE = 128;
-constexpr size_t H1_SIZE = 32;
+constexpr size_t H1_SIZE = 8;
 constexpr int Q0 = 127; // needs to fit in int8_t [-128, 127]
 constexpr int Q1 = 64;  // weights need to fit in int8_t, so max weight value is  2
 constexpr int L1_SR = 6; // scale down by 64  

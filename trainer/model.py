@@ -5,12 +5,13 @@ import numpy as np
 
 
 class NNUEModel(nn.Module):
-    def __init__(self, num_features=2344, accumulator_size=128, hidden_size=32):
+    def __init__(self, num_features=2344, accumulator_size=128, h1_size=32):
         super().__init__()
 
         self.ft = FeatureTransformer(num_features, accumulator_size)
-        self.l1 = QuantLinear(accumulator_size * 2, hidden_size, in_scale=127, out_scale=64)
-        self.l2 = QuantLinear(hidden_size, 1, in_scale=127, out_scale=64)
+        self.l1 = QuantLinear(accumulator_size * 2, h1_size, in_scale=127, out_scale=64)
+        self.l2 = QuantLinear(h1_size, 32, in_scale=127, out_scale=64)
+        self.l3 = QuantLinear(32, 1, in_scale=127, out_scale=64)
 
     def forward(self, black_features, white_features, stm):
         b_acc = self.ft(black_features)
@@ -25,7 +26,9 @@ class NNUEModel(nn.Module):
         accumulator = torch.clamp(accumulator, min=0., max=1.)
         x = self.l1(accumulator)
         x = shift_quant_crelu(x, 127, 64)
-        return self.l2(x)
+        x = self.l2(x)
+        x = shift_quant_crelu(x, 127, 64)
+        return self.l3(x)
     
 
     def weights_to_bin(self, file_path):
@@ -125,7 +128,7 @@ if __name__ == "__main__":
     w_features = torch.tensor(batch.white_indexes)
     stm = torch.tensor(batch.stms)
 
-    model = NNUEModel(num_features=2344, accumulator_size=128, hidden_size=32)
+    model = NNUEModel(num_features=2344, accumulator_size=128, h1_size=32)
 
     # b_acc = model.ft(b_features).sum(dim=1) + model.ft_bias
 
