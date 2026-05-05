@@ -71,10 +71,10 @@ requires (OUT_SIZE > 1)
 
     for (size_t i = 0; i < numOutChunks; ++i) {
         // offsets for the 4 output elements' weights
-        const size_t outOffset0 = (i * 4 + 0)*IN_SIZE;
-        const size_t outOffset1 = (i * 4 + 1)*IN_SIZE;
-        const size_t outOffset2 = (i * 4 + 2)*IN_SIZE;
-        const size_t outOffset3 = (i * 4 + 3)*IN_SIZE;
+        const size_t outOffset0 = (i * 4 + 0)*inWeightsSize;
+        const size_t outOffset1 = (i * 4 + 1)*inWeightsSize;
+        const size_t outOffset2 = (i * 4 + 2)*inWeightsSize;
+        const size_t outOffset3 = (i * 4 + 3)*inWeightsSize;
 
         // initialize 4 accumulators to zero, bias added at the end
         __m256i acc0 = _mm256_setzero_si256();
@@ -160,7 +160,7 @@ const unsigned char* Linear<IN_SIZE, OUT_SIZE, SR_BITS>::set_weights(const unsig
         std::memcpy(&weights[i*inWeightsSize], weights_start + i*IN_SIZE, IN_SIZE);
     }
     std::memcpy(biases, weights_start + OUT_SIZE*IN_SIZE, sizeof(biases));
-    return weights_start + sizeof(weights) + sizeof(biases);
+    return weights_start + OUT_SIZE*IN_SIZE + sizeof(biases);
 }
 
 
