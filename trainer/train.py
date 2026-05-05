@@ -27,7 +27,7 @@ def crossentropy_loss(output, target):
 
 model = NNUEModel(
     num_features=2344,
-    accumulator_size=128,
+    accumulator_size=256,
     h1_size=8,
 ).to(device)
 
@@ -98,8 +98,7 @@ for epoch in range(EPOCHS):
 
     if val_loss < min_val_loss:
         min_val_loss = val_loss
-        model.weights_to_bin("searchengine/bin/nnue/AdamW_acc128-8-32_1B.bin")
-        print("Model saved to searchengine/bin/nnue/AdamW_acc128-8-32_1B.bin")
+    model.weights_to_bin("searchengine/bin/nnue/AdamW_acc256-8_1B.bin")
 
 
     scheduler.step()

@@ -377,11 +377,10 @@ int Worker::q_search(int ply, int alpha, int beta) {
 
 
 void Worker::make_move(Move m) {
-    // update the nnue accumulator (before making the move)
-    // copy the accumulator and update it
-    accumulatorStack.push(searchPos, m);
     // make the move
-    searchPos.make_move(m);
+    MoveDiff diff = searchPos.make_move(m);
+    // update the nnue accumulator
+    accumulatorStack.push(diff);
 }
 
 

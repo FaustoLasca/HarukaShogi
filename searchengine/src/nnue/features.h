@@ -2,6 +2,7 @@
 #define FEATURES_H
 
 #include "../types.h"
+#include "../misc.h"
 
 namespace harukashogi {
 namespace NNUE {

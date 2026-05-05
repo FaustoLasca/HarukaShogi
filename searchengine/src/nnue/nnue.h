@@ -33,7 +33,7 @@ class AccumulatorStack {
         AccumulatorStack(const FeatureTransformerType& ft) : ft(ft) {}
         
         // incrementally update the accumulator and push the new accumulator to the stack
-        void push(const Position& pos, Move m);
+        void push(MoveDiff diff);
         // push a copy of the top accumulator to the stack
         void push();
 

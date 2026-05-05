@@ -17,6 +17,7 @@ INCBIN(Weights, "../bin/nnue/AdamW_acc128-8_1B.bin");
 // INCBIN(Weights, "../bin/nnue/test_weights.bin");
 
 
+
 NNUE::NNUE() {
     const unsigned char* ptr = gWeightsData;
     ptr = ft.set_weights(ptr);
@@ -51,9 +52,9 @@ void AccumulatorStack::push() {
 }
 
 
-void AccumulatorStack::push(const Position& pos, Move m) {
+void AccumulatorStack::push(MoveDiff diff) {
     assert(size < MAX_PLY+1);
-    ft.incremental_update(pos, m, stack[size-1], stack[size]);
+    ft.incremental_update(diff, stack[size-1], stack[size]);
     size++;
 }
 

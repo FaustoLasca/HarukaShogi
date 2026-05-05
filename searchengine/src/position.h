@@ -99,7 +99,8 @@ class Position {
 		void to_bytes(char* bytes) const;
 
 		// move methods
-		void make_move(Move m);
+		// returns the move difference for the NNUE incremental updates
+		MoveDiff make_move(Move m);
 		void unmake_move(Move m);
 
 		// null movee for null move pruning
