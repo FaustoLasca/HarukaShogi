@@ -344,7 +344,7 @@ MoveDiff Position::make_move(Move m) {
             add_hand_piece(sideToMove, unpromoted_type(capturedPT));
             // update the move difference
             diff.capturedPt = capturedPT;
-            diff.capturedCount = count+1;
+            diff.capturedCount = count;
             // handle pawn files if a pawn is captured
             if (capturedPT == PAWN)
                 pawnFiles[~sideToMove][file_of(m.to())] = false;

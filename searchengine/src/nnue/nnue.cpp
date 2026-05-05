@@ -13,7 +13,7 @@ namespace NNUE {
 // const unsigned char gWeightsData[];
 // const unsigned char *const gWeightsEnd;
 // const unsigned int gWeightsSize;
-INCBIN(Weights, "../bin/nnue/AdamW_acc128-8_1B.bin");
+INCBIN(Weights, "../bin/nnue/AdamW_acc128-32_1B.bin");
 // INCBIN(Weights, "../bin/nnue/test_weights.bin");
 
 
