@@ -380,7 +380,7 @@ void Worker::make_move(Move m) {
     // make the move
     MoveDiff diff = searchPos.make_move(m);
     // update the nnue accumulator
-    accumulatorStack.push(diff);
+    accumulatorStack.push(searchPos, diff);
 }
 
 

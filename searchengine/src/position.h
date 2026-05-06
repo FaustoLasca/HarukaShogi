@@ -148,6 +148,7 @@ class Position {
 		// getters
 		Piece piece(Square sq) const { return board[sq]; }
 		Square king_square(Color color) const { return kingSq[color]; }
+		const std::array<Square, 2>& king_square() const { return kingSq; }
 		int hand_count(Color color, PieceType pt) const {
 			return hands[color][pt];
 		}

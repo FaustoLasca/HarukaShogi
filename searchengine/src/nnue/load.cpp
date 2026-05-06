@@ -43,6 +43,11 @@ DataSample compute_sample(const Position& pos, int16_t score, Color winner, bool
                   : 0.0f;
     sample.stm = pos.side_to_move() == BLACK ? 0.0f : 1.0f;
 
+    Square bKingSq = hflip ? harukashogi::hflip(pos.king_square(BLACK)) 
+                           : pos.king_square(BLACK);
+    Square wKingSq = hflip ? harukashogi::hflip(pos.king_square(WHITE)) 
+                           : pos.king_square(WHITE);
+
     size_t num_idxs = 0;
     Piece p;
     // add the board indexes
@@ -51,8 +56,8 @@ DataSample compute_sample(const Position& pos, int16_t score, Color winner, bool
             Square sq_flip = hflip ? harukashogi::hflip(sq) : sq;
             PieceType pt = type_of(p);
             Color c = color_of(p);
-            sample.black_indexes[num_idxs] = board_idx<BLACK>(c, pt, sq_flip);
-            sample.white_indexes[num_idxs] = board_idx<WHITE>(c, pt, sq_flip);
+            sample.black_indexes[num_idxs] = board_idx<BLACK>(bKingSq, c, pt, sq_flip);
+            sample.white_indexes[num_idxs] = board_idx<WHITE>(wKingSq, c, pt, sq_flip);
             ++num_idxs;
         }
     }
@@ -60,8 +65,8 @@ DataSample compute_sample(const Position& pos, int16_t score, Color winner, bool
     for (Color c = BLACK; c < NUM_COLORS; ++c) {
         for (PieceType pt = GOLD; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
             for (int count = 0; count < pos.hand_count(c, pt); ++count) {
-                sample.black_indexes[num_idxs] = hand_idx<BLACK>(c, pt, count);
-                sample.white_indexes[num_idxs] = hand_idx<WHITE>(c, pt, count);
+                sample.black_indexes[num_idxs] = hand_idx<BLACK>(bKingSq, c, pt, count);
+                sample.white_indexes[num_idxs] = hand_idx<WHITE>(wKingSq, c, pt, count);
                 ++num_idxs;
             }
         }

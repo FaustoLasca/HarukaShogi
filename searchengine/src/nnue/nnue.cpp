@@ -13,9 +13,8 @@ namespace NNUE {
 // const unsigned char gWeightsData[];
 // const unsigned char *const gWeightsEnd;
 // const unsigned int gWeightsSize;
-INCBIN(Weights, "../bin/nnue/AdamW_acc256-8_1B.bin");
-// INCBIN(Weights, "../bin/nnue/test_weights.bin");
-
+// INCBIN(Weights, "../bin/nnue/AdamW_acc256-8_1B.bin");
+INCBIN(Weights, "../bin/nnue/test_weights.bin");
 
 
 NNUE::NNUE() {
@@ -58,9 +57,14 @@ void AccumulatorStack::push() {
 }
 
 
-void AccumulatorStack::push(MoveDiff diff) {
+void AccumulatorStack::push(Position& pos, MoveDiff diff) {
     assert(size < MAX_PLY+1);
-    ft.incremental_update(diff, stack[size-1], stack[size]);
+    if (requires_recompute(diff)) {
+        ft.compute(pos, stack[size]);
+    }
+    else {
+        ft.incremental_update(pos.king_square(), diff, stack[size-1], stack[size]);
+    }
     size++;
 }
 

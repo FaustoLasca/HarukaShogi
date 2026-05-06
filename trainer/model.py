@@ -5,7 +5,7 @@ import numpy as np
 
 
 class NNUEModel(nn.Module):
-    def __init__(self, num_features=2344, accumulator_size=128, h1_size=32):
+    def __init__(self, num_features=21096, accumulator_size=128, h1_size=32):
         super().__init__()
 
         self.ft = FeatureTransformer(num_features, accumulator_size)
@@ -134,7 +134,7 @@ if __name__ == "__main__":
     w_features = torch.tensor(batch.white_indexes)
     stm = torch.tensor(batch.stms)
 
-    model = NNUEModel(num_features=2344, accumulator_size=512, h1_size=8)
+    model = NNUEModel(num_features=21096, accumulator_size=128, h1_size=32)
 
     # b_acc = model.ft(b_features).sum(dim=1) + model.ft_bias
 
@@ -145,7 +145,7 @@ if __name__ == "__main__":
 
     outs = model(b_features, w_features, stm)
     print(outs.shape)
-    print(outs[0:10]*2700)
+    print(outs[0:10]*(127*64))
 
     model.weights_to_bin("searchengine/bin/nnue/test_weights.bin")
 
