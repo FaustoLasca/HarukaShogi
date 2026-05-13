@@ -19,7 +19,7 @@ constexpr size_t H1_SIZE = 32;
 constexpr int L1_SR = 6; // scale down by 64  
 // constexpr int L2_SR = 6; // scale down by 64
 constexpr int Q_MULT = 127 * 64; // needs to fit in int8_t [-128, 127]
-constexpr int SCALE = 127 * 64; // needs to be adjusted
+constexpr int SCALE = 2700; // needs to be adjusted
 
 // define aliases for the template classes
 // reduces verbosity in the code
