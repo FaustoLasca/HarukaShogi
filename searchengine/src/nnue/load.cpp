@@ -1,7 +1,6 @@
 #include "load.h"
 #include "../types.h"
 #include "../position.h"
-#include "features.h"
 #include "binpack.h"
 
 #include <random>

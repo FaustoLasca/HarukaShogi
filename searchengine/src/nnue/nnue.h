@@ -4,6 +4,7 @@
 #include <cstdint>
 
 #include "accumulator.h"
+#include "features.h"
 #include "layers/ft.h"
 #include "layers/linear.h"
 #include "../position.h"

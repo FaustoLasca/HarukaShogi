@@ -6,7 +6,6 @@
 #include <cstring>
 #include <immintrin.h>
 
-#include "../features.h"
 #include "../accumulator.h"
 #include "../../position.h"
 #include "../../types.h"
