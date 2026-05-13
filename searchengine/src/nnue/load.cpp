@@ -56,8 +56,8 @@ DataSample compute_sample(const Position& pos, int16_t score, Color winner, bool
             Square sq_flip = hflip ? harukashogi::hflip(sq) : sq;
             PieceType pt = type_of(p);
             Color c = color_of(p);
-            sample.black_indexes[num_idxs] = board_idx<BLACK>(bKingSq, c, pt, sq_flip);
-            sample.white_indexes[num_idxs] = board_idx<WHITE>(wKingSq, c, pt, sq_flip);
+            sample.black_indexes[num_idxs] = FeatureSet::board_idx<BLACK>(bKingSq, c, pt, sq_flip);
+            sample.white_indexes[num_idxs] = FeatureSet::board_idx<WHITE>(wKingSq, c, pt, sq_flip);
             ++num_idxs;
         }
     }
@@ -65,8 +65,8 @@ DataSample compute_sample(const Position& pos, int16_t score, Color winner, bool
     for (Color c = BLACK; c < NUM_COLORS; ++c) {
         for (PieceType pt = GOLD; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
             for (int count = 0; count < pos.hand_count(c, pt); ++count) {
-                sample.black_indexes[num_idxs] = hand_idx<BLACK>(bKingSq, c, pt, count);
-                sample.white_indexes[num_idxs] = hand_idx<WHITE>(wKingSq, c, pt, count);
+                sample.black_indexes[num_idxs] = FeatureSet::hand_idx<BLACK>(bKingSq, c, pt, count);
+                sample.white_indexes[num_idxs] = FeatureSet::hand_idx<WHITE>(wKingSq, c, pt, count);
                 ++num_idxs;
             }
         }

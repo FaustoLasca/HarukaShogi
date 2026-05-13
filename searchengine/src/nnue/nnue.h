@@ -24,7 +24,8 @@ constexpr int SCALE = 2700; // needs to be adjusted
 // define aliases for the template classes
 // reduces verbosity in the code
 using AccumulatorType = Accumulator<ACCUMULATOR_SIZE>;
-using FeatureTransformerType = FeatureTransformer<NUM_FEATURES, ACCUMULATOR_SIZE>;
+using FeatureSet = KB9;
+using FeatureTransformerType = FeatureTransformer<FeatureSet, ACCUMULATOR_SIZE>;
 
 
 class AccumulatorStack {

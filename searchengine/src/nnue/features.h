@@ -2,45 +2,13 @@
 #define FEATURES_H
 
 #include "../types.h"
-#include "../misc.h"
 
 namespace harukashogi {
 namespace NNUE {
 
-
-constexpr size_t NumBuckets = 9;
+    
 constexpr size_t BoardFeatures = size_t(NUM_PIECES) * size_t(NUM_SQUARES);
 constexpr size_t HandFeatures = 2 * 38; // all pieces but the kings in hand
-constexpr size_t NUM_FEATURES = NumBuckets * (BoardFeatures + HandFeatures);
-
-
-template <Color perspective>
-inline size_t board_idx(Square kingSq, Color c, PieceType pt, Square sq);
-
-template <Color perspective>
-inline size_t hand_idx(Square kingSq, Color c, PieceType pt, int count);
-
-template <Color perspective>
-inline bool requires_recompute(MoveDiff diff);
-
-
-// implementations
-
-constexpr size_t BDelta = BoardFeatures + HandFeatures;
-#define B(i) (i * BDelta)
-// contains the starting index for each bucket
-constexpr size_t BucketIdx[81] = {
-    B(0), B(0), B(0), B(1), B(1), B(1), B(2), B(2), B(2),
-    B(0), B(0), B(0), B(1), B(1), B(1), B(2), B(2), B(2),
-    B(0), B(0), B(0), B(1), B(1), B(1), B(2), B(2), B(2),
-    B(3), B(3), B(3), B(4), B(4), B(4), B(5), B(5), B(5),
-    B(3), B(3), B(3), B(4), B(4), B(4), B(5), B(5), B(5),
-    B(3), B(3), B(3), B(4), B(4), B(4), B(5), B(5), B(5),
-    B(6), B(6), B(6), B(7), B(7), B(7), B(8), B(8), B(8),
-    B(6), B(6), B(6), B(7), B(7), B(7), B(8), B(8), B(8),
-    B(6), B(6), B(6), B(7), B(7), B(7), B(8), B(8), B(8),
-};
-#undef B
 
 #define BI(i) (i * size_t(NUM_SQUARES))
 // contains the starting index for each board piece, before adding the bucket index
@@ -68,38 +36,60 @@ constexpr size_t HandIdx[NUM_UNPROMOTED_PIECE_TYPES] = {
     BoardFeatures + 20, // pawn
 };
 
-template <Color perspective>
-inline size_t board_idx(Square kingSq, Color c, PieceType pt, Square sq) {
-    if constexpr (perspective == WHITE) {
-        kingSq = SQ_99 - kingSq;
-        c = ~c;
-        sq = SQ_99 - sq;
-    }
+struct KB9 {
+    static constexpr size_t NumBuckets = 9;
+    static constexpr size_t NumFeatures = NumBuckets * (BoardFeatures + HandFeatures);
 
-    return BucketIdx[kingSq] + BoardIdx[make_piece(c, pt)] + sq;
-}
+    static constexpr size_t BDelta = BoardFeatures + HandFeatures;
+    #define B(i) (i * BDelta)
+    // contains the starting index for each bucket
+    static constexpr size_t BucketIdx[81] = {
+        B(0), B(0), B(0), B(1), B(1), B(1), B(2), B(2), B(2),
+        B(0), B(0), B(0), B(1), B(1), B(1), B(2), B(2), B(2),
+        B(0), B(0), B(0), B(1), B(1), B(1), B(2), B(2), B(2),
+        B(3), B(3), B(3), B(4), B(4), B(4), B(5), B(5), B(5),
+        B(3), B(3), B(3), B(4), B(4), B(4), B(5), B(5), B(5),
+        B(3), B(3), B(3), B(4), B(4), B(4), B(5), B(5), B(5),
+        B(6), B(6), B(6), B(7), B(7), B(7), B(8), B(8), B(8),
+        B(6), B(6), B(6), B(7), B(7), B(7), B(8), B(8), B(8),
+        B(6), B(6), B(6), B(7), B(7), B(7), B(8), B(8), B(8),
+    };
+    #undef B
 
 
-template <Color perspective>
-inline size_t hand_idx(Square kingSq, Color c, PieceType pt, int count) {
-    if constexpr (perspective == WHITE) {
-        kingSq = SQ_99 - kingSq;
-        c = ~c;
-    }
+    template <Color perspective>
+    static inline size_t board_idx(Square kingSq, Color c, PieceType pt, Square sq) {
+        if constexpr (perspective == WHITE) {
+            kingSq = SQ_99 - kingSq;
+            c = ~c;
+            sq = SQ_99 - sq;
+        }
     
-    return BucketIdx[kingSq] + HandIdx[pt] + count + (c == BLACK ? 0 : 38);
-}
-
-
-// TODO: only one perpective of the accumulator needs to be recomputed, but this requires a big
-// change in the feature transformer and stack accumulator, so for now it's fine
-inline bool requires_recompute(MoveDiff diff) {
-    // only recompute if the stm's king changes bucket
-    if (diff.fromPt == KING) {
-        return BucketIdx[diff.toSq] != BucketIdx[diff.fromSq];
+        return BucketIdx[kingSq] + BoardIdx[make_piece(c, pt)] + sq;
     }
-    return false;
-}
+
+
+    template <Color perspective>
+    static inline size_t hand_idx(Square kingSq, Color c, PieceType pt, int count) {
+        if constexpr (perspective == WHITE) {
+            kingSq = SQ_99 - kingSq;
+            c = ~c;
+        }
+        
+        return BucketIdx[kingSq] + HandIdx[pt] + count + (c == BLACK ? 0 : 38);
+    }
+
+
+    template <Color perspective>
+    static inline bool requires_recompute(MoveDiff diff) {
+        // only recompute if the stm's king changes bucket
+        if (diff.fromPt == KING) {
+            return BucketIdx[diff.toSq] != BucketIdx[diff.fromSq];
+        }
+        return false;
+    }
+};
+
 
 } // namespace NNUE
 } // namespace harukashogi

@@ -59,7 +59,8 @@ void AccumulatorStack::push() {
 
 void AccumulatorStack::push(Position& pos, MoveDiff diff) {
     assert(size < MAX_PLY+1);
-    if (requires_recompute(diff)) {
+    if (FeatureSet::requires_recompute<BLACK>(diff) 
+     || FeatureSet::requires_recompute<WHITE>(diff)) {
         ft.compute(pos, stack[size]);
     }
     else {
