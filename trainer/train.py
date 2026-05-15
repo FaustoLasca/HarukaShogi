@@ -26,9 +26,12 @@ def crossentropy_loss(output, target):
 
 
 model = NNUEModel(
+    num_features=2344,
     accumulator_size=256,
     h1_size=8,
+    h2_size=32,
 ).to(device)
+model_name = "P_acc256-8-32_1B.bin"
 
 train_dataloader = DataLoader(
     NNUEIterableDataset("/home/fausto/myProjects/HarukaShogi/data/nnue/dataset_v0/train",
@@ -97,7 +100,8 @@ for epoch in range(EPOCHS):
 
     if val_loss < min_val_loss:
         min_val_loss = val_loss
-    model.weights_to_bin("searchengine/bin/nnue/9KB_acc256-8_1B.bin")
+        model.weights_to_bin(f"searchengine/bin/nnue/{model_name}")
+        print(f"Saved weights to {model_name}")
 
 
     scheduler.step()

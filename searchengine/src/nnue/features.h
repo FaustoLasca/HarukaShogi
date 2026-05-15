@@ -36,6 +36,39 @@ constexpr size_t HandIdx[NUM_UNPROMOTED_PIECE_TYPES] = {
     BoardFeatures + 20, // pawn
 };
 
+
+struct P {
+    static constexpr size_t NumFeatures = BoardFeatures + HandFeatures;
+
+    template <Color perspective>
+    static inline size_t board_idx(Square kingSq, Color c, PieceType pt, Square sq) {
+        if constexpr (perspective == WHITE) {
+            c = ~c;
+            sq = SQ_99 - sq;
+        }
+    
+        return BoardIdx[make_piece(c, pt)] + sq;
+    }
+
+
+    template <Color perspective>
+    static inline size_t hand_idx(Square kingSq, Color c, PieceType pt, int count) {
+        if constexpr (perspective == WHITE) {
+            c = ~c;
+        }
+        
+        return HandIdx[pt] + count + (c == BLACK ? 0 : 38);
+    }
+
+
+    template <Color perspective>
+    static inline bool requires_recompute(MoveDiff diff) {
+        // no recomputation needed for P features
+        return false;
+    }
+};
+
+
 struct KB9 {
     static constexpr size_t NumBuckets = 9;
     static constexpr size_t NumFeatures = NumBuckets * (BoardFeatures + HandFeatures);

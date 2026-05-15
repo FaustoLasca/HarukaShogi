@@ -13,8 +13,9 @@ namespace NNUE {
 // const unsigned char gWeightsData[];
 // const unsigned char *const gWeightsEnd;
 // const unsigned int gWeightsSize;
-INCBIN(Weights, "../bin/nnue/9KB_acc128-32_1B.bin");
+INCBIN(Weights, "../bin/nnue/P_acc256-8-32_1B.bin");
 // INCBIN(Weights, "../bin/nnue/test_weights.bin");
+
 
 
 NNUE::NNUE() {
@@ -22,7 +23,7 @@ NNUE::NNUE() {
     ptr = ft.set_weights(ptr);
     ptr = l1.set_weights(ptr);
     ptr = l2.set_weights(ptr);
-    // ptr = l3.set_weights(ptr);
+    ptr = l3.set_weights(ptr);
 }
 
 
@@ -38,14 +39,15 @@ int32_t NNUE::evaluate(const AccumulatorType& acc, Color stm) const {
     alignas(32) int8_t h1Act[(H1_SIZE + 31) / 32 * 32];
     crelu32<H1_SIZE>(h1, h1Act);
 
-    // int32_t h2[(H2_SIZE + 31) / 32 * 32];
-    // l2.forward(h1Act, h2);
-    // alignas(32) int8_t h2Act[(H2_SIZE + 31) / 32 * 32];
-    // crelu32<H2_SIZE>(h2, h2Act);
+    // apply the second linear layer to the activated hidden layer
+    int32_t h2[(H2_SIZE + 31) / 32 * 32];
+    l2.forward(h1Act, h2);
+    alignas(32) int8_t h2Act[(H2_SIZE + 31) / 32 * 32];
+    crelu32<H2_SIZE>(h2, h2Act);
     
     // apply the linear layer to the activated hidden layer
     int32_t score;
-    l2.forward(h1Act, &score);
+    l3.forward(h2Act, &score);
     return (score * SCALE) / Q_MULT;
 }
 
