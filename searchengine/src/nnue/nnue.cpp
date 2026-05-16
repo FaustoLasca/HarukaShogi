@@ -17,6 +17,7 @@ namespace NNUE {
 INCBIN(Weights, "../bin/nnue/test_weights.bin");
 
 
+
 NNUE::NNUE() {
     const unsigned char* ptr = gWeightsData;
     ptr = ft.set_weights(ptr);

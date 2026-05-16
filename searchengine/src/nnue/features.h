@@ -194,6 +194,11 @@ struct Buckets {
     static inline bool requires_recompute(MoveDiff diff) {
         // only recompute if the stm's king moves
         if (diff.fromPt == KING && diff.stm == perspective) {
+            if constexpr (perspective == WHITE) {
+                diff.fromSq = SQ_99 - diff.fromSq;
+                diff.toSq = SQ_99 - diff.toSq;
+            }
+
             return BucketIdx[diff.fromSq] != BucketIdx[diff.toSq]
                 ||    FlipSq[diff.fromSq] !=    FlipSq[diff.toSq];
         }

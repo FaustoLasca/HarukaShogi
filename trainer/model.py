@@ -162,7 +162,7 @@ if __name__ == "__main__":
     w_features = torch.tensor(batch.white_indexes)
     stm = torch.tensor(batch.stms)
 
-    model = NNUEModel(num_features=2344*16, num_buckets=16, 
+    model = NNUEModel(num_features=2344*11, num_buckets=11, 
                       accumulator_size=128, h1_size=8, h2_size=32)
 
     # b_acc = model.ft(b_features).sum(dim=1) + model.ft_bias
