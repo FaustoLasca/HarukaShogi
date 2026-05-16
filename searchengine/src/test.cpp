@@ -32,12 +32,12 @@ int main() {
     // Position pos;
     // pos.set();
 
-    // NNUE::NNUE nnue;
+    // std::unique_ptr<NNUE::NNUE> nnue = std::make_unique<NNUE::NNUE>();
     // NNUE::AccumulatorType acc;
     // NNUE::AccumulatorType updatedAcc;
     // NNUE::AccumulatorType recomputedAcc;
 
-    // nnue.feature_transformer().compute(pos, acc);
+    // nnue->feature_transformer().compute(pos, acc);
 
     // std::mt19937 rng(0);
     // int testedMoves = 0;
@@ -54,15 +54,16 @@ int main() {
     //     for (Move* m = moves; m < end; ++m) {
     //         MoveDiff diff = pos.make_move(*m);
 
-    //         if (NNUE::requires_recompute(diff)) {
-    //             nnue.feature_transformer().compute(pos, updatedAcc);
+    //         if (NNUE::FeatureSet::requires_recompute<BLACK>(diff) 
+    //          || NNUE::FeatureSet::requires_recompute<WHITE>(diff)) {
+    //             nnue->feature_transformer().compute(pos, updatedAcc);
     //         }
     //         else {
-    //             nnue.feature_transformer().incremental_update(
+    //             nnue->feature_transformer().incremental_update(
     //                 pos.king_square(), diff, acc, updatedAcc
     //             );
     //         }
-    //         nnue.feature_transformer().compute(pos, recomputedAcc);
+    //         nnue->feature_transformer().compute(pos, recomputedAcc);
 
     //         if (!accumulators_match(updatedAcc, recomputedAcc)) {
     //             std::cout << "Failed after move " << m->to_string()
@@ -76,11 +77,12 @@ int main() {
 
     //     Move move = moves[rng() % (end - moves)];
     //     MoveDiff diff = pos.make_move(move);
-    //     if (NNUE::requires_recompute(diff)) {
-    //         nnue.feature_transformer().compute(pos, acc);
+    //     if (NNUE::FeatureSet::requires_recompute<BLACK>(diff) 
+    //      || NNUE::FeatureSet::requires_recompute<WHITE>(diff)) {
+    //         nnue->feature_transformer().compute(pos, acc);
     //     }
     //     else {
-    //         nnue.feature_transformer().incremental_update(
+    //         nnue->feature_transformer().incremental_update(
     //             pos.king_square(), diff, acc, updatedAcc
     //         );
     //         acc = updatedAcc;
