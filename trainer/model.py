@@ -5,10 +5,10 @@ import numpy as np
 
 
 class NNUEModel(nn.Module):
-    def __init__(self, num_features=21096, accumulator_size=128, h1_size=32, h2_size=32):
+    def __init__(self, num_features=21096, num_buckets=45, accumulator_size=128, h1_size=32, h2_size=32):
         super().__init__()
 
-        self.ft = FeatureTransformer(num_features, accumulator_size)
+        self.ft = FeatureTransformer(num_features, accumulator_size, num_buckets)
         self.l1 = QuantLinear(accumulator_size * 2, h1_size, in_scale=127, out_scale=64)
         self.l2 = QuantLinear(h1_size, h2_size, in_scale=127, out_scale=64)
         self.l3 = QuantLinear(h2_size, 1, in_scale=127, out_scale=64)
@@ -162,7 +162,8 @@ if __name__ == "__main__":
     w_features = torch.tensor(batch.white_indexes)
     stm = torch.tensor(batch.stms)
 
-    model = NNUEModel(num_features=2344, accumulator_size=256, h1_size=8, h2_size=32)
+    model = NNUEModel(num_features=2344*16, num_buckets=16, 
+                      accumulator_size=128, h1_size=8, h2_size=32)
 
     # b_acc = model.ft(b_features).sum(dim=1) + model.ft_bias
 
@@ -185,7 +186,7 @@ if __name__ == "__main__":
 
     outs = model(b_features, w_features, stm, factor=False)
     print(outs.shape)
-    print(outs[0:10]*(127*64))
+    print(outs[0:10]*(2700))
 
 
 
