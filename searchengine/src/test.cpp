@@ -27,71 +27,6 @@ bool accumulators_match(const NNUE::AccumulatorType& a, const NNUE::AccumulatorT
 
 
 int main() {
-    // Position::init();
-
-    // Position pos;
-    // pos.set();
-
-    // std::unique_ptr<NNUE::NNUE> nnue = std::make_unique<NNUE::NNUE>();
-    // NNUE::AccumulatorType acc;
-    // NNUE::AccumulatorType updatedAcc;
-    // NNUE::AccumulatorType recomputedAcc;
-
-    // nnue->feature_transformer().compute(pos, acc);
-
-    // std::mt19937 rng(0);
-    // int testedMoves = 0;
-    // constexpr int MaxPlies = 300;
-
-    // for (int ply = 0; ply < MaxPlies && !pos.is_game_over(); ++ply) {
-    //     Move moves[MAX_MOVES];
-    //     Move* end = generate<LEGAL>(pos, moves);
-
-    //     if (moves == end) {
-    //         break;
-    //     }
-
-    //     for (Move* m = moves; m < end; ++m) {
-    //         MoveDiff diff = pos.make_move(*m);
-
-    //         if (NNUE::FeatureSet::requires_recompute<BLACK>(diff) 
-    //          || NNUE::FeatureSet::requires_recompute<WHITE>(diff)) {
-    //             nnue->feature_transformer().compute(pos, updatedAcc);
-    //         }
-    //         else {
-    //             nnue->feature_transformer().incremental_update(
-    //                 pos.king_square(), diff, acc, updatedAcc
-    //             );
-    //         }
-    //         nnue->feature_transformer().compute(pos, recomputedAcc);
-
-    //         if (!accumulators_match(updatedAcc, recomputedAcc)) {
-    //             std::cout << "Failed after move " << m->to_string()
-    //                       << " at ply " << ply << std::endl;
-    //             return 1;
-    //         }
-
-    //         pos.unmake_move(*m);
-    //         ++testedMoves;
-    //     }
-
-    //     Move move = moves[rng() % (end - moves)];
-    //     MoveDiff diff = pos.make_move(move);
-    //     if (NNUE::FeatureSet::requires_recompute<BLACK>(diff) 
-    //      || NNUE::FeatureSet::requires_recompute<WHITE>(diff)) {
-    //         nnue->feature_transformer().compute(pos, acc);
-    //     }
-    //     else {
-    //         nnue->feature_transformer().incremental_update(
-    //             pos.king_square(), diff, acc, updatedAcc
-    //         );
-    //         acc = updatedAcc;
-    //     }
-    // }
-
-    // std::cout << "Accumulator update test passed for " << testedMoves
-    //           << " legal moves." << std::endl;
-
     Position::init();
 
     Position pos;
@@ -99,6 +34,71 @@ int main() {
 
     std::unique_ptr<NNUE::NNUE> nnue = std::make_unique<NNUE::NNUE>();
     NNUE::AccumulatorType acc;
+    NNUE::AccumulatorType updatedAcc;
+    NNUE::AccumulatorType recomputedAcc;
+
+    nnue->feature_transformer().compute(pos, acc);
+
+    std::mt19937 rng(0);
+    int testedMoves = 0;
+    constexpr int MaxPlies = 300;
+
+    for (int ply = 0; ply < MaxPlies && !pos.is_game_over(); ++ply) {
+        Move moves[MAX_MOVES];
+        Move* end = generate<LEGAL>(pos, moves);
+
+        if (moves == end) {
+            break;
+        }
+
+        for (Move* m = moves; m < end; ++m) {
+            MoveDiff diff = pos.make_move(*m);
+
+            if (NNUE::FeatureSet::requires_recompute<BLACK>(diff) 
+             || NNUE::FeatureSet::requires_recompute<WHITE>(diff)) {
+                nnue->feature_transformer().compute(pos, updatedAcc);
+            }
+            else {
+                nnue->feature_transformer().incremental_update(
+                    pos.king_square(), diff, acc, updatedAcc
+                );
+            }
+            nnue->feature_transformer().compute(pos, recomputedAcc);
+
+            if (!accumulators_match(updatedAcc, recomputedAcc)) {
+                std::cout << "Failed after move " << m->to_string()
+                          << " at ply " << ply << std::endl;
+                return 1;
+            }
+
+            pos.unmake_move(*m);
+            ++testedMoves;
+        }
+
+        Move move = moves[rng() % (end - moves)];
+        MoveDiff diff = pos.make_move(move);
+        if (NNUE::FeatureSet::requires_recompute<BLACK>(diff) 
+         || NNUE::FeatureSet::requires_recompute<WHITE>(diff)) {
+            nnue->feature_transformer().compute(pos, acc);
+        }
+        else {
+            nnue->feature_transformer().incremental_update(
+                pos.king_square(), diff, acc, updatedAcc
+            );
+            acc = updatedAcc;
+        }
+    }
+
+    std::cout << "Accumulator update test passed for " << testedMoves
+              << " legal moves." << std::endl;
+
+    // Position::init();
+
+    // Position pos;
+    pos.set();
+
+    // std::unique_ptr<NNUE::NNUE> nnue = std::make_unique<NNUE::NNUE>();
+    // NNUE::AccumulatorType acc;
 
     NNUE::Binpack binpack("data/test_binps/0.binp", std::ios::in);
     NNUE::GameData game;

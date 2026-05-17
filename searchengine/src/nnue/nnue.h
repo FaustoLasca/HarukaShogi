@@ -14,6 +14,7 @@
 namespace harukashogi {
 namespace NNUE {
 
+
 constexpr size_t ACCUMULATOR_SIZE = 128;
 constexpr size_t H1_SIZE = 8;
 constexpr size_t H2_SIZE = 32;
@@ -25,7 +26,7 @@ constexpr int SCALE = 2700; // needs to be adjusted
 // define aliases for the template classes
 // reduces verbosity in the code
 using AccumulatorType = Accumulator<ACCUMULATOR_SIZE>;
-using FeatureSet = Buckets;
+using FeatureSet = P;
 using FeatureTransformerType = FeatureTransformer<FeatureSet, ACCUMULATOR_SIZE>;
 
 

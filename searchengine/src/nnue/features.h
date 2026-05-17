@@ -6,8 +6,9 @@
 namespace harukashogi {
 namespace NNUE {
 
-    
-constexpr size_t BoardFeatures = size_t(NUM_PIECES) * size_t(NUM_SQUARES);
+
+// Promoted pieces and gold are treated as the same pieces
+constexpr size_t BoardFeatures = 20 * size_t(NUM_SQUARES);
 constexpr size_t HandFeatures = 2 * 38; // all pieces but the kings in hand
 
 #define BI(i) (i * size_t(NUM_SQUARES))
@@ -16,10 +17,10 @@ constexpr size_t BoardIdx[NUM_PIECES+1] = {
     0, // NO_PIECE
     // black pieces
     BI(0),  BI(1),  BI(2),  BI(3),  BI(4),  BI(5),  BI(6),  BI(7),
-    BI(8),  BI(9),  BI(10), BI(11), BI(12), BI(13),
+    BI(1),  BI(1),  BI(1), BI(8), BI(9), BI(1),
     // white pieces
-    BI(14), BI(15), BI(16), BI(17), BI(18), BI(19), BI(20), BI(21),
-    BI(22), BI(23), BI(24), BI(25), BI(26), BI(27),
+    BI(10), BI(11), BI(12), BI(13), BI(14), BI(15), BI(16), BI(17),
+    BI(11), BI(11), BI(11), BI(18), BI(19), BI(11),
 };
 #undef BI
 
@@ -129,7 +130,7 @@ struct HalfKA {
 };
 
 
-struct Buckets {
+struct R12KB {
     static constexpr size_t NumBuckets = 11;
     static constexpr size_t NumFeatures = NumBuckets * (BoardFeatures + HandFeatures);
 

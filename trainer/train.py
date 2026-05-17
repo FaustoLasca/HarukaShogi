@@ -26,13 +26,13 @@ def crossentropy_loss(output, target):
 
 
 model = NNUEModel(
-    num_features=2344*11,
-    num_buckets=11,
-    accumulator_size=128,
+    num_features=1696,
+    num_buckets=1,
+    accumulator_size=32,
     h1_size=8,
     h2_size=32,
 ).to(device)
-model_name = "Buckets_acc128-8-32_1B.bin"
+model_name = "P_acc128-8-32_1B.bin"
 
 train_dataloader = DataLoader(
     NNUEIterableDataset("/home/fausto/myProjects/HarukaShogi/data/nnue/dataset_v0/train",
@@ -66,7 +66,7 @@ for epoch in range(EPOCHS):
 
         s = s/(127*64)
         
-        output = torch.sigmoid(model(b, w, t, factor=True))
+        output = torch.sigmoid(model(b, w, t))
         target = (LAMBDA*torch.sigmoid(s*3) + (1 - LAMBDA)*r).unsqueeze(-1)
 
         loss = crossentropy_loss(output, target)

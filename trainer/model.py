@@ -13,9 +13,9 @@ class NNUEModel(nn.Module):
         self.l2 = QuantLinear(h1_size, h2_size, in_scale=127, out_scale=64)
         self.l3 = QuantLinear(h2_size, 1, in_scale=127, out_scale=64)
 
-    def forward(self, black_features, white_features, stm, factor=True):
-        b_acc = self.ft(black_features, factor)
-        w_acc = self.ft(white_features, factor)
+    def forward(self, black_features, white_features, stm):
+        b_acc = self.ft(black_features)
+        w_acc = self.ft(white_features)
 
         accumulator = torch.where(
             stm.unsqueeze(-1) == 0,
@@ -87,6 +87,7 @@ class FeatureTransformer(nn.Module):
         super().__init__()
         self.num_features = num_features
         self.num_buckets = num_buckets
+        self.factor = True if num_buckets > 1 else False
         self.factor_features = int(num_features/num_buckets)
         self.weights = nn.Embedding(num_features, accumulator_size)
         self.factor_weights = nn.Parameter(torch.empty(self.factor_features, accumulator_size))
@@ -98,14 +99,17 @@ class FeatureTransformer(nn.Module):
         )
 
         # initialize the weights closer to 0 to avoid too much saturation of the accumulator
-        std = 1/np.sqrt(2*num_features)
+        std = 1/np.sqrt(num_features)
         nn.init.normal_(self.weights.weight, mean=0., std=std)
         nn.init.normal_(self.factor_weights, mean=0., std=std)
         nn.init.normal_(self.biases, mean=0., std=std)
 
     @property
     def weight(self):
-        return self.weights.weight + self.factor_weights[self.factor_indices]
+        if self.factor:
+            return self.weights.weight + self.factor_weights[self.factor_indices]
+        else:
+            return self.weights.weight
     
     @property
     def bias(self):
@@ -113,12 +117,15 @@ class FeatureTransformer(nn.Module):
 
     @torch.no_grad()
     def coalesce_weights(self):
-        # coalesce the weights related to the factor features onto the original weights
-        self.weights.weight.add_(self.factor_weights[self.factor_indices])
-        self.factor_weights.zero_()
+        if self.factor:
+            # coalesce the weights related to the factor features onto the original weights
+            self.weights.weight.add_(self.factor_weights[self.factor_indices])
+            self.factor_weights.zero_()
+        else:
+            raise ValueError("Cannot coalesce weights for non-factor feature transformer")
 
-    def forward(self, features, factor = True):
-        if factor:
+    def forward(self, features):
+        if self.factor:
             weights = self.weight
         else:
             weights = self.weights.weight
@@ -162,7 +169,7 @@ if __name__ == "__main__":
     w_features = torch.tensor(batch.white_indexes)
     stm = torch.tensor(batch.stms)
 
-    model = NNUEModel(num_features=2344*11, num_buckets=11, 
+    model = NNUEModel(num_features=1696, num_buckets=1, 
                       accumulator_size=128, h1_size=8, h2_size=32)
 
     # b_acc = model.ft(b_features).sum(dim=1) + model.ft_bias
@@ -172,21 +179,11 @@ if __name__ == "__main__":
     # print(f'b_acc std:  {b_acc.std().item():.4f}')
     # print(f'b_acc fraction in (0,1):  {((b_acc > 0) & (b_acc < 1)).float().mean().item():.4f}')
 
-    outs = model(b_features, w_features, stm, factor=True)
-    print(outs.shape)
-    print(outs[0:10]*(127*64))
-
-    outs = model(b_features, w_features, stm, factor=False)
-    print(outs.shape)
-    print(outs[0:10]*(127*64))
-
-    model.weights_to_bin("searchengine/bin/nnue/test_weights.bin")
-
-    model.ft.coalesce_weights()
-
-    outs = model(b_features, w_features, stm, factor=False)
+    outs = model(b_features, w_features, stm)
     print(outs.shape)
     print(outs[0:10]*(2700))
+
+    model.weights_to_bin("searchengine/bin/nnue/test_weights.bin")
 
 
 
