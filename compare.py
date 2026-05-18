@@ -167,9 +167,11 @@ if __name__ == "__main__":
         p_lo = max(win_ratio - 2*se, 0.0001)
         p_hi = min(win_ratio + 2*se, 0.9999)
 
-        elo = 400 * math.log10(win_ratio / (1 - win_ratio))
-        elo_lo = 400 * math.log10(p_lo / (1 - p_lo))
-        elo_hi = 400 * math.log10(p_hi / (1 - p_hi))
+        # add eps to avoid log(0) and /0
+        eps = 1e-10
+        elo = 400 * math.log10((win_ratio + eps) / (1 - win_ratio + eps))
+        elo_lo = 400 * math.log10((p_lo + eps) / (1 - p_lo + eps))
+        elo_hi = 400 * math.log10((p_hi + eps) / (1 - p_hi + eps))
 
         los = 0.5 * (1 + math.erf((results["win"] - results["loss"]) / math.sqrt(2*results["win"] + 2*results["loss"])))
 

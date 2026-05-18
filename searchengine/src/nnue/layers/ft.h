@@ -6,7 +6,6 @@
 #include <cstring>
 #include <immintrin.h>
 
-#include "../features.h"
 #include "../accumulator.h"
 #include "../../position.h"
 #include "../../types.h"
@@ -15,7 +14,7 @@ namespace harukashogi {
 namespace NNUE {
 
 
-template <size_t N, size_t M>
+template <typename Features, size_t M>
 class FeatureTransformer {
     public:
         FeatureTransformer() {}
@@ -25,6 +24,7 @@ class FeatureTransformer {
 
         // update the accumulator incrementally
         void incremental_update(
+            const std::array<Square, 2>& kingSq,
             MoveDiff diff,
             const Accumulator<M>& oldAcc,
             Accumulator<M>& newAcc
@@ -34,13 +34,13 @@ class FeatureTransformer {
         const unsigned char* set_weights(const unsigned char* weights_start);
 
     private:
-        alignas(64) int16_t weights[N][M];
+        alignas(64) int16_t weights[Features::NumFeatures][M];
         alignas(64) int16_t biases[M];
 };
 
 
-template <size_t N, size_t M>
-void FeatureTransformer<N, M>::compute(const Position& pos, Accumulator<M>& acc) const {
+template <typename Features, size_t M>
+void FeatureTransformer<Features, M>::compute(const Position& pos, Accumulator<M>& acc) const {
     constexpr size_t registerWidth = 256 / 16; // 16 bit elements in a 256 bit register
     static_assert(M % registerWidth == 0, "We must fill the registers completely");
     constexpr size_t numChunks = M / registerWidth;
@@ -67,8 +67,8 @@ void FeatureTransformer<N, M>::compute(const Position& pos, Accumulator<M>& acc)
             if (pos.piece(sq) != NO_PIECE) {
                 PieceType pt = type_of(pos.piece(sq));
                 Color c = color_of(pos.piece(sq));
-                size_t bIdx = board_idx<BLACK>(c, pt, sq);
-                size_t wIdx = board_idx<WHITE>(c, pt, sq);
+                size_t bIdx = Features::template board_idx<BLACK>(pos.king_square(BLACK), c, pt, sq);
+                size_t wIdx = Features::template board_idx<WHITE>(pos.king_square(WHITE), c, pt, sq);
 
 
                 // for each active feature, add the weight to the corresponding register
@@ -89,8 +89,8 @@ void FeatureTransformer<N, M>::compute(const Position& pos, Accumulator<M>& acc)
         for (Color c = BLACK; c < NUM_COLORS; ++c) {
             for (PieceType pt = GOLD; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
                 for (int count = 0; count < pos.hand_count(c, pt); ++count) {
-                    size_t bIdx = hand_idx<BLACK>(c, pt, count);
-                    size_t wIdx = hand_idx<WHITE>(c, pt, count);
+                    size_t bIdx = Features::template hand_idx<BLACK>(pos.king_square(BLACK), c, pt, count);
+                    size_t wIdx = Features::template hand_idx<WHITE>(pos.king_square(WHITE), c, pt, count);
                     for (size_t i = 0; i < passChunks; ++i) {
                         regs[BLACK][i] = _mm256_add_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bIdx][(pass*MAX_CHUNKS + i)*registerWidth]));
                         regs[WHITE][i] = _mm256_add_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wIdx][(pass*MAX_CHUNKS + i)*registerWidth]));
@@ -109,8 +109,9 @@ void FeatureTransformer<N, M>::compute(const Position& pos, Accumulator<M>& acc)
 }
 
 
-template <size_t N, size_t M>
-void FeatureTransformer<N, M>::incremental_update(
+template <typename Features, size_t M>
+void FeatureTransformer<Features, M>::incremental_update(
+    const std::array<Square, 2>& kingSq,
     MoveDiff diff,
     const Accumulator<M>& oldAcc,
     Accumulator<M>& newAcc
@@ -134,8 +135,8 @@ void FeatureTransformer<N, M>::incremental_update(
         }
 
         // add the moved piece to the to square feature
-        size_t bIdx = board_idx<BLACK>(diff.stm, diff.toPt, diff.toSq);
-        size_t wIdx = board_idx<WHITE>(diff.stm, diff.toPt, diff.toSq);
+        size_t bIdx = Features::template board_idx<BLACK>(kingSq[BLACK], diff.stm, diff.toPt, diff.toSq);
+        size_t wIdx = Features::template board_idx<WHITE>(kingSq[WHITE], diff.stm, diff.toPt, diff.toSq);
         for (size_t i = 0; i < passChunks; ++i) {
             regs[BLACK][i] = _mm256_add_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bIdx][(pass*MAX_CHUNKS + i)*registerWidth]));
             regs[WHITE][i] = _mm256_add_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wIdx][(pass*MAX_CHUNKS + i)*registerWidth]));
@@ -143,12 +144,12 @@ void FeatureTransformer<N, M>::incremental_update(
 
         // remove the moved piece from the from square feature
         if (diff.fromSq != NO_SQUARE) {
-            bIdx = board_idx<BLACK>(diff.stm, diff.fromPt, diff.fromSq);
-            wIdx = board_idx<WHITE>(diff.stm, diff.fromPt, diff.fromSq);
+            bIdx = Features::template board_idx<BLACK>(kingSq[BLACK], diff.stm, diff.fromPt, diff.fromSq);
+            wIdx = Features::template board_idx<WHITE>(kingSq[WHITE], diff.stm, diff.fromPt, diff.fromSq);
         }
         else {
-            bIdx = hand_idx<BLACK>(diff.stm, diff.fromPt, diff.dropCount);
-            wIdx = hand_idx<WHITE>(diff.stm, diff.fromPt, diff.dropCount);
+            bIdx = Features::template hand_idx<BLACK>(kingSq[BLACK], diff.stm, diff.fromPt, diff.dropCount);
+            wIdx = Features::template hand_idx<WHITE>(kingSq[WHITE], diff.stm, diff.fromPt, diff.dropCount);
         }
         for (size_t i = 0; i < passChunks; ++i) {
             regs[BLACK][i] = _mm256_sub_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bIdx][(pass*MAX_CHUNKS + i)*registerWidth]));
@@ -157,11 +158,11 @@ void FeatureTransformer<N, M>::incremental_update(
 
         // if move is a capture, remove the captured piece from the board and add it to the hand
         if (diff.capturedPt != NO_PIECE_TYPE) {
-            bIdx = board_idx<BLACK>(~diff.stm, diff.capturedPt, diff.toSq);
-            wIdx = board_idx<WHITE>(~diff.stm, diff.capturedPt, diff.toSq);
+            bIdx = Features::template board_idx<BLACK>(kingSq[BLACK], ~diff.stm, diff.capturedPt, diff.toSq);
+            wIdx = Features::template board_idx<WHITE>(kingSq[WHITE], ~diff.stm, diff.capturedPt, diff.toSq);
             PieceType unpromotedPt = unpromoted_type(diff.capturedPt);
-            size_t bHandIdx = hand_idx<BLACK>(diff.stm, unpromotedPt, diff.capturedCount);
-            size_t wHandIdx = hand_idx<WHITE>(diff.stm, unpromotedPt, diff.capturedCount);
+            size_t bHandIdx = Features::template hand_idx<BLACK>(kingSq[BLACK], diff.stm, unpromotedPt, diff.capturedCount);
+            size_t wHandIdx = Features::template hand_idx<WHITE>(kingSq[WHITE], diff.stm, unpromotedPt, diff.capturedCount);
             for (size_t i = 0; i < passChunks; ++i) {
                 regs[BLACK][i] = _mm256_sub_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bIdx][(pass*MAX_CHUNKS + i)*registerWidth]));
                 regs[WHITE][i] = _mm256_sub_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wIdx][(pass*MAX_CHUNKS + i)*registerWidth]));
@@ -179,8 +180,8 @@ void FeatureTransformer<N, M>::incremental_update(
 }
 
 
-template <size_t N, size_t M>
-const unsigned char* FeatureTransformer<N, M>::set_weights(const unsigned char* weightsStart) {
+template <typename Features, size_t M>
+const unsigned char* FeatureTransformer<Features, M>::set_weights(const unsigned char* weightsStart) {
     std::memcpy(this->weights, weightsStart, sizeof(this->weights));
     std::memcpy(this->biases, weightsStart + sizeof(weights), sizeof(this->biases));
     return weightsStart + sizeof(weights) + sizeof(biases);

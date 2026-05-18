@@ -5,13 +5,13 @@ import numpy as np
 
 
 class NNUEModel(nn.Module):
-    def __init__(self, num_features=2344, accumulator_size=128, h1_size=32):
+    def __init__(self, num_features=21096, num_buckets=45, accumulator_size=128, h1_size=32, h2_size=32):
         super().__init__()
 
-        self.ft = FeatureTransformer(num_features, accumulator_size)
+        self.ft = FeatureTransformer(num_features, accumulator_size, num_buckets)
         self.l1 = QuantLinear(accumulator_size * 2, h1_size, in_scale=127, out_scale=64)
-        self.l2 = QuantLinear(h1_size, 1, in_scale=127, out_scale=64)
-        # self.l3 = QuantLinear(32, 1, in_scale=127, out_scale=64)
+        self.l2 = QuantLinear(h1_size, h2_size, in_scale=127, out_scale=64)
+        self.l3 = QuantLinear(h2_size, 1, in_scale=127, out_scale=64)
 
     def forward(self, black_features, white_features, stm):
         b_acc = self.ft(black_features)
@@ -25,10 +25,11 @@ class NNUEModel(nn.Module):
 
         accumulator = torch.clamp(accumulator, min=0., max=1.)
         x = self.l1(accumulator)
+        # x = torch.clamp(x, min=0., max=1.)
         x = shift_quant_crelu(x, 127, 64)
-        # x = self.l2(x)
-        # x = shift_quant_crelu(x, 127, 64)
-        return self.l2(x)
+        x = self.l2(x)
+        x = shift_quant_crelu(x, 127, 64)
+        return self.l3(x)
     
 
     def weights_to_bin(self, file_path):
@@ -36,12 +37,12 @@ class NNUEModel(nn.Module):
 
             ft_wieghts = self.ft.weight.data.clone().cpu().numpy()           # (NUM_FEATURES, ACCUMULATOR_SIZE)
             ft_bias = self.ft.bias.data.clone().cpu().numpy()                # (ACCUMULATOR_SIZE,)
-            l1_weights = self.l1.weight.data.clone().cpu().numpy()           # (hidden_size, 2*ACCUMULATOR_SIZE)
-            l1_bias = self.l1.bias.data.clone().cpu().numpy()                # (hidden_size,)
-            l2_weights = self.l2.weight.data.clone().cpu().numpy()           # (32, hidden_size)
-            l2_bias = self.l2.bias.data.clone().cpu().numpy()                # (32,)
-            # l3_weights = self.l3.weight.data.clone().cpu().numpy()           # (1, 32)
-            # l3_bias = self.l3.bias.data.clone().cpu().numpy()                # (1,)
+            l1_weights = self.l1.weight.data.clone().cpu().numpy()           # (h1_size, 2*ACCUMULATOR_SIZE)
+            l1_bias = self.l1.bias.data.clone().cpu().numpy()                # (h1_size,)
+            l2_weights = self.l2.weight.data.clone().cpu().numpy()           # (h2_size, h1_size)
+            l2_bias = self.l2.bias.data.clone().cpu().numpy()                # (h2_size,)
+            l3_weights = self.l3.weight.data.clone().cpu().numpy()           # (1, h2_size)
+            l3_bias = self.l3.bias.data.clone().cpu().numpy()                # (1,)
 
 
             ft_wieghts = (ft_wieghts * 127)                           .round().astype(np.int16)
@@ -50,8 +51,8 @@ class NNUEModel(nn.Module):
             l1_bias    = (l1_bias    * 127*64)                        .round().astype(np.int32)
             l2_weights = (l2_weights * 64)    .clip(min=-128, max=127).round().astype(np.int8 )
             l2_bias    = (l2_bias    * 127*64)                        .round().astype(np.int32)
-            # l3_weights = (l3_weights * 64)    .clip(min=-128, max=127).round().astype(np.int8 )
-            # l3_bias    = (l3_bias    * 127*64)                        .round().astype(np.int32)
+            l3_weights = (l3_weights * 64)    .clip(min=-128, max=127).round().astype(np.int8 )
+            l3_bias    = (l3_bias    * 127*64)                        .round().astype(np.int32)
 
             f.write(ft_wieghts.tobytes())
             f.write(ft_bias.tobytes())
@@ -59,13 +60,17 @@ class NNUEModel(nn.Module):
             f.write(l1_bias.tobytes())
             f.write(l2_weights.tobytes())
             f.write(l2_bias.tobytes())
-            # f.write(l3_weights.tobytes())
-            # f.write(l3_bias.tobytes())
+            f.write(l3_weights.tobytes())
+            f.write(l3_bias.tobytes())
 
 
 def fake_quantize(x, scale, qmin, qmax):
     scale = 1/scale
     return torch.fake_quantize_per_tensor_affine(x, scale, 0, qmin, qmax)
+
+
+def ste_clamp(x, min, max):
+    return x + (torch.clamp(x, min, max) - x).detach()
 
 
 def shift_quant_crelu(x, in_scale, weight_scale):
@@ -78,26 +83,54 @@ def shift_quant_crelu(x, in_scale, weight_scale):
 
 
 class FeatureTransformer(nn.Module):
-    def __init__(self, num_features, accumulator_size):
+    def __init__(self, num_features, accumulator_size, num_buckets=9):
         super().__init__()
+        self.num_features = num_features
+        self.num_buckets = num_buckets
+        self.factor = True if num_buckets > 1 else False
+        self.factor_features = int(num_features/num_buckets)
         self.weights = nn.Embedding(num_features, accumulator_size)
+        self.factor_weights = nn.Parameter(torch.empty(self.factor_features, accumulator_size))
         self.biases = nn.Parameter(torch.zeros(accumulator_size))
+        self.register_buffer(
+            "factor_indices",
+            torch.arange(num_features) % self.factor_features,
+            persistent=False,
+        )
 
         # initialize the weights closer to 0 to avoid too much saturation of the accumulator
         std = 1/np.sqrt(num_features)
         nn.init.normal_(self.weights.weight, mean=0., std=std)
+        nn.init.normal_(self.factor_weights, mean=0., std=std)
         nn.init.normal_(self.biases, mean=0., std=std)
 
     @property
     def weight(self):
-        return self.weights.weight
+        if self.factor:
+            return self.weights.weight + self.factor_weights[self.factor_indices]
+        else:
+            return self.weights.weight
     
     @property
     def bias(self):
         return self.biases
 
+    @torch.no_grad()
+    def coalesce_weights(self):
+        if self.factor:
+            # coalesce the weights related to the factor features onto the original weights
+            self.weights.weight.add_(self.factor_weights[self.factor_indices])
+            self.factor_weights.zero_()
+        else:
+            raise ValueError("Cannot coalesce weights for non-factor feature transformer")
+
     def forward(self, features):
-        qt_w = fake_quantize(self.weights.weight, 127, -32768, 32767)
+        if self.factor:
+            weights = self.weight
+        else:
+            weights = self.weights.weight
+        
+        qt_w = fake_quantize(weights, 127, -32768, 32767)
         qt_b = fake_quantize(self.biases, 127, -32768, 32767)
         return F.embedding(features, qt_w).sum(dim=1) + qt_b
 
@@ -122,6 +155,8 @@ class QuantLinear(nn.Module):
         qt_b = fake_quantize(self.linear.bias, self.in_scale*self.out_scale,
                              torch.iinfo(torch.int32).min, torch.iinfo(torch.int32).max)
         return F.linear(x, qt_w, qt_b)
+        # w = ste_clamp(self.linear.weight, -128/64, 127/64)
+        # return F.linear(x, w, self.linear.bias)
 
 
 
@@ -134,7 +169,8 @@ if __name__ == "__main__":
     w_features = torch.tensor(batch.white_indexes)
     stm = torch.tensor(batch.stms)
 
-    model = NNUEModel(num_features=2344, accumulator_size=512, h1_size=8)
+    model = NNUEModel(num_features=1696, num_buckets=1, 
+                      accumulator_size=128, h1_size=8, h2_size=32)
 
     # b_acc = model.ft(b_features).sum(dim=1) + model.ft_bias
 
@@ -145,9 +181,10 @@ if __name__ == "__main__":
 
     outs = model(b_features, w_features, stm)
     print(outs.shape)
-    print(outs[0:10]*2700)
+    print(outs[0:10]*(2700))
 
     model.weights_to_bin("searchengine/bin/nnue/test_weights.bin")
+
 
 
 

@@ -26,10 +26,13 @@ def crossentropy_loss(output, target):
 
 
 model = NNUEModel(
-    num_features=2344,
-    accumulator_size=512,
+    num_features=1696,
+    num_buckets=1,
+    accumulator_size=128,
     h1_size=8,
+    h2_size=32,
 ).to(device)
+model_name = "P_acc128-8-32_1B.bin"
 
 train_dataloader = DataLoader(
     NNUEIterableDataset("/home/fausto/myProjects/HarukaShogi/data/nnue/dataset_v0/train",
@@ -50,7 +53,7 @@ val_dataloader = DataLoader(
     pin_memory=True,
 )
 optimizer = AdamW(model.parameters(), lr=1e-4, weight_decay=1e-2)
-scheduler = ExponentialLR(optimizer, gamma=0.01**(1/EPOCHS))
+scheduler = StepLR(optimizer, step_size=20, gamma=0.5)
 
 start_time = time.time()
 
@@ -82,7 +85,7 @@ for epoch in range(EPOCHS):
         
         with torch.no_grad():
             output = torch.sigmoid(model(b, w, t))
-        target = (LAMBDA*torch.sigmoid(s*4) + (1 - LAMBDA)*r).unsqueeze(-1)
+        target = (LAMBDA*torch.sigmoid(s*3) + (1 - LAMBDA)*r).unsqueeze(-1)
 
         loss = crossentropy_loss(output, target)
         val_losses.append(loss.detach())
@@ -98,7 +101,8 @@ for epoch in range(EPOCHS):
 
     if val_loss < min_val_loss:
         min_val_loss = val_loss
-    model.weights_to_bin("searchengine/bin/nnue/AdamW_acc512-8_1B.bin")
+        model.weights_to_bin(f"searchengine/bin/nnue/{model_name}")
+        print(f"Saved weights to {model_name}")
 
 
     scheduler.step()
