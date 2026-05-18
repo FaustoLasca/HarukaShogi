@@ -8,9 +8,9 @@
 #include <iostream>
 #include <mutex>
 #include <condition_variable>
-#include <fstream>
 #include <filesystem>
 #include <algorithm>
+#include <random>
 
 using namespace harukashogi;
 
@@ -84,14 +84,20 @@ int play_game(Engine& engine, CVManager& manager, Startpos& startpos,
     Move move, *end;
     int numMoves = 0, validMoves = 0, randomMoves = 0, score;
 
-    // play up to 5 random moves
-    int nRandMoves = rng() % 5;
+    // play up to 3 random moves
+    int nRandMoves = rng() % 3;
     for (int i = 0; i < nRandMoves && !pos.is_game_over(); i++) {
         end = generate<LEGAL>(pos, moveList);
         move = moveList[rng() % (end - moveList)];
         pos.make_move(move);
         numMoves++;
+        randomMoves++;
     }
+
+    // start searching from the current position
+    binpack.new_game(pos);
+
+    int ply = 0;
 
     // main generation loop
     SearchLimits limits;
@@ -99,7 +105,7 @@ int play_game(Engine& engine, CVManager& manager, Startpos& startpos,
         // search for 100ms and get the best move and score
         engine.set_position(pos.sfen());
         limits = SearchLimits();
-        limits.moveTime = chr::milliseconds(100);
+        limits.depth = 3;
         engine.go(limits);
         move = manager.wait_for_best_move();
         score = manager.get_score();
@@ -118,48 +124,28 @@ int play_game(Engine& engine, CVManager& manager, Startpos& startpos,
 
         // filter out checks and positions where a capture is the best move
         // if a capture is the best move, we are likely to be in an unstable position
-        if (!pos.checkers() && !pos.is_capture(move)) {
-            data.push_back({pos.sfen(), score, pos.side_to_move() == BLACK ? 0.0f : 1.0f});
+        bool discard = pos.is_capture(move) || pos.checkers() || score > 20000 || score < -20000;
+
+        // randomly change the move for a random move with low probability in the first 16 plies
+        if (ply < 16 && randomMoves <= 4 && rng() % 8 == 0) {
+            move = moveList[rng() % (end - moveList)];
+            randomMoves++;
+        }
+
+        binpack.add_move(move, score, discard);
+        if (!discard) {
+            validMoves++;
         }
         
         pos.make_move(move);
         numMoves++;
     }
 
-    // if no new data points were added, return
-    if (data.size() == gameStartIdx)
-        return 0;
-
     Color winner = pos.get_winner();
 
-    for (size_t i = gameStartIdx; i < data.size(); i++) {
-        if (winner == NO_COLOR) {
-            data[i].result = 0.5f;
-        }
-        else if ((data[i].result == 0 && winner == BLACK) || 
-                 (data[i].result == 1 && winner == WHITE)) {
-            data[i].result = 1.0f;
-        }
-        else {
-            data[i].result = 0.0f;
-        }
-    }
+    binpack.game_over(winner);
 
-    return data.size() - gameStartIdx;
-}
-
-
-void write_file(const std::string& filePath, std::vector<DataPoint>& data, int numPositions) {
-    // write the data to a file
-    std::ofstream file(filePath);
-    assert(file.is_open());
-    numPositions = std::min(numPositions, int(data.size()));
-    for (size_t i=0; i<numPositions; i++)
-        file << data[i].sfen << " | " << data[i].score << " | " << data[i].result << std::endl;
-    file.close();
-
-    // remove the data from the vector
-    data.erase(data.begin(), data.begin() + numPositions);
+    return validMoves;
 }
 
 
@@ -173,7 +159,7 @@ void generate_data(const std::string& outDir, int totalPositions, int filePositi
 
     Startpos startpos("/home/fausto/myProjects/HarukaShogi/data/startpos.bin");
 
-    std::vector<DataPoint> data;
+    std::mt19937 rng(std::random_device{}());
 
     int generatedPositions = 0;
     for (int fileIdx = 0; generatedPositions < totalPositions; fileIdx++) {
@@ -193,9 +179,9 @@ void generate_data(const std::string& outDir, int totalPositions, int filePositi
 int main(int argc, char* argv[]) {
     assert(argc >= 2 && argc <= 4);
     std::string outDir = argv[1];
-    int totalPositions = 1000000;
+    int totalPositions = 10000000;
     if (argc >= 3) totalPositions = std::stoi(argv[2]);
-    int filePositions = 1000;
+    int filePositions = 100000;
     if (argc >= 4) filePositions = std::stoi(argv[3]);
 
     if (!std::filesystem::exists(outDir))
