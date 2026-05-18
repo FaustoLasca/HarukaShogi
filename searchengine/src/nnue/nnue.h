@@ -15,7 +15,7 @@ namespace harukashogi {
 namespace NNUE {
 
 
-constexpr size_t ACCUMULATOR_SIZE = 128;
+constexpr size_t ACCUMULATOR_SIZE = 256;
 constexpr size_t H1_SIZE = 8;
 constexpr size_t H2_SIZE = 32;
 constexpr int L1_SR = 6; // scale down by 64  
