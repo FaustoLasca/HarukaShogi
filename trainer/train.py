@@ -28,7 +28,7 @@ def crossentropy_loss(output, target):
 model = NNUEModel(
     num_features=1696,
     num_buckets=1,
-    accumulator_size=32,
+    accumulator_size=128,
     h1_size=8,
     h2_size=32,
 ).to(device)
