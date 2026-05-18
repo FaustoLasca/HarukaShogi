@@ -46,31 +46,43 @@ class CVManager : public OutputManager {
 };
 
 
-struct DataPoint {
-    std::string sfen;
-    int score;
-    float result;
+class Startpos {
+    public:
+        Startpos(const std::string& fileName) {
+            std::ifstream file(fileName, std::ios::binary);
+            if (!file.is_open()) {
+                throw std::runtime_error("Failed to open file: " + fileName);
+            }
+
+            std::array<char, 45> buffer;
+            while (file.read(buffer.data(), 45)) {
+                bytes.push_back(buffer);
+            }
+
+            rng = std::mt19937(std::random_device{}());
+        }
+
+        void sample(Position& pos) {
+            pos.from_bytes(bytes[rng() % bytes.size()].data());
+        }
+
+    private:
+        std::vector<std::array<char, 45>> bytes;
+        std::mt19937 rng;
 };
 
 
-int play_game(Engine& engine, CVManager& manager, OpeningBook& book, 
+int play_game(Engine& engine, CVManager& manager, Startpos& startpos, 
               NNUE::Binpack& binpack, std::mt19937& rng){
+    // sample a random startpos
     Position pos;
-    pos.set();
+    startpos.sample(pos);
+
+    std::cout << pos.sfen() << std::endl;
 
     Move moveList[MAX_MOVES];
     Move move, *end;
     int numMoves = 0, validMoves = 0, randomMoves = 0, score;
-
-    // start the game with a random last move from the opening book
-    while (!pos.is_game_over() && (move = book.sample_move(pos.get_key())) != Move::null()) {
-        pos.make_move(move);
-        numMoves++;
-
-        // small chanche to exit the opening book early
-        if (rng() % 50 == 0)
-            break;
-    }
 
     // play up to 3 random moves
     int nRandMoves = rng() % 3;
@@ -144,7 +156,8 @@ void generate_data(const std::string& outDir, int totalPositions, int filePositi
     engine.resize_threadpool(1);
     engine.resize_tt(200);
     engine.set_own_book(false);
-    OpeningBook book;
+
+    Startpos startpos("/home/fausto/myProjects/HarukaShogi/data/startpos.bin");
 
     std::mt19937 rng(std::random_device{}());
 
@@ -152,7 +165,8 @@ void generate_data(const std::string& outDir, int totalPositions, int filePositi
     for (int fileIdx = 0; generatedPositions < totalPositions; fileIdx++) {
         NNUE::Binpack binpack(outDir + "/" + std::to_string(fileIdx) + ".binp", std::ios::out);
         for (int count = 0; count < filePositions; ) {
-            int numMoves = play_game(engine, manager, book, binpack, rng);
+            char posBytes[45];
+            int numMoves = play_game(engine, manager, startpos, binpack, rng);
             count += numMoves;
             generatedPositions += numMoves;
         }
