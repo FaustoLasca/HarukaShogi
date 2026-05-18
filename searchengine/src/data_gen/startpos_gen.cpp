@@ -42,49 +42,70 @@ int main() {
 
     int kingSqCounts[NUM_SQUARES] = {0};
 
-    std::string line;
-    while (std::getline(file, line)) {
-        std::stringstream ss(line);
-        std::string token;
+    // store positions from the initial positions of the game.
+    // after each, expand the limit and add only positions for underrepresented king buckets.
+    std::array<int, 3> moveLimits = {30, 60, 100};
+    for (int limit : moveLimits) {
+        std::cout << "Generating positions with move limit " << limit << "\n";
+        // reset the file pointer to the beginning of the file
+        file.clear();
+        file.seekg(0);
 
-        Position pos;
-        pos.set();
+        std::string line;
+        while (std::getline(file, line)) {
+            std::stringstream ss(line);
+            std::string token;
 
-        Move moveList[MAX_MOVES];
-        Move move, *end;
+            Position pos;
+            pos.set();
 
-        int moveCount = 0;
-        while (ss >> token) {
-            // discard the position if the game is over
-            if (pos.is_game_over() || moveCount >= 100)
-                break;
+            Move moveList[MAX_MOVES];
+            Move move, *end;
 
-            // add the position to the set if it is not already in it
-            std::array<char, 45> bytes;
-            pos.to_bytes(bytes.data());
-            if (positions.count(bytes) == 0) {
-                positions.insert(bytes);
-                Square bKingBucket = pos.king_square(BLACK);
-                if (file_of(bKingBucket) > 4) bKingBucket = hflip(bKingBucket);
-                Square wKingBucket = SQ_99 - pos.king_square(WHITE);
-                if (file_of(wKingBucket) > 4) wKingBucket = hflip(wKingBucket);
-                kingSqCounts[bKingBucket]++;
-                kingSqCounts[wKingBucket]++;
+            int moveCount = 0;
+            while (ss >> token) {
+                // discard the position if the game is over
+                if (pos.is_game_over() || moveCount >= limit)
+                    break;
+
+                // add the position to the set if it is not already in it
+                std::array<char, 45> bytes;
+                pos.to_bytes(bytes.data());
+                if (positions.count(bytes) == 0) {
+                    Square bKingBucket = pos.king_square(BLACK);
+                    if (file_of(bKingBucket) > 4) bKingBucket = hflip(bKingBucket);
+                    Square wKingBucket = SQ_99 - pos.king_square(WHITE);
+                    if (file_of(wKingBucket) > 4) wKingBucket = hflip(wKingBucket);
+
+                    // add the position to the set if either of the king squares are 
+                    // underrepresented
+                    if (kingSqCounts[bKingBucket] < 100000 || kingSqCounts[wKingBucket] < 100000) {
+                        kingSqCounts[bKingBucket]++;
+                        kingSqCounts[wKingBucket]++;
+        
+                        positions.insert(bytes);
+
+                        if (kingSqCounts[bKingBucket] < 5 || kingSqCounts[wKingBucket] < 5) {
+                            std::cout << pos.sfen() << std::endl;
+                        }
+                    }
+                }
+                
+
+                // parse the move from the token
+                move = move_from_string(token);
+                // check that the move is legal
+                end = generate<LEGAL>(pos, moveList);
+                if (std::find(moveList, end, move) == end) {
+                    std::cout << "Invalid move: " << token << "\n";
+                    break;
+                }
+                // make the move
+                pos.make_move(move);
+                moveCount++;
             }
-            
-
-            // parse the move from the token
-            move = move_from_string(token);
-            // check that the move is legal
-            end = generate<LEGAL>(pos, moveList);
-            if (std::find(moveList, end, move) == end) {
-                std::cout << "Invalid move: " << token << "\n";
-                break;
-            }
-            // make the move
-            pos.make_move(move);
-            moveCount++;
         }
+
     }
 
     file.close();
