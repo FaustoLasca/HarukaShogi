@@ -3,7 +3,7 @@
 #include "../types.h"
 #include "../movegen.h"
 #include "../misc.h"
-#include "binpack.h"
+#include "../nnue/binpack.h"
 
 #include <iostream>
 #include <mutex>

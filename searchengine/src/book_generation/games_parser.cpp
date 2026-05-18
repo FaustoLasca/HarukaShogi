@@ -20,7 +20,7 @@
 using namespace harukashogi;
 
 
-// Write the book to a .cpp file as an array of OBEntry
+// Write the book to a binary file as an array of OBEntry
 // Data packing: 3 moves (16 bits each) in bits 0-47, counts (5 bits each) in bits 48-62
 void write_book(const std::map<uint64_t, std::unordered_map<uint16_t, int>>& book_data, 
                 const std::string& filename) {

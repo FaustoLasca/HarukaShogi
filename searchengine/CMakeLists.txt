@@ -72,7 +72,7 @@ target_include_directories(book_generation PRIVATE include)
 
 
 add_executable(gensfen
-    src/nnue/gensfen.cpp
+    src/data_gen/gensfen.cpp
     src/position.cpp
     src/movegen.cpp
     src/misc.cpp
@@ -88,6 +88,25 @@ add_executable(gensfen
     src/nnue/binpack.cpp
 )
 target_include_directories(gensfen PRIVATE include)
+
+
+add_executable(startpos_gen
+    src/data_gen/startpos_gen.cpp
+    src/position.cpp
+    src/movegen.cpp
+    src/misc.cpp
+    src/bitboard.cpp
+    src/movepicker.cpp
+    src/thread.cpp
+    src/engine.cpp
+    src/search.cpp
+    src/ttable.cpp
+    src/opening_book.cpp
+    src/evaluate.cpp
+    src/nnue/nnue.cpp
+    src/nnue/binpack.cpp
+)
+target_include_directories(startpos_gen PRIVATE include)
 
 
 set(PYBIND11_FINDPYTHON ON)

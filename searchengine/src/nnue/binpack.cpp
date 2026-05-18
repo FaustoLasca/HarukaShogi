@@ -19,7 +19,7 @@ Binpack::Binpack(std::string filename, std::ios_base::openmode openMode) :
     else {
         char header[6];
         file.read(header, 6);
-        if (std::string(header) != "HARUKA") {
+        if (memcmp(header, "HARUKA", 6) != 0) {
             throw std::runtime_error("Invalid header in file: " + filename);
         }
     }

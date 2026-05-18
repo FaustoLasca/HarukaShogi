@@ -5,7 +5,7 @@ import numpy as np
 
 NUM_FEATURES = 2344
 ACTIVE_FEATURES = 40
-ACCUMULATOR_SIZE = 32
+ACCUMULATOR_SIZE = 128
 
 class NNUEModel(nn.Module):
     def __init__(self):
