@@ -6,7 +6,6 @@
 #include <cstring>
 #include <immintrin.h>
 
-#include "../features.h"
 #include "../accumulator.h"
 #include "../../position.h"
 #include "../../types.h"
@@ -15,7 +14,7 @@ namespace harukashogi {
 namespace NNUE {
 
 
-template <size_t N, size_t M>
+template <typename Features, size_t M>
 class FeatureTransformer {
     public:
         FeatureTransformer() {}
@@ -25,8 +24,8 @@ class FeatureTransformer {
 
         // update the accumulator incrementally
         void incremental_update(
-            const Position& pos,
-            Move m,
+            const std::array<Square, 2>& kingSq,
+            MoveDiff diff,
             const Accumulator<M>& oldAcc,
             Accumulator<M>& newAcc
         ) const;
@@ -35,167 +34,154 @@ class FeatureTransformer {
         const unsigned char* set_weights(const unsigned char* weights_start);
 
     private:
-        alignas(64) int16_t weights[N][M];
+        alignas(64) int16_t weights[Features::NumFeatures][M];
         alignas(64) int16_t biases[M];
 };
 
 
-template <size_t N, size_t M>
-void FeatureTransformer<N, M>::compute(const Position& pos, Accumulator<M>& acc) const {
+template <typename Features, size_t M>
+void FeatureTransformer<Features, M>::compute(const Position& pos, Accumulator<M>& acc) const {
     constexpr size_t registerWidth = 256 / 16; // 16 bit elements in a 256 bit register
     static_assert(M % registerWidth == 0, "We must fill the registers completely");
     constexpr size_t numChunks = M / registerWidth;
-    static_assert(numChunks <= 8, "Chunks will overspill the registers");
+    // number of passes needed to process all the chunks
+    // (8 chunks per pass to not overspill the registers)
+    constexpr size_t MAX_CHUNKS = 8;
+    constexpr size_t numPasses = (numChunks + MAX_CHUNKS - 1) / MAX_CHUNKS;
+
     // array of registers to accumulate the weights 16 at a time
     // one set for each perspective
-    __m256i regs[2][numChunks];
+    __m256i regs[2][std::min(numChunks, MAX_CHUNKS)];
 
-    // load the biases into the registers (256 bits at a time)
-    for (size_t i = 0; i < numChunks; ++i) {
-        regs[BLACK][i] = _mm256_load_si256((const __m256i*)&biases[i*registerWidth]);
-        regs[WHITE][i] = _mm256_load_si256((const __m256i*)&biases[i*registerWidth]);
-    }
+    for (size_t pass = 0; pass < numPasses; ++pass) {
+        size_t passChunks = std::min(numChunks - pass * MAX_CHUNKS, MAX_CHUNKS);
 
-    // add the weights for the active features into the registers
-    for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
-        if (pos.piece(sq) != NO_PIECE) {
-            PieceType pt = type_of(pos.piece(sq));
-            Color c = color_of(pos.piece(sq));
-            size_t bIdx = board_idx<BLACK>(c, pt, sq);
-            size_t wIdx = board_idx<WHITE>(c, pt, sq);
-
-
-            // for each active feature, add the weight to the corresponding register
-            for (size_t i = 0; i < numChunks; ++i) {
-                regs[BLACK][i] = _mm256_add_epi16(
-                    regs[BLACK][i],
-                    _mm256_load_si256((const __m256i*)&weights[bIdx][i*registerWidth])
-                );
-                regs[WHITE][i] = _mm256_add_epi16(
-                    regs[WHITE][i],
-                    _mm256_load_si256((const __m256i*)&weights[wIdx][i*registerWidth])
-                );
-            }
+        // load the biases into the registers (256 bits at a time)
+        for (size_t i = 0; i < passChunks; ++i) {
+            regs[BLACK][i] = _mm256_load_si256((const __m256i*)&biases[(pass*MAX_CHUNKS + i)*registerWidth]);
+            regs[WHITE][i] = _mm256_load_si256((const __m256i*)&biases[(pass*MAX_CHUNKS + i)*registerWidth]);
         }
-    }
+
+        // add the weights for the active features into the registers
+        for (Square sq = SQ_11; sq < NUM_SQUARES; ++sq) {
+            if (pos.piece(sq) != NO_PIECE) {
+                PieceType pt = type_of(pos.piece(sq));
+                Color c = color_of(pos.piece(sq));
+                size_t bIdx = Features::template board_idx<BLACK>(pos.king_square(BLACK), c, pt, sq);
+                size_t wIdx = Features::template board_idx<WHITE>(pos.king_square(WHITE), c, pt, sq);
 
 
-    for (Color c = BLACK; c < NUM_COLORS; ++c) {
-        for (PieceType pt = GOLD; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
-            for (int count = 0; count < pos.hand_count(c, pt); ++count) {
-                size_t bIdx = hand_idx<BLACK>(c, pt, count);
-                size_t wIdx = hand_idx<WHITE>(c, pt, count);
-                for (size_t i = 0; i < numChunks; ++i) {
-                    regs[BLACK][i] = _mm256_add_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bIdx][i*registerWidth]));
-                    regs[WHITE][i] = _mm256_add_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wIdx][i*registerWidth]));
+                // for each active feature, add the weight to the corresponding register
+                for (size_t i = 0; i < passChunks; ++i) {
+                    regs[BLACK][i] = _mm256_add_epi16(
+                        regs[BLACK][i],
+                        _mm256_load_si256((const __m256i*)&weights[bIdx][(pass*MAX_CHUNKS + i)*registerWidth])
+                    );
+                    regs[WHITE][i] = _mm256_add_epi16(
+                        regs[WHITE][i],
+                        _mm256_load_si256((const __m256i*)&weights[wIdx][(pass*MAX_CHUNKS + i)*registerWidth])
+                    );
                 }
             }
         }
-    }
 
 
-    // store the results in the accumulator
-    for (size_t i = 0; i < numChunks; ++i) {
-        _mm256_store_si256((__m256i*)&acc[BLACK][i*registerWidth], regs[BLACK][i]);
-        _mm256_store_si256((__m256i*)&acc[WHITE][i*registerWidth], regs[WHITE][i]);
+        for (Color c = BLACK; c < NUM_COLORS; ++c) {
+            for (PieceType pt = GOLD; pt < NUM_UNPROMOTED_PIECE_TYPES; ++pt) {
+                for (int count = 0; count < pos.hand_count(c, pt); ++count) {
+                    size_t bIdx = Features::template hand_idx<BLACK>(pos.king_square(BLACK), c, pt, count);
+                    size_t wIdx = Features::template hand_idx<WHITE>(pos.king_square(WHITE), c, pt, count);
+                    for (size_t i = 0; i < passChunks; ++i) {
+                        regs[BLACK][i] = _mm256_add_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bIdx][(pass*MAX_CHUNKS + i)*registerWidth]));
+                        regs[WHITE][i] = _mm256_add_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wIdx][(pass*MAX_CHUNKS + i)*registerWidth]));
+                    }
+                }
+            }
+        }
+
+
+        // store the results in the accumulator
+        for (size_t i = 0; i < passChunks; ++i) {
+            _mm256_store_si256((__m256i*)&acc[BLACK][(pass*MAX_CHUNKS + i)*registerWidth], regs[BLACK][i]);
+            _mm256_store_si256((__m256i*)&acc[WHITE][(pass*MAX_CHUNKS + i)*registerWidth], regs[WHITE][i]);
+        }
     }
 }
 
 
-template <size_t N, size_t M>
-void FeatureTransformer<N, M>::incremental_update(
-    const Position& pos,
-    Move m,
+template <typename Features, size_t M>
+void FeatureTransformer<Features, M>::incremental_update(
+    const std::array<Square, 2>& kingSq,
+    MoveDiff diff,
     const Accumulator<M>& oldAcc,
     Accumulator<M>& newAcc
 ) const {
     constexpr size_t registerWidth = 256 / 16; // 16 bit elements in a 256 bit register
     static_assert(M % registerWidth == 0, "We must fill the registers completely");
     constexpr size_t numChunks = M / registerWidth;
-    static_assert(numChunks <= 8, "Chunks will overspill the registers");
-    // array of registers to accumulate the weights 16 at a time
-    // one set for each perspective
-    __m256i regs[2][numChunks];
+    // number of passes needed to process all the chunks
+    // (8 chunks per pass to not overspill the registers)
+    constexpr size_t MAX_CHUNKS = 8;
+    constexpr size_t numPasses = (numChunks + MAX_CHUNKS - 1) / MAX_CHUNKS;
 
-    // load the old accumulator into the registers
-    for (size_t i = 0; i < numChunks; ++i) {
-        regs[BLACK][i] = _mm256_load_si256((const __m256i*)&oldAcc[BLACK][i*registerWidth]);
-        regs[WHITE][i] = _mm256_load_si256((const __m256i*)&oldAcc[WHITE][i*registerWidth]);
-    }
+    __m256i regs[2][std::min(numChunks, MAX_CHUNKS)];
 
-    Color stm = pos.side_to_move();
-    Square to = m.to();
-
-    if (m.is_drop()) {
-        PieceType pt = m.dropped();
-
-        size_t bBoardIdx = board_idx<BLACK>(stm, pt, to);
-        size_t wBoardIdx = board_idx<WHITE>(stm, pt, to);
-        size_t bHandIdx = hand_idx<BLACK>(stm, pt, pos.hand_count(stm, pt)-1);
-        size_t wHandIdx = hand_idx<WHITE>(stm, pt, pos.hand_count(stm, pt)-1);
-        
-        for (size_t i = 0; i < numChunks; ++i) {
-            // add the dropped piece to the board
-            regs[BLACK][i] = _mm256_add_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bBoardIdx][i*registerWidth]));
-            regs[WHITE][i] = _mm256_add_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wBoardIdx][i*registerWidth]));
-            // remove the dropped piece from the hand
-            regs[BLACK][i] = _mm256_sub_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bHandIdx][i*registerWidth]));
-            regs[WHITE][i] = _mm256_sub_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wHandIdx][i*registerWidth]));
-        }
-    }
-
-    else {
-        Square from = m.from();
-        PieceType pt = type_of(pos.piece(from));
-
-        size_t bFromIdx = board_idx<BLACK>(stm, pt, from);
-        size_t wFromIdx = board_idx<WHITE>(stm, pt, from);
-        if (m.is_promotion())
-            pt = promote(pt);
-        size_t bToIdx = board_idx<BLACK>(stm, pt, to);
-        size_t wToIdx = board_idx<WHITE>(stm, pt, to);
-        
-        for (size_t i = 0; i < numChunks; ++i) {
-            // remove the piece from the board
-            regs[BLACK][i] = _mm256_sub_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bFromIdx][i*registerWidth]));
-            regs[WHITE][i] = _mm256_sub_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wFromIdx][i*registerWidth]));
-            // add the piece to the board
-            regs[BLACK][i] = _mm256_add_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bToIdx][i*registerWidth]));
-            regs[WHITE][i] = _mm256_add_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wToIdx][i*registerWidth]));
+    for (size_t pass = 0; pass < numPasses; ++pass) {
+        size_t passChunks = std::min(numChunks - pass * MAX_CHUNKS, MAX_CHUNKS);
+        // load the old accumulator into the registers
+        for (size_t i = 0; i < passChunks; ++i) {
+            regs[BLACK][i] = _mm256_load_si256((const __m256i*)&oldAcc[BLACK][(pass*MAX_CHUNKS + i)*registerWidth]);
+            regs[WHITE][i] = _mm256_load_si256((const __m256i*)&oldAcc[WHITE][(pass*MAX_CHUNKS + i)*registerWidth]);
         }
 
-        // if the move is a capture, remove the captured piece from the board and add it to the hand
-        if (pos.is_capture(m)) {
-            PieceType capturedPT = type_of(pos.piece(m.to()));
+        // add the moved piece to the to square feature
+        size_t bIdx = Features::template board_idx<BLACK>(kingSq[BLACK], diff.stm, diff.toPt, diff.toSq);
+        size_t wIdx = Features::template board_idx<WHITE>(kingSq[WHITE], diff.stm, diff.toPt, diff.toSq);
+        for (size_t i = 0; i < passChunks; ++i) {
+            regs[BLACK][i] = _mm256_add_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bIdx][(pass*MAX_CHUNKS + i)*registerWidth]));
+            regs[WHITE][i] = _mm256_add_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wIdx][(pass*MAX_CHUNKS + i)*registerWidth]));
+        }
 
-            size_t bBoardIdx = board_idx<BLACK>(~stm, capturedPT, m.to());
-            size_t wBoardIdx = board_idx<WHITE>(~stm, capturedPT, m.to());
-            capturedPT = unpromoted_type(capturedPT);
-            int count = pos.hand_count(stm, capturedPT);
-            size_t bHandIdx = hand_idx<BLACK>(stm, capturedPT, count);
-            size_t wHandIdx = hand_idx<WHITE>(stm, capturedPT, count);
+        // remove the moved piece from the from square feature
+        if (diff.fromSq != NO_SQUARE) {
+            bIdx = Features::template board_idx<BLACK>(kingSq[BLACK], diff.stm, diff.fromPt, diff.fromSq);
+            wIdx = Features::template board_idx<WHITE>(kingSq[WHITE], diff.stm, diff.fromPt, diff.fromSq);
+        }
+        else {
+            bIdx = Features::template hand_idx<BLACK>(kingSq[BLACK], diff.stm, diff.fromPt, diff.dropCount);
+            wIdx = Features::template hand_idx<WHITE>(kingSq[WHITE], diff.stm, diff.fromPt, diff.dropCount);
+        }
+        for (size_t i = 0; i < passChunks; ++i) {
+            regs[BLACK][i] = _mm256_sub_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bIdx][(pass*MAX_CHUNKS + i)*registerWidth]));
+            regs[WHITE][i] = _mm256_sub_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wIdx][(pass*MAX_CHUNKS + i)*registerWidth]));
+        }
 
-            for (size_t i = 0; i < numChunks; ++i) {
-                // remove the captured piece from the board
-                regs[BLACK][i] = _mm256_sub_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bBoardIdx][i*registerWidth]));
-                regs[WHITE][i] = _mm256_sub_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wBoardIdx][i*registerWidth]));
-                // add the captured piece to the hand
-                regs[BLACK][i] = _mm256_add_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bHandIdx][i*registerWidth]));
-                regs[WHITE][i] = _mm256_add_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wHandIdx][i*registerWidth]));
+        // if move is a capture, remove the captured piece from the board and add it to the hand
+        if (diff.capturedPt != NO_PIECE_TYPE) {
+            bIdx = Features::template board_idx<BLACK>(kingSq[BLACK], ~diff.stm, diff.capturedPt, diff.toSq);
+            wIdx = Features::template board_idx<WHITE>(kingSq[WHITE], ~diff.stm, diff.capturedPt, diff.toSq);
+            PieceType unpromotedPt = unpromoted_type(diff.capturedPt);
+            size_t bHandIdx = Features::template hand_idx<BLACK>(kingSq[BLACK], diff.stm, unpromotedPt, diff.capturedCount);
+            size_t wHandIdx = Features::template hand_idx<WHITE>(kingSq[WHITE], diff.stm, unpromotedPt, diff.capturedCount);
+            for (size_t i = 0; i < passChunks; ++i) {
+                regs[BLACK][i] = _mm256_sub_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bIdx][(pass*MAX_CHUNKS + i)*registerWidth]));
+                regs[WHITE][i] = _mm256_sub_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wIdx][(pass*MAX_CHUNKS + i)*registerWidth]));
+                regs[BLACK][i] = _mm256_add_epi16(regs[BLACK][i], _mm256_load_si256((const __m256i*)&weights[bHandIdx][(pass*MAX_CHUNKS + i)*registerWidth]));
+                regs[WHITE][i] = _mm256_add_epi16(regs[WHITE][i], _mm256_load_si256((const __m256i*)&weights[wHandIdx][(pass*MAX_CHUNKS + i)*registerWidth]));
             }
         }
-    }
 
-    // store the results in the new accumulator
-    for (size_t i = 0; i < numChunks; ++i) {
-        _mm256_store_si256((__m256i*)&newAcc[BLACK][i*registerWidth], regs[BLACK][i]);
-        _mm256_store_si256((__m256i*)&newAcc[WHITE][i*registerWidth], regs[WHITE][i]);
+        // store the results in the new accumulator
+        for (size_t i = 0; i < passChunks; ++i) {
+            _mm256_store_si256((__m256i*)&newAcc[BLACK][(pass*MAX_CHUNKS + i)*registerWidth], regs[BLACK][i]);
+            _mm256_store_si256((__m256i*)&newAcc[WHITE][(pass*MAX_CHUNKS + i)*registerWidth], regs[WHITE][i]);
+        }
     }
 }
 
 
-template <size_t N, size_t M>
-const unsigned char* FeatureTransformer<N, M>::set_weights(const unsigned char* weightsStart) {
+template <typename Features, size_t M>
+const unsigned char* FeatureTransformer<Features, M>::set_weights(const unsigned char* weightsStart) {
     std::memcpy(this->weights, weightsStart, sizeof(this->weights));
     std::memcpy(this->biases, weightsStart + sizeof(weights), sizeof(this->biases));
     return weightsStart + sizeof(weights) + sizeof(biases);

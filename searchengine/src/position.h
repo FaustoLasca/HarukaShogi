@@ -99,7 +99,8 @@ class Position {
 		void to_bytes(char* bytes) const;
 
 		// move methods
-		void make_move(Move m);
+		// returns the move difference for the NNUE incremental updates
+		MoveDiff make_move(Move m);
 		void unmake_move(Move m);
 
 		// null movee for null move pruning
@@ -147,6 +148,7 @@ class Position {
 		// getters
 		Piece piece(Square sq) const { return board[sq]; }
 		Square king_square(Color color) const { return kingSq[color]; }
+		const std::array<Square, 2>& king_square() const { return kingSq; }
 		int hand_count(Color color, PieceType pt) const {
 			return hands[color][pt];
 		}

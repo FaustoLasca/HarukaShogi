@@ -390,6 +390,21 @@ class Move {
         uint16_t data;
 };
 
+
+// used by the NNUE to update the accumulator incrementally
+// contains the information needed to directly compute the feature differences from a move
+struct MoveDiff {
+    Color stm;
+    PieceType fromPt, toPt;
+    // drops have fromSq = NO_SQUARE
+    Square fromSq, toSq;
+    int dropCount;
+    // non captures have capturedPt = NO_PIECE_TYPE
+    PieceType capturedPt = NO_PIECE_TYPE;
+    int capturedCount;
+};
+
+
 } // namespace harukashogi
 
 #endif // TYPES_H

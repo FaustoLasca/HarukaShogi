@@ -137,8 +137,8 @@ void Worker::iterative_deepening() {
         }
 
     // initialize the nnue accumulator
-    // accumulatorStack.clear();
-    // accumulatorStack.compute(searchPos);
+    accumulatorStack.clear();
+    accumulatorStack.compute(searchPos);
     
     int old_score = q_search(0);
     int score;
@@ -337,8 +337,8 @@ int Worker::q_search(int ply, int alpha, int beta) {
     if (is_search_aborted())
         throw AbortSearchException();
 
-    int eval = evaluate(searchPos);
-    // int eval = evaluate_nnue(nnue, accumulatorStack.top(), searchPos);
+    // int eval = evaluate(searchPos);
+    int eval = evaluate_nnue(nnue, accumulatorStack.top(), searchPos);
 
     if (eval >= beta)
         return eval;
@@ -377,17 +377,16 @@ int Worker::q_search(int ply, int alpha, int beta) {
 
 
 void Worker::make_move(Move m) {
-    // update the nnue accumulator (before making the move)
-    // copy the accumulator and update it
-    // accumulatorStack.push(searchPos, m);
     // make the move
-    searchPos.make_move(m);
+    MoveDiff diff = searchPos.make_move(m);
+    // update the nnue accumulator
+    accumulatorStack.push(searchPos, diff);
 }
 
 
 void Worker::unmake_move(Move m) {
     // remove the top accumulator from the stack
-    // accumulatorStack.pop();
+    accumulatorStack.pop();
     // unmake the move
     searchPos.unmake_move(m);
 }
@@ -396,7 +395,7 @@ void Worker::unmake_move(Move m) {
 void Worker::make_null_move() {
     // add a copy of the top accumulator to the stack
     // no modifications are made to the accumulator with a null move
-    // accumulatorStack.push();
+    accumulatorStack.push();
     // make the null move
     searchPos.make_null_move();
 }
@@ -404,7 +403,7 @@ void Worker::make_null_move() {
 
 void Worker::unmake_null_move() {
     // remove the top accumulator from the stack
-    // accumulatorStack.pop();
+    accumulatorStack.pop();
     // unmake the null move
     searchPos.unmake_null_move();
 }

@@ -14,7 +14,7 @@ class Engine {
     public:
         Engine(OutputManager& outputManager) : 
             outputManager(outputManager),
-            threads(tt, threads, outputManager, nnue) 
+            threads(tt, threads, outputManager, *nnue) 
         {
             init();
         }
@@ -34,7 +34,7 @@ class Engine {
     private:
         Position pos;
         TTable tt;
-        NNUE::NNUE nnue;
+        std::unique_ptr<NNUE::NNUE> nnue = std::make_unique<NNUE::NNUE>();
         ThreadPool<Worker> threads;
         OutputManager& outputManager;
         OpeningBook openingBook;

@@ -307,7 +307,13 @@ void Position::init_si() {
 
 // makes the given move.
 // the move is assumed to be legal.
-void Position::make_move(Move m) {
+MoveDiff Position::make_move(Move m) {
+    // initialize the move difference
+    // stm and to square are set here, the rest will be set below
+    MoveDiff diff;
+    diff.stm = sideToMove;
+    diff.toSq = m.to();
+
     bool givesCheck = gives_check(m);
     bool kingMove = false;
     uint8_t count;
@@ -325,12 +331,20 @@ void Position::make_move(Move m) {
 
         Piece p = board[m.from()];
 
+        // update the squares for the move difference
+        diff.fromSq = m.from();
+        diff.toSq = m.to();
+        diff.fromPt = type_of(p);
+        
         // capture
         if (board[m.to()] != NO_PIECE) {
             PieceType capturedPT = type_of(board[m.to()]);
             // unpromote the piece before adding to hand
             count = hands[sideToMove][unpromoted_type(capturedPT)];
             add_hand_piece(sideToMove, unpromoted_type(capturedPT));
+            // update the move difference
+            diff.capturedPt = capturedPT;
+            diff.capturedCount = count;
             // handle pawn files if a pawn is captured
             if (capturedPT == PAWN)
                 pawnFiles[~sideToMove][file_of(m.to())] = false;
@@ -353,6 +367,8 @@ void Position::make_move(Move m) {
             remove_piece(m.from());
             p = promote_piece(p);
             add_piece(p, m.to());
+            // update the move difference
+            diff.toPt = type_of(p);
             // if a pawn is promoted, update the pawn file
             // pawns can be dropped to tha same file of the promoted pawn
             if (type_of(board[m.to()]) == P_PAWN) {
@@ -362,6 +378,8 @@ void Position::make_move(Move m) {
         // otherwise just move the piece
         else {
             move_piece(m.from(), m.to());
+            // update the move difference
+            diff.toPt = diff.fromPt;
         }
 
         // update the zobrist key by adding the piece after the move to the to square
@@ -424,6 +442,10 @@ void Position::make_move(Move m) {
         remove_hand_piece(sideToMove, m.dropped());
         count = hands[sideToMove][m.dropped()];
         add_piece(make_piece(sideToMove, m.dropped()), m.to());
+        // update the move difference
+        diff.fromSq = NO_SQUARE;
+        diff.fromPt = diff.toPt = m.dropped();
+        diff.dropCount = count;
         // handle pawn files if a pawn is dropped
         if (m.dropped() == PAWN)
             pawnFiles[sideToMove][file_of(m.to())] = true;
@@ -477,6 +499,8 @@ void Position::make_move(Move m) {
 
     // update the repetition table
     repetitionTable.add(newSI->key);
+
+    return diff;
 }
 
 
