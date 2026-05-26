@@ -84,8 +84,7 @@ class NNUEIterableDataset(IterableDataset):
 
 if __name__ == "__main__":
     dataloader = DataLoader(
-        NNUEIterableDataset("/home/fausto/myProjects/HarukaShogi/data/nnue/dataset_v0/train",
-                            batch_size=16384),
+        NNUEIterableDataset("data/nnue/dataset_v1/train", batch_size=16384),
         batch_size=None, # batch handled by the dataset
         num_workers=8,
         pin_memory=True,
