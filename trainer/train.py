@@ -26,16 +26,16 @@ def crossentropy_loss(output, target):
 
 
 model = NNUEModel(
-    num_features=1696,
-    num_buckets=1,
-    accumulator_size=128,
+    num_features=1696*45,
+    num_buckets=45,
+    accumulator_size=64,
     h1_size=8,
     h2_size=32,
 ).to(device)
-model_name = "P_acc128-8-32_1B.bin"
+model_name = "HalfKA_acc64-8-32_1B.bin"
 
 train_dataloader = DataLoader(
-    NNUEIterableDataset("/home/fausto/myProjects/HarukaShogi/data/nnue/dataset_v0/train",
+    NNUEIterableDataset("/home/fausto/myProjects/HarukaShogi/data/nnue/dataset_v1/train",
                         batch_size=16384, random_hflip=True, shuffle=True),
     batch_size=None,
     num_workers=16,
@@ -44,7 +44,7 @@ train_dataloader = DataLoader(
     pin_memory=True,
 )
 val_dataloader = DataLoader(
-    NNUEIterableDataset("/home/fausto/myProjects/HarukaShogi/data/nnue/dataset_v0/val",
+    NNUEIterableDataset("/home/fausto/myProjects/HarukaShogi/data/nnue/dataset_v1/val",
                         batch_size=16384, random_hflip=False, shuffle=False),
     batch_size=None,
     num_workers=16,
@@ -67,7 +67,7 @@ for epoch in range(EPOCHS):
         s = s/(127*64)
         
         output = torch.sigmoid(model(b, w, t))
-        target = (LAMBDA*torch.sigmoid(s*3) + (1 - LAMBDA)*r).unsqueeze(-1)
+        target = (LAMBDA*torch.sigmoid(s*3.8) + (1 - LAMBDA)*r).unsqueeze(-1)
 
         loss = crossentropy_loss(output, target)
 
@@ -85,7 +85,7 @@ for epoch in range(EPOCHS):
         
         with torch.no_grad():
             output = torch.sigmoid(model(b, w, t))
-        target = (LAMBDA*torch.sigmoid(s*3) + (1 - LAMBDA)*r).unsqueeze(-1)
+        target = (LAMBDA*torch.sigmoid(s*3.8) + (1 - LAMBDA)*r).unsqueeze(-1)
 
         loss = crossentropy_loss(output, target)
         val_losses.append(loss.detach())
@@ -101,7 +101,7 @@ for epoch in range(EPOCHS):
 
     if val_loss < min_val_loss:
         min_val_loss = val_loss
-        model.weights_to_bin(f"searchengine/bin/nnue/{model_name}")
+        model.weights_to_bin(f"searchengine/bin/nnue/v1/{model_name}")
         print(f"Saved weights to {model_name}")
 
 
