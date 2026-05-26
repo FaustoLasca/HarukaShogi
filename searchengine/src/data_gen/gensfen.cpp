@@ -78,8 +78,6 @@ int play_game(Engine& engine, CVManager& manager, Startpos& startpos,
     Position pos;
     startpos.sample(pos);
 
-    std::cout << pos.sfen() << std::endl;
-
     Move moveList[MAX_MOVES];
     Move move, *end;
     int numMoves = 0, validMoves = 0, randomMoves = 0, score;
@@ -113,6 +111,16 @@ int play_game(Engine& engine, CVManager& manager, Startpos& startpos,
         // check that the move is legal.
         // if it isn't something went wrong, choose a random legal move.
         end = generate<LEGAL>(pos, moveList);
+
+        // stalemate check
+        if (end == moveList) {
+            std::cout << "-----------------------------------------------------------" << std::endl;
+            std::cout << "STALEMATE POSITION: " << pos.sfen() << std::endl;
+            std::cout << "-----------------------------------------------------------" << std::endl;
+            break;
+        }
+
+
         assert(end != moveList);
         if (std::find(moveList, end, move) == end) {
             std::cout << "-----------------------------------------------------------" << std::endl;
