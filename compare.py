@@ -127,11 +127,10 @@ def play_game(path1, path2, max_time, reverse):
 
 if __name__ == "__main__":
     path1 = "searchengine/build/HarukaShogi"
-    # path1 = "engines/HarukaShogi_v128" 
-    path2 = "engines/HarukaShogi_v130"
+    path2 = "engines/HarukaShogi_v110"
 
-    MAX_GAMES = 3000
-    NUM_PROCESSES = 30
+    MAX_GAMES = 3200
+    NUM_PROCESSES = 32
 
     pool = mp.Pool(processes=NUM_PROCESSES)
         

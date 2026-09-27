@@ -7,3 +7,4 @@
 engines
 searchengine/src/book_generation/csv_parser
 data
+*.pt

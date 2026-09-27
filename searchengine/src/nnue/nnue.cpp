@@ -13,8 +13,9 @@ namespace NNUE {
 // const unsigned char gWeightsData[];
 // const unsigned char *const gWeightsEnd;
 // const unsigned int gWeightsSize;
-INCBIN(Weights, "../bin/nnue/v1/P_acc128-8-32_1B.bin");
+INCBIN(Weights, "../bin/nnue/v2/HalfKA_acc128-8-32_8B_08l.bin");
 // INCBIN(Weights, "../bin/nnue/test_weights.bin");
+
 
 
 NNUE::NNUE() {

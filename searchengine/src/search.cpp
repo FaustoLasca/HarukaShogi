@@ -19,7 +19,8 @@ int REDUCTION_TABLE[MAX_MOVES][MAX_DEPTH];
 void Search::init() {
     for (int nMoves = 0; nMoves < MAX_MOVES; nMoves++) {
         for (int depth = 0; depth < MAX_DEPTH; depth++) {
-            REDUCTION_TABLE[nMoves][depth] = std::log(nMoves) * std::log(depth) * 2 / 5;
+            float reduction = 1.0 + std::log(nMoves) * std::log(depth) / 1.7;
+            REDUCTION_TABLE[nMoves][depth] = std::min(depth, (int)reduction);
         }
     }
 }
@@ -122,8 +123,8 @@ const Worker& Worker::get_best_thread() {
 }
 
 
-constexpr int ASPIRATION_DELTA = 500;
-constexpr int ASPIRATION_DELTA_MULT = 100;
+constexpr int ASPIRATION_DELTA = 800;
+constexpr int ASPIRATION_DELTA_MULT = 2;
 
 void Worker::iterative_deepening() {
     // shrink old values of the move history to make new values more important
@@ -258,7 +259,7 @@ int Worker::search(StackEntry* stack, int depth, int alpha, int beta) {
         // if the search score returned is higher than alpha, research at full depth
         nMoves++;
         if (depth > 2 && !searchPos.gives_check(m) && !searchPos.checkers()) {
-            reduction = 1 + REDUCTION_TABLE[nMoves][depth-1];
+            reduction = REDUCTION_TABLE[nMoves][depth-1];
         }
         else reduction = 1;
         
